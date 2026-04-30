@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import Button from '../components/Button.tsx'
+import FileInput from '../components/FileInput.tsx'
 
 function UploadPage() {
 // Esto es magia de react
@@ -19,7 +21,7 @@ function UploadPage() {
 
     // Este form es lo que se le va a mandar a la API y 'video' tiene que ser igual en lo de Multer 
     const formData = new FormData()
-    formData.append('video', archivo) // le agregamos el archivo de video al form que creamos. 'video' es el nombre (como si fuera el id) del campo que le corresponde al archivo. Es decir seria: formData.append('nombre', cosaQueVamosAEnviar)
+    formData.append('contenido', archivo) // le agregamos el archivo de video al form que creamos. 'video' es el nombre (como si fuera el id) del campo que le corresponde al archivo. Es decir seria: formData.append('nombre', cosaQueVamosAEnviar)
 
     try {
       const respuesta = await fetch('http://localhost:3000/api/videos', {
@@ -43,19 +45,15 @@ function UploadPage() {
     <div>
       <h1>Subir video</h1>
 
-      <input
-        type="file"
-        accept="video/*"
-        onChange={alElegirArchivo}
-      />
+  <FileInput onChange={alElegirArchivo} accept="video/*" />
 
       {archivo && (
         <p>Archivo elegido: {archivo.name}</p>
       )}
 
-      <button onClick={alEnviar} disabled={!archivo || subiendo}>
-        {subiendo ? 'subiendo......' : 'Subir'}
-      </button>
+    <Button onClick={alEnviar} disabled={!archivo || subiendo}>
+      {subiendo ? 'Subiendo...' : 'Subir'}
+    </Button>
 
       {mensaje && <p>{mensaje}</p>}
     </div>
