@@ -1,6 +1,5 @@
 import { useState } from 'react'
-import Button from '../components/Button.tsx'
-import FileInput from '../components/FileInput.tsx'
+import { Button, FileInput  } from "flowbite-react"
 
 function UploadPage() {
 // Esto es magia de react
@@ -51,7 +50,7 @@ function UploadPage() {
         <p>Archivo elegido: {archivo.name}</p>
       )}
 
-    <Button onClick={alEnviar} disabled={!archivo || subiendo}>
+    <Button color="blue" onClick={alEnviar} disabled={!archivo || subiendo}>
       {subiendo ? 'Subiendo...' : 'Subir'}
     </Button>
 
