@@ -1,50 +1,57 @@
-# React + TypeScript + Vite
+# CineWeb — Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Plataforma de películas donde los usuarios pueden subir y reproducir contenido
 
-Currently, two official plugins are available:
+## Equipo
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+| Rol | Responsable |
+|-----|-------------|
+| Diseño (draw.io) | Requelme, Candela M — [Ver diseño](https://app.diagrams.net/#G1eFO_b5KQ9T8M1xZn47CeNbCgubCR8u94) |
+| Frontend | Lucca, Liam Santiago — [Ver repositorio](https://github.com/liamlucca/cineweb-frontend) |
+| Backend | Marino, Eduardo — [Ver repositorio](https://github.com/EduardoMarino73/TP-BackEnd) |
 
-## Expanding the ESLint configuration
+> Los roles no son estrictos. Cualquier integrante puede contribuir en cualquier área del proyecto según lo necesite el equipo.
 
-If you are developing a production application, we recommend updating the configuration to enable type aware lint rules:
+## Tecnologías
 
-- Configure the top-level `parserOptions` property like this:
+- **React** con **TypeScript**
+- **Vite 5** 
+- **Tailwind CSS**
+- **DaisyUI**
+- **React Router** — navegación entre páginas
+- **pnpm** — gestor de paquetes
 
-```js
-export default tseslint.config({
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
+## Requisitos previos
+
+- Node.js
+- pnpm instalado globalmente
+
+```bash
+npm install -g pnpm
 ```
 
-- Replace `tseslint.configs.recommended` to `tseslint.configs.recommendedTypeChecked` or `tseslint.configs.strictTypeChecked`
-- Optionally add `...tseslint.configs.stylisticTypeChecked`
-- Install [eslint-plugin-react](https://github.com/jsx-eslint/eslint-plugin-react) and update the config:
+## Instalación
 
-```js
-// eslint.config.js
-import react from 'eslint-plugin-react'
+```bash
+# Clonar el repositorio
+git clone https://github.com/liamlucca/cineweb-frontend
+cd cineweb-frontend
 
-export default tseslint.config({
-  // Set the react version
-  settings: { react: { version: '18.3' } },
-  plugins: {
-    // Add the react plugin
-    react,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended rules
-    ...react.configs.recommended.rules,
-    ...react.configs['jsx-runtime'].rules,
-  },
-})
+# Instalar dependencias
+pnpm install
+
+# Iniciar en modo desarrollo
+pnpm dev
 ```
+
+El frontend se inicia en `http://localhost:5173`
+
+El backend debe iniciarse en `http://localhost:3000` ya que el frontend realiza llamadas a la API en esa dirección (por ahora).
+
+## Páginas actuales
+
+| Ruta | Página | Descripción |
+|------|--------|-------------|
+| `/` | LandingPage | Listado de películas |
+| `/subir` | UploadPage | Formulario para subir una película |
+

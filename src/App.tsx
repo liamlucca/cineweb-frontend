@@ -1,12 +1,14 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
-import HomePage from './pages/HomePage'
+import LandingPage from './pages/LandingPage.tsx'
 import UploadPage from './pages/UploadPage.tsx'
+import MainNavbar from './components/MainNavbar.tsx'
 
 function App() {
   return (
     <BrowserRouter>
+      <MainNavbar username='Fulanito'/>
       <Routes>
-        <Route path="/" element={<HomePage />} />
+        <Route path="/" element={<LandingPage />} />
         <Route path="/subir" element={<UploadPage />} />
       </Routes>
     </BrowserRouter>

@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { Button, FileInput  } from "flowbite-react"
 
 function UploadPage() {
 // Esto es magia de react
@@ -44,15 +43,15 @@ function UploadPage() {
     <div>
       <h1>Subir video</h1>
 
-  <FileInput onChange={alElegirArchivo} accept="video/*" />
+  <input type="file" className="file-input" onChange={alElegirArchivo} accept="video/*" />
 
       {archivo && (
         <p>Archivo elegido: {archivo.name}</p>
       )}
 
-    <Button color="blue" onClick={alEnviar} disabled={!archivo || subiendo}>
+    <button className="btn btn-primary" onClick={alEnviar} disabled={!archivo || subiendo}>
       {subiendo ? 'Subiendo...' : 'Subir'}
-    </Button>
+    </button>
 
       {mensaje && <p>{mensaje}</p>}
     </div>
