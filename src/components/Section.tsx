@@ -1,8 +1,5 @@
-interface Pelicula {
-  id: number
-  titulo: string
-  plataforma: string
-}
+import { Link } from "react-router-dom"
+import { Pelicula } from "../types/index.ts"
 
 interface SectionProps {
   titulo: string
@@ -66,7 +63,7 @@ function Section({ titulo, peliculas }: SectionProps) {
                 <div className="card-body p-3">
                   <p className="text-sm font-bold">{pelicula.titulo}</p>
                   <p className="text-xs text-gray-400">{pelicula.plataforma}</p>
-                  <button className="btn btn-primary btn-sm mt-1">Ver más</button>
+                  <Link className="contents" to={pelicula.archivo}><button className="btn btn-primary btn-sm mt-1">Ver más</button></Link>  {/*la clase .contents hace que el Link sea invisible y el boton se vea igual que si no estuviera el Link*/}
                 </div>
               </div>
             </div>
