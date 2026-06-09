@@ -17,8 +17,8 @@ function MainNavbar({username}: MainNavbarProps) {
   {/*Mensajes para el usuario*/}
   <div className="flex gap-2">
     <span className="text-rotate justify-end self-center mr-2">
-      <span>
-        <span>Hola, {username}</span>           {/*[NOTA]: ALINEAR ESTOS TEXTOS AL FINAL (pegado al avatar)*/}
+      <span className="*:justify-self-end">
+        <span>Hola, {username}</span>  
         <span>¿Qué vas a ver hoy?</span>
       </span>
   </span>
