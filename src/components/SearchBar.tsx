@@ -1,5 +1,17 @@
 
+import { useNavigate } from 'react-router-dom'
+import { useState } from 'react'
+
 function SearchBar() {
+  //la explicación de useNavigate está abajo de todo
+  const [texto, setTexto] = useState('')
+  const navigate = useNavigate()
+
+  function alBuscar() {
+    if (texto.trim() === '') return
+    navigate(`/buscar?q=${texto}`)
+  }
+
   return (
     <div className=" lg:text-start mt-5 *:ml-5"> {/*ese asterisco modifica a los hijos*/}
 
@@ -17,11 +29,14 @@ function SearchBar() {
             <path d="m21 21-4.3-4.3"></path>
             </g>
         </svg>
-        <input type="search" required placeholder="Escriba un título o filtre por categoría..." />
+        <input type="search" required placeholder="Escriba un título o filtre por categoría..." 
+            value={texto}
+            onChange={e => setTexto(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && alBuscar()}/> 
         </label>
 
         {/*BOTÓN DE BUSCAR*/}
-        <button className="btn btn-square">
+        <button className="btn btn-square" onClick={alBuscar}>
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6"><path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" /></svg>
         </button>
 
@@ -47,3 +62,9 @@ function SearchBar() {
 }
 
 export default SearchBar
+
+/*
+
+EXPLICACIÓN: useNavigate.
+Es la forma de cambiar de ruta desde código, sin que la persona cliquee un Link. Cuando ealguien hace click en buscar, navigate('/buscar?q=Shrek') lo lleva a esa página.
+*/

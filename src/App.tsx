@@ -1,8 +1,10 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import LandingPage from './pages/LandingPage.tsx'
+import SearchPage from './pages/SearchPage'
 import AuthPage from './pages/AuthPage.tsx'
 import UploadPage from './pages/UploadPage.tsx'
 import MainNavbar from './components/MainNavbar.tsx'
+
 
 function App() {
   return (
@@ -12,6 +14,7 @@ function App() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<AuthPage />} />
         <Route path="/subir" element={<UploadPage />} />
+        <Route path="/buscar" element={<SearchPage />} />
       </Routes>
     </BrowserRouter>
   )

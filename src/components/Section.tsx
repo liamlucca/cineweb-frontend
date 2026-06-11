@@ -41,7 +41,7 @@ function Section({ titulo, peliculas }: SectionProps) {
 
   return (
     <div className="my-6">
-      <h2 className="text-white text-xl font-bold mb-3 px-4">{titulo}</h2>
+      <h2 className="color-primary text-xl font-bold mb-3 px-4">{titulo}</h2>
 
       <div className="flex group">
 
