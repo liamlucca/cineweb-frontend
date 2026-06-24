@@ -5,6 +5,8 @@ import AuthPage from './pages/AuthPage.tsx'
 import UploadPage from './pages/UploadPage.tsx'
 import MainNavbar from './components/MainNavbar.tsx'
 
+import ReportPage from './pages/ReportPage.tsx'
+
 
 function App() {
   return (
@@ -15,6 +17,7 @@ function App() {
         <Route path="/login" element={<AuthPage />} />
         <Route path="/subir" element={<UploadPage />} />
         <Route path="/buscar" element={<SearchPage />} />
+        <Route path="/reportar" element={<ReportPage />} />
       </Routes>
     </BrowserRouter>
   )

@@ -1,0 +1,105 @@
+.reporte-seccion {
+  padding: 40px; 
+  max-width: 600px;
+}
+
+.opciones-reporte {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  margin-left: 20px;
+}
+
+.titulo_reporte {
+    font-size: 40px;
+    font-weight: 800;
+    margin-bottom: 30px;
+}
+
+.otro-reporte {
+  margin-top: 10px;
+}
+
+.motivo-otro-reporte {
+  width: 100%;
+  min-height: 120px;
+}
+
+.b-principal {
+  margin-top: 20px;
+  display: flex;
+  gap: 10px;
+}
+
+.boton-guardar-reporte {
+  padding: 10px 20px;
+  border: 2px solid #333;
+  background-color: rgb(197, 184, 184);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: 0.2s;
+  color: #333;
+}
+
+.boton-guardar-reporte:hover {
+  background-color: #333;
+  color: white;
+}
+
+.boton-cerrar-reporte {
+  padding: 10px 20px;
+  border: 2px solid #ccbebe;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: 0.2s;
+  color: #ccbebe;
+}
+
+.boton-cerrar-reporte:hover {
+  background-color: #333;
+  color: white;
+}
+
+.b-fondo {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0,0,0,0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.recuadro {
+  background-color: rgb(112, 101, 101);
+  padding: 20px;
+  border-radius: 10px;
+  width: 300px;
+  text-align: center;
+}
+
+.botones-confirmar {
+  margin-top: 20px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.boton-confirmar-guardar {
+  background-color: #c2b3b3;
+  color: white;
+  padding: 12px 24px;
+  border-radius: 12px;
+}
+
+.boton-cancelar-guardar {
+  background-color: #8f8686;
+  color: white;
+  padding: 12px 24px;
+  border-radius: 12px;
+}
+
+.desea-guardar {
+  font-size: 20px;
+}
