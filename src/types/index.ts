@@ -41,3 +41,9 @@ export interface Denuncia {
   estado: boolean
   id_denuncia: number
 }
+
+/**esto es por ahora, hasta que avance el back - sirve para demostrar el estado visto/no_visto */
+export type DenunciaUI = Denuncia & {
+  es_nueva: boolean
+  nombre_audiovisual: string
+}

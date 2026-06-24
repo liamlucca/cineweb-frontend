@@ -1,0 +1,73 @@
+.fondo-recuadro {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.recuadro {
+    width: 520px;
+    max-height: 80vh;
+    overflow-y: auto;
+    background: rgb(105, 99, 99);
+    border-radius: 12px;
+    padding: 20px;
+    position: relative;
+}   
+
+.cerrar-recuadro {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    cursor: pointer;
+    color: black;
+}
+
+.denuncia-c {
+    border: 1px solid #ddd;
+    padding: 12px;
+    margin-top: 10px;
+    border-radius: 8px;
+}
+
+.denuncia-titulo {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.denuncia-texto {
+    display: flex;
+    flex-direction: column;
+    text-align: left;
+}
+
+.denuncia-motivo {
+    text-align: left;
+    margin-top: 5px;
+}
+
+.eye {
+    font-size: 18px;
+    margin-left: 10px;
+}
+
+.ojo-azul {
+    color: blue;
+}
+
+.ojo-gris {
+    color: gray;
+}
+
+.apelar-boton {
+    margin-top: 10px;
+    cursor: pointer;
+    padding: 12px 24px;
+
+    background-color: #8f8686;
+    color: white;
+    border-radius: 12px;
+}

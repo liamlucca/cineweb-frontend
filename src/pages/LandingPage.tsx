@@ -34,6 +34,10 @@ function LandingPage() {
         <button>Reportar contenido</button>
       </Link>
 
+      <Link to="/denuncia">
+        <button>Denuncias</button>
+      </Link>
+
       <Section titulo="Ver Más Tarde" peliculas={peliculas} />
       <Section titulo="Pueden gustarte..." peliculas={peliculas} />
     </div>
