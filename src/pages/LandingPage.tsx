@@ -1,7 +1,10 @@
+import { Link } from "react-router-dom"
+
 import Section from "../components/Section.tsx"
 import SearchBar from "../components/SearchBar.tsx"
 import { Pelicula } from "../types/index.ts"
 import { useEffect, useState } from "react"
+
 
 function LandingPage() {
 
@@ -25,6 +28,12 @@ function LandingPage() {
   return (
     <div>
       <SearchBar />
+
+      { /* boton de Reportar*/} 
+      <Link to="/reportar">
+        <button>Reportar contenido</button>
+      </Link>
+
       <Section titulo="Ver Más Tarde" peliculas={peliculas} />
       <Section titulo="Pueden gustarte..." peliculas={peliculas} />
     </div>
@@ -54,3 +63,4 @@ useEffect(() => { ... }, []): Se ejecuta solo al levantar la pagina (una vez).
 useEffect(() => { ... }, [data]): Se ejecuta al levantarlo y cuando data cambia.
 
 */
+
