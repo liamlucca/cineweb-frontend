@@ -6,6 +6,8 @@ import UploadPage from './pages/UploadPage.tsx'
 import MainNavbar from './components/MainNavbar.tsx'
 
 import ReportPage from './pages/ReportPage.tsx'
+import ComplaintPage from './pages/ComplaintPage.tsx'
+import ApelarPage from './pages/ApelarPage.tsx'
 
 
 function App() {
@@ -18,6 +20,8 @@ function App() {
         <Route path="/subir" element={<UploadPage />} />
         <Route path="/buscar" element={<SearchPage />} />
         <Route path="/reportar" element={<ReportPage />} />
+        <Route path="/denuncia" element={<ComplaintPage/>} />
+        <Route path="/apelar" element={<ApelarPage/>} />
       </Routes>
     </BrowserRouter>
   )
