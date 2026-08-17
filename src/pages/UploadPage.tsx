@@ -1,15 +1,20 @@
 import { useState } from 'react'
+import { API_URL } from "../services/api"
 
 function UploadPage() {
-// Esto es magia de react
-// cuando estas variables se actualizan (usando setAlgo(valorNuevo) ) se vuelve a ejecutar toda la "function UploadPage()", es decir se vuelve a renderizar la pagina.
-  const [archivo, setArchivo] = useState<File | null>(null) 
+  const [archivo, setArchivo] = useState<File | null>(null)
+  const [titulo, setTitulo] = useState('')
+  const [categoria, setCategoria] = useState('')
+  const [descripcion, setDescripcion] = useState('')
   const [subiendo, setSubiendo] = useState(false)
   const [mensaje, setMensaje] = useState('')
 
   function alElegirArchivo(e: React.ChangeEvent<HTMLInputElement>) { //e: es el evento que se dispara cuando el input cambia
     const file = e.target.files?.[0]  //e.target es el input de HTML. Si no encuentra nada devuelve undefined (por eso el ?)
-    if (file) setArchivo(file)
+    if (file) {
+      setArchivo(file)
+      if (!titulo) setTitulo(file.name) // usa el nombre del archivo por defecto
+    }
   }
 
   async function alEnviar() {
@@ -17,20 +22,30 @@ function UploadPage() {
 
     setSubiendo(true)
 
-    // Este form es lo que se le va a mandar a la API y 'video' tiene que ser igual en lo de Multer 
-    const formData = new FormData()
-    formData.append('contenido', archivo) // le agregamos el archivo de video al form que creamos. 'video' es el nombre (como si fuera el id) del campo que le corresponde al archivo. Es decir seria: formData.append('nombre', cosaQueVamosAEnviar)
+    // objeto json con los nombres exactos que mapea sanitizeMovieInput en el backend
+    const peliculaData = {
+      tittle: titulo, // ojo que tiene doble T
+      category: categoria || 'General',
+      views: 0,
+      description: descripcion || 'Sin descripción',
+      report: false,
+      state: 'active'
+    }
 
     try {
-      const respuesta = await fetch('http://localhost:3000/api/videos', {
-        method: 'POST', // usamos el POST para crear nuevos recursos (videos en este caso)
-        body: formData, // es lo que creamos arriba
+      const respuesta = await fetch(`${API_URL}/api/movie`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(peliculaData)
       })
 
       if (respuesta.ok) {
         setMensaje('Subido!!!!')
       } else {
-        setMensaje('ERROR :(')
+        const errorData = await respuesta.json().catch(() => ({}))
+        setMensaje(`ERROR (${respuesta.status}): ${errorData.message || 'ERROR :('}`)
       }
     } catch (error) {
       setMensaje('NO SE PUDO CONECTAR CON EL SERVIDOR.')
@@ -40,18 +55,46 @@ function UploadPage() {
   }
 
   return (
-    <div>
-      <h1>Subir video</h1>
+    <div style={{ padding: '20px', maxWidth: '500px' }}>
+      <h1>Subir película</h1>
 
-  <input type="file" className="file-input" onChange={alElegirArchivo} accept="video/*" />
+      <div style={{ marginBottom: '10px' }}>
+        <label>Archivo de Video:</label><br />
+        <input type="file" onChange={alElegirArchivo} accept="video/*" />
+      </div>
 
-      {archivo && (
-        <p>Archivo elegido: {archivo.name}</p>
-      )}
+      <div style={{ marginBottom: '10px' }}>
+        <label>Título:</label><br />
+        <input 
+          type="text" 
+          value={titulo} 
+          onChange={(e) => setTitulo(e.target.value)} 
+          placeholder="Nombre de la película"
+        />
+      </div>
 
-    <button className="btn btn-primary" onClick={alEnviar} disabled={!archivo || subiendo}>
-      {subiendo ? 'Subiendo...' : 'Subir'}
-    </button>
+      <div style={{ marginBottom: '10px' }}>
+        <label>Categoría:</label><br />
+        <input 
+          type="text" 
+          value={categoria} 
+          onChange={(e) => setCategoria(e.target.value)} 
+          placeholder="Ej: Acción, Drama"
+        />
+      </div>
+
+      <div style={{ marginBottom: '10px' }}>
+        <label>Descripción:</label><br />
+        <textarea 
+          value={descripcion} 
+          onChange={(e) => setDescripcion(e.target.value)} 
+          placeholder="Detalles del video"
+        />
+      </div>
+
+      <button onClick={alEnviar} disabled={!archivo || subiendo}>
+        {subiendo ? 'Guardando...' : 'Guardar Película'}
+      </button>
 
       {mensaje && <p>{mensaje}</p>}
     </div>

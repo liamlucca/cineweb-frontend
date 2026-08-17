@@ -2,7 +2,8 @@ import { useEffect, useState } from "react"
 import { useSearchParams } from "react-router-dom"
 import Section from "../components/Section.tsx"
 import SearchBar from "../components/SearchBar.tsx"
-import { Pelicula } from "../types/index.ts"
+import { Pelicula, MovieDTO } from "../types/index.ts"
+import { API_URL } from "../services/api"
 
 function SearchPage() {
   //la explicación de useSearchParams está abajo de todo
@@ -11,25 +12,24 @@ function SearchPage() {
 
   const [resultados, setResultados] = useState<Pelicula[]>([])
 
-  useEffect(() => {
-    fetch('http://localhost:3000/contenido/peliculas')
-      .then(res => res.json())
-      .then((nombres: string[]) => {
-        const peliculasFixeadas = nombres.map((nombre, index) => ({
-          id: index,
-          titulo: nombre.substring(0, nombre.lastIndexOf('.')),
-          archivo: `http://localhost:3000/contenido/peliculas/${nombre}`,
-          plataforma: ''
-        }))
+useEffect(() => {
+    fetch(`${API_URL}/api/movie`)
+    .then(res => res.json())
+    .then((response: { data: MovieDTO[] }) => {
+      const peliculasFixeadas: Pelicula[] = response.data.map((movie) => ({
+        id: movie.id,
+        title: movie.tittle,
+        platform: movie.category,
+        archivo: `${API_URL}${movie.path}`,
+      }))
 
-        // filtramos por el texto buscado
-        const filtradas = peliculasFixeadas.filter(p =>
-          p.titulo.toLowerCase().includes(query.toLowerCase())
-        )
+      const filtradas = peliculasFixeadas.filter(p =>
+        p.title.toLowerCase().includes(query.toLowerCase())
+      )
 
-        setResultados(filtradas)
-      })
-  }, [query]) // se vuelve a ejecutar cada vez que cambia el texto buscado
+      setResultados(filtradas)
+    })
+}, [query]) // se vuelve a ejecutar cada vez que cambia el texto buscado
 
   return (
     <div>

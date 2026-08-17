@@ -61,10 +61,10 @@ function Section({ titulo, peliculas }: SectionProps) {
                 <figure className="bg-base-300 h-24 sm:h-28">
                 </figure>
                 <div className="card-body p-3">
-                  <p className="text-sm font-bold">{pelicula.titulo}</p>
-                  <p className="text-xs text-gray-400">{pelicula.plataforma}</p>
-                  <Link className="contents" to={pelicula.archivo}><button className="btn btn-primary btn-sm mt-1">Ver más</button></Link>  {/*la clase .contents hace que el Link sea invisible y el boton se vea igual que si no estuviera el Link*/}
-                </div>
+                  <p className="text-sm font-bold">{pelicula.title}</p>
+                  <p className="text-xs text-gray-400">{pelicula.platform}</p>
+                  <Link to={`/ver/${pelicula.id}`}> <button className="btn btn-primary btn-sm mt-1">Ver más</button></Link>                
+                  </div>
               </div>
             </div>
           ))}

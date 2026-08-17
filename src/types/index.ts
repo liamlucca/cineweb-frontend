@@ -1,8 +1,19 @@
 export interface Pelicula {
   id: number
-  titulo: string
-  plataforma: string
+  title: string
+  platform: string
   archivo: string
+}
+
+//forma del backend
+export interface MovieDTO {
+  id: number
+  path: string
+  tittle: string
+  category: string
+  views: number
+  description: string
+  state: boolean
 }
 
 /**REPORTES*/
