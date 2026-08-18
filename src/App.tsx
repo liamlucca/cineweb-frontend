@@ -5,7 +5,9 @@ import AuthPage from './pages/AuthPage.tsx'
 import UploadPage from './pages/UploadPage.tsx'
 import MainNavbar from './components/MainNavbar.tsx'
 import WatchPage from './pages/WatchPage.tsx'
-
+import WatchSeriesPage from './pages/WatchSeriesPage.tsx'
+import SeasonSelectPage from './pages/SeasonSelectPage.tsx'
+import EpisodeListPage from './pages/EpisodeListPage.tsx'
 import ReportPage from './pages/ReportPage.tsx'
 import ComplaintPage from './pages/ComplaintPage.tsx'
 import ApelarPage from './pages/ApelarPage.tsx'
@@ -24,6 +26,9 @@ function App() {
         <Route path="/denuncia" element={<ComplaintPage/>} />
         <Route path="/apelar" element={<ApelarPage/>} />
         <Route path="/ver/:id" element={<WatchPage />} />
+        <Route path="/ver-serie/:id/:seasonId/:episodeId" element={<WatchSeriesPage />} />
+        <Route path="/serie/:id/seasons" element={<SeasonSelectPage />} />
+        <Route path="/serie/:id/season/:seasonId/episodes" element={<EpisodeListPage />} />
       </Routes>
     </BrowserRouter>
   )

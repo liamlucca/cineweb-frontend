@@ -1,3 +1,5 @@
+//MOVIES
+
 export interface Pelicula {
   id: number
   title: string
@@ -15,6 +17,31 @@ export interface MovieDTO {
   description: string
   state: boolean
 }
+
+//SERIES
+
+export interface Episode {
+  id: number
+  number: number
+  title: string
+  description: string
+  path: string
+}
+
+export interface Season {
+  id: number
+  numero: number
+  descripcion: string
+  episodes: Episode[]
+}
+
+export interface Serie {
+  id: number
+  tittle: string
+  category: string
+  seasons: Season[]
+}
+
 
 /**REPORTES*/
 

@@ -1,0 +1,169 @@
+.watch-container {
+  display: flex;
+  gap: 24px;
+  padding: 24px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.watch-left {
+  flex: 1 1 600px;
+  min-width: 320px;
+}
+
+.watch-panels {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.watch-panel {
+  background: #1c1c1c;
+  border-radius: 8px;
+  min-width: 220px;
+  overflow: hidden;
+}
+
+.watch-panel-header {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  padding: 12px 16px;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.watch-panel-arrow {
+  transition: transform 0.15s ease;
+}
+
+.watch-panel-arrow.open {
+  transform: rotate(180deg);
+}
+
+.watch-panel-body {
+  padding: 0 16px 12px;
+}
+
+.watch-panel-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+  font-size: 13px;
+}
+
+.watch-video-box {
+  background: #000;
+  border-radius: 8px;
+  aspect-ratio: 16 / 9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.watch-video-box video {
+  width: 100%;
+  height: 100%;
+}
+
+.watch-report-btn {
+  margin-top: 12px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid #555;
+  background: transparent;
+  cursor: pointer;
+}
+
+.watch-right {
+  flex: 1 1 320px;
+  min-width: 280px;
+}
+
+.watch-title {
+  font-size: 24px;
+  font-weight: 800;
+  margin-bottom: 2px;
+}
+
+.watch-category {
+  color: #999;
+  margin-bottom: 12px;
+  font-size: 14px;
+}
+
+.watch-description {
+  font-size: 14px;
+  line-height: 1.4;
+  max-height: 6.5em;
+  overflow: hidden;
+  transition: max-height 0.2s ease;
+}
+
+.watch-description.expanded {
+  max-height: none;
+}
+
+.watch-vermas {
+  margin-top: 6px;
+  background: none;
+  border: none;
+  color: #4da3ff;
+  cursor: pointer;
+  padding: 0;
+  font-size: 13px;
+}
+
+.watch-views {
+  margin-top: 10px;
+  font-size: 13px;
+  color: #aaa;
+}
+
+.watch-play-btn {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255,255,255,0.2);
+  color: #fff;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.watch-progress-bar {
+  height: 6px;
+  background: #333;
+  border-radius: 3px;
+  margin-top: 10px;
+}
+
+.watch-progress-fill {
+  width: 30%;
+  height: 100%;
+  background: #e50914;
+  border-radius: 3px;
+}
+
+.watch-series-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.watch-series-btn {
+  background: #333;
+  color: #fff;
+  padding: 10px 18px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+}
