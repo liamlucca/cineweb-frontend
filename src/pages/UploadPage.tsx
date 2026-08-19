@@ -21,24 +21,25 @@ function UploadPage() {
     if (!archivo) return
 
     setSubiendo(true)
-
-    // objeto json con los nombres exactos que mapea sanitizeMovieInput en el backend
+  
     const peliculaData = {
-      tittle: titulo, // ojo que tiene doble T
+      id_author: 2,
+      title: titulo,
       category: categoria || 'General',
       views: 0,
       description: descripcion || 'Sin descripción',
       report: false,
-      state: 'active'
+      state: true
     }
+   
+    const formData = new FormData()
+    formData.append('data', JSON.stringify(peliculaData))
+    formData.append('archivo', archivo) 
 
     try {
       const respuesta = await fetch(`${API_URL}/api/movie`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(peliculaData)
+        body: formData
       })
 
       if (respuesta.ok) {
