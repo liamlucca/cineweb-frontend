@@ -2,25 +2,26 @@ import { Link } from "react-router-dom"
 
 import Section from "../components/Section.tsx"
 import SearchBar from "../components/SearchBar.tsx"
-import { Pelicula } from "../types/index.ts"
+import { MovieDTO, Pelicula } from "../types/index.ts"
 import { useEffect, useState } from "react"
+import { API_URL } from "../services/api"
 
 
 function LandingPage() {
 
   const [peliculas, setPeliculas] = useState<Pelicula[]>([])
 
-  useEffect(() => {
-    fetch('http://localhost:3000/contenido/peliculas')
+    useEffect(() => {
+    fetch(`${API_URL}/api/movie`)
       .then(res => res.json())
-      .then((nombres: string[]) => { // nombres: ["bombaNiñoDeLaSelva.mp4", "elHombreLagaña.mp4", "etc.mp4"]
-        const peliculasFixeadas = nombres.map((nombre, index) => ({
-          id: index,
-          titulo: nombre.substring(0, nombre.lastIndexOf('.')), // esto es para sacar la extensión
-          archivo: `http://localhost:3000/contenido/peliculas/${nombre}`, //direccion de donde se va a abrir la pelicula
-          plataforma: ''
+      .then((response: MovieDTO[] ) => {
+        const peliculasFixeadas: Pelicula[] = response.map((movie) => ({
+          id: movie.id,
+          title: movie.tittle,
+          platform: movie.category,
+          archivo: `${API_URL}${movie.path}`, // asumiendo que path es relativo, ej /uploads/videos/nombredelvideo.mp4
         }))
-        setPeliculas(peliculasFixeadas) //lo que metamos aca tiene que coinicidir con el Tipo de arriba (Pelicula)
+        setPeliculas(peliculasFixeadas)
       })
   }, [])
 

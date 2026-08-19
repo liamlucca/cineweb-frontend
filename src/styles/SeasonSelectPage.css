@@ -1,0 +1,160 @@
+.season-container {
+  display: flex;
+  gap: 24px;
+  padding: 24px;
+  flex-wrap: wrap;
+}
+
+.season-side {
+  flex: 0 0 220px;
+}
+
+.season-poster {
+  background: #1c1c1c;
+  border: 1px solid #444;
+  border-radius: 8px;
+  height: 260px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+  color: #777;
+}
+
+.season-selector {
+  background: #1c1c1c;
+  border-radius: 8px;
+  padding: 12px 16px;
+}
+
+.season-selector-title {
+  font-weight: 700;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.season-main {
+  flex: 1 1 500px;
+  min-width: 320px;
+}
+
+.season-title {
+  font-size: 26px;
+  font-weight: 800;
+  margin-bottom: 16px;
+}
+
+.season-selector-title {
+  display: block;
+  font-weight: 700;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.season-select {
+  width: 100%;
+  background: #2a2a2a;
+  color: #fff;
+  border: 1px solid #555;
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.season-select:focus {
+  outline: none;
+  border-color: #888;
+}
+
+.season-dropdown-wrapper {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #333;
+  padding: 6px 12px;
+  border-radius: 6px;
+  margin-bottom: 16px;
+}
+
+.season-dropdown-icon {
+  color: #fff;
+  font-size: 12px;
+}
+
+.season-dropdown {
+  background: transparent;
+  color: #fff;
+  border: none;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+
+.season-dropdown:focus {
+  outline: none;
+}
+
+.season-dropdown option {
+  background: #2a2a2a;
+  color: #fff;
+}
+
+.season-detail {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.season-thumb {
+  width: 160px;
+  height: 100px;
+  border: 1px solid #666;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.season-description {
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.season-episodes-btn {
+  background: #555;
+  color: #fff;
+  padding: 12px 24px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+}
+
+.episode-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid #333;
+}
+
+.episode-thumb {
+  width: 100px;
+  height: 60px;
+  border: 1px solid #666;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.episode-title {
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.episode-description {
+  font-size: 13px;
+  color: #aaa;
+}

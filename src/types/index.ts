@@ -1,9 +1,47 @@
+//MOVIES
+
 export interface Pelicula {
   id: number
-  titulo: string
-  plataforma: string
+  title: string
+  platform: string
   archivo: string
 }
+
+//forma del backend
+export interface MovieDTO {
+  id: number
+  path: string
+  tittle: string
+  category: string
+  views: number
+  description: string
+  state: boolean
+}
+
+//SERIES
+
+export interface Episode {
+  id: number
+  number: number
+  title: string
+  description: string
+  path: string
+}
+
+export interface Season {
+  id: number
+  numero: number
+  descripcion: string
+  episodes: Episode[]
+}
+
+export interface Serie {
+  id: number
+  tittle: string
+  category: string
+  seasons: Season[]
+}
+
 
 /**REPORTES*/
 
