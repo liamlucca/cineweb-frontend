@@ -13,6 +13,7 @@ function WatchPage() {
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(false)
   const [descripcionExpandida, setDescripcionExpandida] = useState(false)
+  const [verMasBtn, setVerMasBtn] = useState(false)
 
   useEffect(() => {
     setCargando(true)
@@ -28,19 +29,22 @@ function WatchPage() {
       .finally(() => setCargando(false))
   }, [id])
 
+  // CHEQUEANDO DATOS
   if (cargando) return <p>Cargando...</p>
   if (error || !movie) return <p>No se encontró el video.</p>
+
+  // Chequeando si la descripción es larga para mostrar el botón "Ver más"
+  if(movie.description.length > 100 && !verMasBtn)
+  setVerMasBtn(true)
 
   return (
     <div className="watch-container">
       <div className="watch-left">
         <div className="watch-panels">
-          <LanguagePanel titulo="Subtítulos Disponibles" idiomas={IDIOMAS} />
-          <LanguagePanel titulo="Idioma de Audio" idiomas={IDIOMAS} />
         </div>
 
         <div className="watch-video-box">
-          <video src={`${API_URL}${movie.path}`} controls />
+          <video src={`${API_URL}/content/movies/${movie.tittle}`} controls />
         </div>
 
         <button className="watch-report-btn">Reportar</button>
@@ -49,12 +53,12 @@ function WatchPage() {
       <div className="watch-right">
         <h1 className="watch-title">{movie.tittle}</h1>
         <p className="watch-category">{movie.category}</p>
-
+        <p className="watch-category">dir: {`${API_URL}${movie.path}`}</p>
         <p className={`watch-description ${descripcionExpandida ? "expanded" : ""}`}>
           {movie.description}
         </p>
         <button
-          className="watch-vermas"
+          className={`watch-vermas ${verMasBtn ? "" : "hide"} `}
           onClick={() => setDescripcionExpandida(!descripcionExpandida)}
         >
           {descripcionExpandida ? "Ver menos" : "Ver más"}

@@ -25,8 +25,6 @@ const eIndex = episodeIndex ? parseInt(episodeIndex, 10) : 0;
     <div className="watch-container">
       <div className="watch-left">
         <div className="watch-panels">
-          <LanguagePanel titulo="Subtítulos Disponibles" idiomas={IDIOMAS} />
-          <LanguagePanel titulo="Idioma de Audio" idiomas={IDIOMAS} />
         </div>
 
         <div className="watch-video-box">

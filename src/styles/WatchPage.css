@@ -106,6 +106,7 @@
   max-height: 6.5em;
   overflow: hidden;
   transition: max-height 0.2s ease;
+  overflow-wrap: anywhere;
 }
 
 .watch-description.expanded {
@@ -120,6 +121,10 @@
   cursor: pointer;
   padding: 0;
   font-size: 13px;
+}
+
+.watch-vermas.hide {
+  display: none;
 }
 
 .watch-views {
