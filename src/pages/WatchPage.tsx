@@ -2,10 +2,10 @@ import { useParams } from "react-router-dom"
 import { useEffect, useState } from "react"
 import { API_URL } from "../services/api"
 import { MovieDTO } from "../types/index.ts"
-import LanguagePanel from "../components/LanguagePanel.tsx"
+//import LanguagePanel from "../components/LanguagePanel.tsx"
 import "../styles/WatchPage.css"
 
-const IDIOMAS = ["Español (Latino)", "Español (España)", "English", "Français"]
+//const IDIOMAS = ["Español (Latino)", "Español (España)", "English", "Français"]
 
 function WatchPage() {
   const { id } = useParams()
@@ -44,14 +44,14 @@ function WatchPage() {
         </div>
 
         <div className="watch-video-box">
-          <video src={`${API_URL}/content/movies/${movie.tittle}`} controls />
+          <video src={`${API_URL}${movie.path}`} controls />
         </div>
 
         <button className="watch-report-btn">Reportar</button>
       </div>
 
       <div className="watch-right">
-        <h1 className="watch-title">{movie.tittle}</h1>
+        <h1 className="watch-title">{movie.title}</h1>
         <p className="watch-category">{movie.category}</p>
         <p className="watch-category">dir: {`${API_URL}${movie.path}`}</p>
         <p className={`watch-description ${descripcionExpandida ? "expanded" : ""}`}>

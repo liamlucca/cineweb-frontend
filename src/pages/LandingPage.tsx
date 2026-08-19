@@ -17,7 +17,7 @@ function LandingPage() {
       .then((response: MovieDTO[] ) => {
         const peliculasFixeadas: Pelicula[] = response.map((movie) => ({
           id: movie.id,
-          title: movie.tittle,
+          title: movie.title,
           platform: movie.category,
           archivo: `${API_URL}${movie.path}`, // asumiendo que path es relativo, ej /uploads/videos/nombredelvideo.mp4
         }))

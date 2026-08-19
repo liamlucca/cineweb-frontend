@@ -11,7 +11,7 @@ export interface Pelicula {
 export interface MovieDTO {
   id: number
   path: string
-  tittle: string
+  title: string
   category: string
   views: number
   description: string
