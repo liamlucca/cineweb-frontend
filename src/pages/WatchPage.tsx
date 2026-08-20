@@ -44,7 +44,7 @@ function WatchPage() {
         </div>
 
         <div className="watch-video-box">
-          <video src={`${API_URL}${movie.path}`} controls />
+          <video src={`${API_URL}/api/movie/${id}/stream`} controls />
         </div>
 
         <button className="watch-report-btn">Reportar</button>

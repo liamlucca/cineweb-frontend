@@ -8,6 +8,7 @@ function UploadPage() {
   const [descripcion, setDescripcion] = useState('')
   const [subiendo, setSubiendo] = useState(false)
   const [mensaje, setMensaje] = useState('')
+  const [progreso, setProgreso] = useState(0)
 
   function alElegirArchivo(e: React.ChangeEvent<HTMLInputElement>) { //e: es el evento que se dispara cuando el input cambia
     const file = e.target.files?.[0]  //e.target es el input de HTML. Si no encuentra nada devuelve undefined (por eso el ?)
@@ -37,10 +38,13 @@ function UploadPage() {
     formData.append('archivo', archivo) 
 
     try {
-      const respuesta = await fetch(`${API_URL}/api/movie`, {
+      /*const respuesta = await fetch(`${API_URL}/api/movie`, {
         method: 'POST',
         body: formData
-      })
+      })*/
+
+      const respuesta = await subirConProgreso(formData, setProgreso)
+
 
       if (respuesta.ok) {
         setMensaje('Subido!!!!')
@@ -54,6 +58,27 @@ function UploadPage() {
 
     setSubiendo(false)
   }
+
+function subirConProgreso(formData: FormData, onProgress: (pct: number) => void): Promise<Response> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+
+    xhr.upload.addEventListener("progress", (e) => {
+      if (e.lengthComputable) {
+        const pct = Math.round((e.loaded / e.total) * 100);
+        onProgress(pct);
+      }
+    });
+
+    xhr.addEventListener("load", () => {
+      resolve(new Response(xhr.responseText, { status: xhr.status }));
+    });
+    xhr.addEventListener("error", () => reject(new Error("upload failed")));
+
+    xhr.open("POST", `${API_URL}/api/movie`);
+    xhr.send(formData);
+  });
+}
 
   return (
     <div style={{ padding: '20px', maxWidth: '500px' }}>
@@ -92,8 +117,8 @@ function UploadPage() {
           placeholder="Detalles del video"
         />
       </div>
-
       <button onClick={alEnviar} disabled={!archivo || subiendo}>
+        {subiendo && <progress value={progreso} max={100} />}
         {subiendo ? 'Guardando...' : 'Guardar Película'}
       </button>
 
