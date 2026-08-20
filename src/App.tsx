@@ -11,6 +11,7 @@ import EpisodeListPage from './pages/EpisodeListPage.tsx'
 import ReportPage from './pages/ReportPage.tsx'
 import ComplaintPage from './pages/ComplaintPage.tsx'
 import ApelarPage from './pages/ApelarPage.tsx'
+import MisVideosPage from './pages/MisVideosPage.tsx'
 
 
 function App() {
@@ -29,6 +30,7 @@ function App() {
         <Route path="/ver-serie/:id/:seasonId/:episodeId" element={<WatchSeriesPage />} />
         <Route path="/serie/:id/seasons" element={<SeasonSelectPage />} />
         <Route path="/serie/:id/season/:seasonId/episodes" element={<EpisodeListPage />} />
+        <Route path="/mis-videos" element={<MisVideosPage />} />
       </Routes>
     </BrowserRouter>
   )
