@@ -1,9 +1,9 @@
 import { useParams, Link } from "react-router-dom"
 //import LanguagePanel from "../components/LanguagePanel.tsx"
-import { API_URL } from "../services/api"
 import { MOCK_SERIE } from "../mockup/mockSeries.ts" // [CAMBIAR]
 import "../styles/WatchPage.css"
 
+const API_URL = import.meta.env.VITE_API_URL;
 //const IDIOMAS = ["Español (Latino)", "Español (España)", "English", "Français"]
 
 

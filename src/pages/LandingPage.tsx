@@ -4,8 +4,8 @@ import Section from "../components/Section.tsx"
 import SearchBar from "../components/SearchBar.tsx"
 import { MovieDTO, Pelicula } from "../types/index.ts"
 import { useEffect, useState } from "react"
-import { API_URL } from "../services/api"
 
+const API_URL = import.meta.env.VITE_API_URL;
 
 function LandingPage() {
 

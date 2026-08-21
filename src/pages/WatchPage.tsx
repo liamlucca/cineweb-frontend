@@ -1,10 +1,10 @@
 import { useParams } from "react-router-dom"
 import { useEffect, useState } from "react"
-import { API_URL } from "../services/api"
 import { MovieDTO } from "../types/index.ts"
 //import LanguagePanel from "../components/LanguagePanel.tsx"
 import "../styles/WatchPage.css"
 
+const API_URL = import.meta.env.VITE_API_URL;
 //const IDIOMAS = ["Español (Latino)", "Español (España)", "English", "Français"]
 
 function WatchPage() {

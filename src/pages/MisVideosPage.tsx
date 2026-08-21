@@ -1,6 +1,8 @@
 import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 
+const API_URL = import.meta.env.VITE_API_URL;
+
 type Video = {
   id: number;
   id_author: number;
@@ -25,7 +27,7 @@ function MisVideosPage() {
 
   useEffect(() => {
     // Busca los videos en el backend
-    fetch("http://localhost:3000/api/movie")
+    fetch(`${API_URL}/api/movie`)
       .then((response) => response.json())
       .then((data) => {
         setVideos(data);
@@ -39,7 +41,7 @@ function MisVideosPage() {
   const eliminarVideo = async (id: number) => {
     try {
       const response = await fetch(
-        `http://localhost:3000/api/movie/${id}`,
+        `${API_URL}/api/movie/${id}`,
         {
           method: "DELETE",
         }
@@ -78,7 +80,7 @@ function MisVideosPage() {
   const guardarEdicion = async (id: number) => {
     try {
       const response = await fetch(
-        `http://localhost:3000/api/movie/${id}`,
+        `${API_URL}/api/movie/${id}`,
         {
           method: "PATCH",
           headers: {
@@ -153,7 +155,7 @@ function MisVideosPage() {
 
               {/* Video */}
               <video
-                src={`http://localhost:3000${video.path}`}
+                src={`${API_URL}${video.path}`}
                 controls
                 className="w-full max-w-64 h-36 object-cover rounded"
               />

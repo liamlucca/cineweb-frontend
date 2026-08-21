@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { API_URL } from "../services/api"
+
+const API_URL = import.meta.env.VITE_API_URL;
 
 function UploadPage() {
   const [archivo, setArchivo] = useState<File | null>(null)
