@@ -1,3 +1,5 @@
+import { Link } from "react-router-dom";
+
 interface MainNavbarProps {
   username: string
 }
@@ -37,7 +39,7 @@ function MainNavbar({username}: MainNavbarProps) {
       <ul tabIndex={-1} className="menu menu-sm dropdown-content bg-base-100 rounded-box z-1 mt-3 w-52 p-2 shadow">
         <li><a className="justify-between">Perfil<span className="badge">Nuevo</span></a></li>
         <li><a href="/subir">Subir Video</a></li>
-        <li><a>Mis Videos</a></li>
+        <li><Link to="/mis-videos">Mis Videos</Link></li>
         <li><a>Cerrar Sesión</a></li>
       </ul>
     </div>
