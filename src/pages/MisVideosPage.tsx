@@ -16,7 +16,7 @@ function MisVideosPage() {
   const [videos, setVideos] = useState<Video[]>([]);
 
   useEffect(() => {
-    // Busca los videos en el backend
+    //Busca los videos en el backend
     fetch("http://localhost:3000/api/movie")
       .then((response) => response.json())
       .then((data) => {
@@ -27,6 +27,30 @@ function MisVideosPage() {
         console.error("Error al obtener los videos:", error);
       });
   }, []);
+
+  //Elimina un video del backend
+  const eliminarVideo = async (id: number) => {
+    try {
+      const response = await fetch(
+        `http://localhost:3000/api/movie/${id}`,
+        {
+          method: "DELETE",
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("No se pudo eliminar el video");
+      }
+
+      // Elimina el video de la lista que se muestra en pantalla
+      setVideos((videosActuales) =>
+        videosActuales.filter((video) => video.id !== id)
+      );
+
+    } catch (error) {
+      console.error("Error al eliminar el video:", error);
+    }
+  };
 
   return (
     <div className="min-h-screen p-8">
@@ -89,19 +113,23 @@ function MisVideosPage() {
 
               {/* Botones */}
               <div className="flex flex-col items-center justify-center gap-3">
+
+                {/* Eliminar */}
                 <button
                   className="btn btn-error w-32"
-                  onClick={() => console.log("Eliminar", video.id)}
+                  onClick={() => eliminarVideo(video.id)}
                 >
                   Eliminar
                 </button>
 
+                {/* Editar */}
                 <button
                   className="btn btn-outline w-32"
                   onClick={() => console.log("Editar", video.id)}
                 >
                   ✏️ Editar
                 </button>
+
               </div>
 
             </div>
