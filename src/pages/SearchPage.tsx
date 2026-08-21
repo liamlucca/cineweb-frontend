@@ -16,8 +16,8 @@ function SearchPage() {
 useEffect(() => {
     fetch(`${API_URL}/api/movie`)
     .then(res => res.json())
-    .then((response: { data: MovieDTO[] }) => {
-      const peliculasFixeadas: Pelicula[] = response.data.map((movie) => ({
+    .then((response: MovieDTO[]) => {
+      const peliculasFixeadas: Pelicula[] = response.map((movie) => ({
         id: movie.id,
         title: movie.title,
         platform: movie.category,
