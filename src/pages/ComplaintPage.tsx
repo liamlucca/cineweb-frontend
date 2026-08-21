@@ -1,4 +1,4 @@
-import { useState } from "react"
+//import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 
 import "../styles/ComplaintPage.css";
@@ -7,7 +7,7 @@ import type { DenunciaUI } from "../types/index.ts"
 
 export default function ComplaintPage() {
   const navigate = useNavigate()
-  const [mostrar, setMostrar] = useState(true) 
+  //const [mostrar, setMostrar] = useState(true) 
   
   //es para tener algo en el front por el momento
   const denuncias: DenunciaUI[] = [
@@ -33,14 +33,19 @@ export default function ComplaintPage() {
     },
   ]
 
-  if (!mostrar) return null
+  //if (!mostrar) return null
   
   return (
     <div className="fondo-recuadro">
         <div className="recuadro">
-          <button className="cerrar-recuadro" onClick={() => setMostrar(false)}>
+          {
+          //<button className="cerrar-recuadro" onClick={() => setMostrar(false)}>
+          //  x
+          //</button>
+          }
+          <button className="cerrar-recuadro" onClick={() => navigate("/")}>
             x
-          </button>
+          </button>    
           <h2>Denuncias Recibidas</h2>
 
           {denuncias.map((d) =>(
@@ -66,7 +71,7 @@ export default function ComplaintPage() {
                 Motivo: <b>{d.tipo_reportes}</b>
               </p>
 
-              <button className="apelar-boton" onClick={() => navigate("/apelar")}>
+              <button className="apelar-boton" onClick={() => navigate("/")}>
                 Apelar
               </button>
             </div>

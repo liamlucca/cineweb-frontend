@@ -45,6 +45,8 @@ function WatchPage() {
 
         <div className="watch-video-box">
           <video src={`${API_URL}/api/movie/${id}/stream`} controls />
+          {/* opción custom: <video src={`${API_URL}/api/movie/${id}/stream`} controls />*/}
+          {/* opción con express.static: <video src={`${API_URL}${movie.path}`} controls /> */}
         </div>
 
         <button className="watch-report-btn">Reportar</button>
@@ -53,7 +55,6 @@ function WatchPage() {
       <div className="watch-right">
         <h1 className="watch-title">{movie.title}</h1>
         <p className="watch-category">{movie.category}</p>
-        <p className="watch-category">dir: {`${API_URL}${movie.path}`}</p>
         <p className={`watch-description ${descripcionExpandida ? "expanded" : ""}`}>
           {movie.description}
         </p>

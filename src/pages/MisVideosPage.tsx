@@ -270,7 +270,7 @@ function MisVideosPage() {
                       className="btn btn-outline w-32"
                       onClick={() => comenzarEdicion(video)}
                     >
-                      ✏️ Editar
+                       Editar
                     </button>
                   </>
                 )}

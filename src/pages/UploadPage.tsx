@@ -82,48 +82,57 @@ function subirConProgreso(formData: FormData, onProgress: (pct: number) => void)
 }
 
   return (
-    <div style={{ padding: '20px', maxWidth: '500px' }}>
-      <h1>Subir película</h1>
-
-      <div style={{ marginBottom: '10px' }}>
-        <label>Archivo de Video:</label><br />
-        <input type="file" onChange={alElegirArchivo} accept="video/*" />
+    <div className="min-h-[78vh] flex items-center justify-center bg-base-100 p-6">
+      <div className="card bg-neutral w-full max-w-md shadow-xl">
+        <div className="card-body gap-3">
+          <h2 className="card-title justify-center">Subir película</h2>
+          <p className="text-sm text-center opacity-70">Completá los datos y elegí el archivo</p>
+ 
+          <label className="label">Archivo de video</label>
+          <input
+            type="file"
+            accept="video/*"
+            onChange={alElegirArchivo}
+            className="file-input file-input-bordered w-full"
+          />
+ 
+          <label className="label">Título</label>
+          <input
+            className="input input-bordered w-full"
+            placeholder="Nombre de la película"
+            value={titulo}
+            onChange={(e) => setTitulo(e.target.value)}
+          />
+ 
+          <label className="label">Categoría</label>
+          <input
+            className="input input-bordered w-full"
+            placeholder="Ej: Acción, Drama"
+            value={categoria}
+            onChange={(e) => setCategoria(e.target.value)}
+          />
+ 
+          <label className="label">Descripción</label>
+          <textarea
+            className="textarea textarea-bordered w-full"
+            placeholder="Detalles del video"
+            value={descripcion}
+            onChange={(e) => setDescripcion(e.target.value)}
+          />
+ 
+          <button
+            className="btn bg-primary text-primary-content w-full mt-2"
+            onClick={alEnviar}
+            disabled={!archivo || subiendo /* se deshabilita el boton de enviar si no hay archivo o se está subiendo */}   
+          >
+            {subiendo ? 'Guardando...' : 'Guardar Película'}
+          </button>
+ 
+          {subiendo && <progress className="progress progress-primary w-full" value={progreso} max={100} />} {/*la barrita de progreso*/}
+ 
+          {mensaje && <p className="text-sm text-center">{mensaje}</p>}
+        </div>
       </div>
-
-      <div style={{ marginBottom: '10px' }}>
-        <label>Título:</label><br />
-        <input 
-          type="text" 
-          value={titulo} 
-          onChange={(e) => setTitulo(e.target.value)} 
-          placeholder="Nombre de la película"
-        />
-      </div>
-
-      <div style={{ marginBottom: '10px' }}>
-        <label>Categoría:</label><br />
-        <input 
-          type="text" 
-          value={categoria} 
-          onChange={(e) => setCategoria(e.target.value)} 
-          placeholder="Ej: Acción, Drama"
-        />
-      </div>
-
-      <div style={{ marginBottom: '10px' }}>
-        <label>Descripción:</label><br />
-        <textarea 
-          value={descripcion} 
-          onChange={(e) => setDescripcion(e.target.value)} 
-          placeholder="Detalles del video"
-        />
-      </div>
-      <button onClick={alEnviar} disabled={!archivo || subiendo}>
-        {subiendo && <progress value={progreso} max={100} />}
-        {subiendo ? 'Guardando...' : 'Guardar Película'}
-      </button>
-
-      {mensaje && <p>{mensaje}</p>}
     </div>
   )
 }

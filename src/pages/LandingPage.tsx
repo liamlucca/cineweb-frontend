@@ -1,5 +1,3 @@
-import { Link } from "react-router-dom"
-
 import Section from "../components/Section.tsx"
 import SearchBar from "../components/SearchBar.tsx"
 import { MovieDTO, Pelicula } from "../types/index.ts"
@@ -29,18 +27,8 @@ function LandingPage() {
   return (
     <div>
       <SearchBar />
-
-      { /* boton de Reportar*/} 
-      <Link to="/reportar">
-        <button>Reportar contenido</button>
-      </Link>
-
-      <Link to="/denuncia">
-        <button>Denuncias</button>
-      </Link>
-
-      <Section titulo="Ver Más Tarde" peliculas={peliculas} />
-      <Section titulo="Pueden gustarte..." peliculas={peliculas} />
+      <Section titulo="Subidos" peliculas={peliculas} />
+      <Section titulo="Más Videos" peliculas={peliculas} />
     </div>
   )
 }
