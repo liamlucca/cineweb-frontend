@@ -1,24 +1,24 @@
 import { useParams, Link } from "react-router-dom"
 //import LanguagePanel from "../components/LanguagePanel.tsx"
-import { MOCK_SERIE } from "../mockup/mockSeries.ts" // [CAMBIAR]
+import { MOCK_SERIES } from "../mockup/mockSeries.ts" // [CHANGE]
 import "../styles/WatchPage.css"
 
 const API_URL = import.meta.env.VITE_API_URL;
-//const IDIOMAS = ["Español (Latino)", "Español (España)", "English", "Français"]
+//const LANGUAGES = ["Spanish (Latin America)", "Spanish (Spain)", "English", "French"]
 
 
 function WatchSeriesPage() {
 const { id, seasonIndex, episodeIndex } = useParams();
 
-//pasandolos a de string a int
+//converting them from string to int
 const sIndex = seasonIndex ? parseInt(seasonIndex, 10) : 0;
 const eIndex = episodeIndex ? parseInt(episodeIndex, 10) : 0;
 
-  // TODO: reemplazar por fetch real cuando exista SeasonRepository/EpisodeRepository // [CAMBIAR]
-  const serie = MOCK_SERIE
+  // TODO: replace with a real fetch once SeasonRepository/EpisodeRepository exists // [CHANGE]
+  const series = MOCK_SERIES
 
-  if (!serie || String(serie.id) !== id) {
-    // por ahora solo tenemos 1 serie mock, así que si no matchea igual la mostramos // [CAMBIAR] BORRAR COMENTARIO
+  if (!series || String(series.id) !== id) {
+    // for now we only have 1 mock series, so if it doesn't match we still show it anyway // [CHANGE] REMOVE COMMENT
   }
 
   return (
@@ -28,31 +28,31 @@ const eIndex = episodeIndex ? parseInt(episodeIndex, 10) : 0;
         </div>
 
         <div className="watch-video-box">
-          <video src={`${API_URL}${serie.seasons[sIndex].episodes[eIndex].path}`} controls />
+          <video src={`${API_URL}${series.seasons[sIndex].episodes[eIndex].path}`} controls />
         </div>
 
         <div className="watch-progress-bar">
           <div className="watch-progress-fill" />
         </div>
 
-        <button className="watch-report-btn">Reportar</button>
+        <button className="watch-report-btn">Report</button>
       </div>
 
       <div className="watch-right">
-        <h1 className="watch-title">{serie.tittle}</h1>
-        <p className="watch-category">{serie.category}</p>
-        <p className="watch-category">{serie.seasons[sIndex].episodes[eIndex].title}</p>
+        <h1 className="watch-title">{series.title}</h1>
+        <p className="watch-category">{series.category}</p>
+        <p className="watch-category">{series.seasons[sIndex].episodes[eIndex].title}</p>
 
         <p className="watch-description">
-          {serie.seasons[sIndex]?.descripcion}
+          {series.seasons[sIndex]?.description}
         </p>
 
         <div className="watch-series-actions">
-          <Link to={`/serie/${serie.id}/seasons`}>
-            <button className="watch-series-btn">Temporadas</button>
+          <Link to={`/series/${series.id}/seasons`}>
+            <button className="watch-series-btn">Seasons</button>
           </Link>
-          <Link to={`/serie/${serie.id}/season/${serie.seasons[sIndex]?.id}/episodes`}>
-            <button className="watch-series-btn">Episodios</button>
+          <Link to={`/series/${series.id}/season/${series.seasons[sIndex]?.id}/episodes`}>
+            <button className="watch-series-btn">Episodes</button>
           </Link>
         </div>
       </div>

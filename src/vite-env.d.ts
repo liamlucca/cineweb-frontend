@@ -1,6 +1,6 @@
 /// <reference types="vite/client" />
 
-  // variables del .env
+  // .env variables
 interface ImportMetaEnv {
   readonly VITE_API_URL: string;
 }

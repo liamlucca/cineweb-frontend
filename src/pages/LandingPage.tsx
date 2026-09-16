@@ -1,25 +1,25 @@
 import Section from "../components/Section.tsx"
 import SearchBar from "../components/SearchBar.tsx"
-import { MovieDTO, Pelicula } from "../types/index.ts"
+import { MovieDTO, Movie } from "../types/index.ts"
 import { useEffect, useState } from "react"
 
 const API_URL = import.meta.env.VITE_API_URL;
 
 function LandingPage() {
 
-  const [peliculas, setPeliculas] = useState<Pelicula[]>([])
+  const [movies, setMovies] = useState<Movie[]>([])
 
     useEffect(() => {
     fetch(`${API_URL}/api/movie`)
       .then(res => res.json())
       .then((response: MovieDTO[] ) => {
-        const peliculasFixeadas: Pelicula[] = response.map((movie) => ({
+        const fixedMovies: Movie[] = response.map((movie) => ({
           id: movie.id,
           title: movie.title,
           platform: movie.category,
-          archivo: `${API_URL}${movie.path}`, // asumiendo que path es relativo, ej /uploads/videos/nombredelvideo.mp4
+          file: `${API_URL}${movie.path}`, // assuming path is relative, e.g. /uploads/videos/videoname.mp4
         }))
-        setPeliculas(peliculasFixeadas)
+        setMovies(fixedMovies)
       })
   }, [])
 
@@ -27,8 +27,8 @@ function LandingPage() {
   return (
     <div>
       <SearchBar />
-      <Section titulo="Subidos" peliculas={peliculas} />
-      <Section titulo="Más Videos" peliculas={peliculas} />
+      <Section title="Uploaded" movies={movies} />
+      <Section title="More Videos" movies={movies} />
     </div>
   )
 }
@@ -38,22 +38,21 @@ export default LandingPage
 
 /*
 
-EXPLICACIONES
+EXPLANATIONS
 
 -----------------------------------
 
-Codigo asincrono:
-.then()                            Cuando haces un fetch, la respuesta no llega en el momento, tarda un rato. O sea .then() significa "cuando termine, hacé esto".
-.then(res => res.json())           res es la respuesta cruda del servidor (es como el sobre sin abrir), para "abrirlo" hay que convertirlo en un .json, es decir res.json()
-.then((nombres: string[]) => {...  El segundo .then recibe el resultado anterior (el json). nombres es el objeto recibido del backend. Con string[] estamos diciendo que ese objeto es un array de strings (esto es Typescript)
+Async code:
+.then()                            When you do a fetch, the response doesn't arrive right away, it takes a while. So .then() means "when it's done, do this".
+.then(res => res.json())           res is the raw response from the server (like an unopened envelope), to "open it" you have to convert it into json, i.e. res.json()
+.then((names: string[]) => {...    The second .then receives the previous result (the json). names is the object received from the backend. With string[] we are saying that object is an array of strings (this is TypeScript)
 
 -----------------------------------
 
-Intento de explicacion de los hooks de react:
-useState => cuando estas variables se actualizan (usando setAlgo(valorNuevo) ) se vuelve a ejecutar toda la "function ()", es decir se vuelve a renderizar la pagina.
-useEffect(() => { ... }): Se ejecuta en cada renderizado.
-useEffect(() => { ... }, []): Se ejecuta solo al levantar la pagina (una vez).
-useEffect(() => { ... }, [data]): Se ejecuta al levantarlo y cuando data cambia.
+Attempt at explaining React hooks:
+useState => when these variables are updated (using setSomething(newValue)) the whole "function ()" runs again, i.e. the page re-renders.
+useEffect(() => { ... }): Runs on every render.
+useEffect(() => { ... }, []): Runs only when the page mounts (once).
+useEffect(() => { ... }, [data]): Runs on mount and whenever data changes.
 
 */
-

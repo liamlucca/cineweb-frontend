@@ -1,3 +1,3 @@
-// Permite que TypeScript reconozca archivos CSS como módulos válidos (por ejemplo como sucede en main.tsx con index.css)
-//Este archivo se añadió en tsconfig.app.json
+// Allows TypeScript to recognize CSS files as valid modules (e.g. as done in main.tsx with index.css)
+// This file was added in tsconfig.app.json
 declare module "*.css";

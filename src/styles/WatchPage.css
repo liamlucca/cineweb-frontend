@@ -113,7 +113,7 @@
   max-height: none;
 }
 
-.watch-vermas {
+.watch-see-more {
   margin-top: 6px;
   background: none;
   border: none;
@@ -123,7 +123,7 @@
   font-size: 13px;
 }
 
-.watch-vermas.hide {
+.watch-see-more.hide {
   display: none;
 }
 

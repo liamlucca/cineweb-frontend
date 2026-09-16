@@ -14,31 +14,31 @@ type Video = {
   views: number;
 };
 
-function MisVideosPage() {
+function MyVideosPage() {
   const [videos, setVideos] = useState<Video[]>([]);
 
-  // Guarda qué video se está editando
-  const [videoEditando, setVideoEditando] = useState<number | null>(null);
+  // Stores which video is currently being edited
+  const [editingVideoId, setEditingVideoId] = useState<number | null>(null);
 
-  // Datos que se están editando
-  const [tituloEditado, setTituloEditado] = useState("");
-  const [categoriaEditada, setCategoriaEditada] = useState("");
-  const [descripcionEditada, setDescripcionEditada] = useState("");
+  // Data being edited
+  const [editedTitle, setEditedTitle] = useState("");
+  const [editedCategory, setEditedCategory] = useState("");
+  const [editedDescription, setEditedDescription] = useState("");
 
   useEffect(() => {
-    // Busca los videos en el backend
+    // Fetches the videos from the backend
     fetch(`${API_URL}/api/movie`)
       .then((response) => response.json())
       .then((data) => {
         setVideos(data);
       })
       .catch((error) => {
-        console.error("Error al obtener los videos:", error);
+        console.error("Error fetching videos:", error);
       });
   }, []);
 
-  // Elimina un video del backend
-  const eliminarVideo = async (id: number) => {
+  // Deletes a video from the backend
+  const deleteVideo = async (id: number) => {
     try {
       const response = await fetch(
         `${API_URL}/api/movie/${id}`,
@@ -48,36 +48,36 @@ function MisVideosPage() {
       );
 
       if (!response.ok) {
-        throw new Error("No se pudo eliminar el video");
+        throw new Error("Could not delete the video");
       }
 
-      // Elimina el video de la lista que se muestra en pantalla
-      setVideos((videosActuales) =>
-        videosActuales.filter((video) => video.id !== id)
+      // Removes the video from the list shown on screen
+      setVideos((currentVideos) =>
+        currentVideos.filter((video) => video.id !== id)
       );
     } catch (error) {
-      console.error("Error al eliminar el video:", error);
+      console.error("Error deleting video:", error);
     }
   };
 
-  // Comienza la edición de un video
-  const comenzarEdicion = (video: Video) => {
-    setVideoEditando(video.id);
-    setTituloEditado(video.title);
-    setCategoriaEditada(video.category);
-    setDescripcionEditada(video.description);
+  // Starts editing a video
+  const startEditing = (video: Video) => {
+    setEditingVideoId(video.id);
+    setEditedTitle(video.title);
+    setEditedCategory(video.category);
+    setEditedDescription(video.description);
   };
 
-  // Cancela la edición
-  const cancelarEdicion = () => {
-    setVideoEditando(null);
-    setTituloEditado("");
-    setCategoriaEditada("");
-    setDescripcionEditada("");
+  // Cancels editing
+  const cancelEditing = () => {
+    setEditingVideoId(null);
+    setEditedTitle("");
+    setEditedCategory("");
+    setEditedDescription("");
   };
 
-  // Guarda los cambios del video
-  const guardarEdicion = async (id: number) => {
+  // Saves the video changes
+  const saveEdit = async (id: number) => {
     try {
       const response = await fetch(
         `${API_URL}/api/movie/${id}`,
@@ -87,64 +87,64 @@ function MisVideosPage() {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            title: tituloEditado,
-            category: categoriaEditada,
-            description: descripcionEditada,
+            title: editedTitle,
+            category: editedCategory,
+            description: editedDescription,
           }),
         }
       );
 
       if (!response.ok) {
-        throw new Error("No se pudo actualizar el video");
+        throw new Error("Could not update the video");
       }
 
-      // Actualiza el video en pantalla
-      setVideos((videosActuales) =>
-        videosActuales.map((video) =>
+      // Updates the video shown on screen
+      setVideos((currentVideos) =>
+        currentVideos.map((video) =>
           video.id === id
             ? {
                 ...video,
-                title: tituloEditado,
-                category: categoriaEditada,
-                description: descripcionEditada,
+                title: editedTitle,
+                category: editedCategory,
+                description: editedDescription,
               }
             : video
         )
       );
 
-      // Sale del modo edición
-      cancelarEdicion();
+      // Exits edit mode
+      cancelEditing();
     } catch (error) {
-      console.error("Error al editar el video:", error);
+      console.error("Error editing video:", error);
     }
   };
 
   return (
     <div className="min-h-screen p-8">
 
-      {/* Encabezado */}
+      {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
         <h1 className="text-4xl font-bold">
-          Mis Videos
+          My Videos
         </h1>
 
         <Link
-          to="/subir"
+          to="/upload"
           className="btn btn-primary"
         >
-          Subir videos
+          Upload videos
         </Link>
       </div>
 
-      {/* Línea horizontal */}
+      {/* Horizontal line */}
       <hr className="mb-8" />
 
-      {/* Lista de videos */}
+      {/* Video list */}
       <div className="space-y-6">
 
         {videos.length === 0 ? (
           <p className="text-lg">
-            No tenés videos subidos.
+            You have no uploaded videos.
           </p>
         ) : (
           videos.map((video) => (
@@ -160,23 +160,23 @@ function MisVideosPage() {
                 className="w-full max-w-64 h-36 object-cover rounded"
               />
 
-              {/* Detalles */}
+              {/* Details */}
               <div className="flex-1 w-full">
 
-                {videoEditando === video.id ? (
-                  /* Modo edición */
+                {editingVideoId === video.id ? (
+                  /* Edit mode */
                   <div className="flex flex-col gap-3">
 
                     <div>
                       <label className="font-bold block mb-1">
-                        Nombre del archivo:
+                        File name:
                       </label>
 
                       <input
                         type="text"
-                        value={tituloEditado}
+                        value={editedTitle}
                         onChange={(e) =>
-                          setTituloEditado(e.target.value)
+                          setEditedTitle(e.target.value)
                         }
                         className="input input-bordered w-full"
                       />
@@ -184,14 +184,14 @@ function MisVideosPage() {
 
                     <div>
                       <label className="font-bold block mb-1">
-                        Categoría:
+                        Category:
                       </label>
 
                       <input
                         type="text"
-                        value={categoriaEditada}
+                        value={editedCategory}
                         onChange={(e) =>
-                          setCategoriaEditada(e.target.value)
+                          setEditedCategory(e.target.value)
                         }
                         className="input input-bordered w-full"
                       />
@@ -199,13 +199,13 @@ function MisVideosPage() {
 
                     <div>
                       <label className="font-bold block mb-1">
-                        Descripción:
+                        Description:
                       </label>
 
                       <textarea
-                        value={descripcionEditada}
+                        value={editedDescription}
                         onChange={(e) =>
-                          setDescripcionEditada(e.target.value)
+                          setEditedDescription(e.target.value)
                         }
                         className="textarea textarea-bordered w-full"
                       />
@@ -213,20 +213,20 @@ function MisVideosPage() {
 
                   </div>
                 ) : (
-                  /* Modo normal */
+                  /* Normal mode */
                   <>
                     <p className="text-lg">
-                      <strong>Nombre del archivo:</strong>{" "}
+                      <strong>File name:</strong>{" "}
                       {video.title}
                     </p>
 
                     <p className="text-lg">
-                      <strong>Categoría:</strong>{" "}
+                      <strong>Category:</strong>{" "}
                       {video.category}
                     </p>
 
                     <p className="text-lg">
-                      <strong>Descripción:</strong>{" "}
+                      <strong>Description:</strong>{" "}
                       {video.description}
                     </p>
                   </>
@@ -234,43 +234,43 @@ function MisVideosPage() {
 
               </div>
 
-              {/* Botones */}
+              {/* Buttons */}
               <div className="flex flex-col items-center justify-center gap-3">
 
-                {videoEditando === video.id ? (
+                {editingVideoId === video.id ? (
                   <>
-                    {/* Guardar */}
+                    {/* Save */}
                     <button
                       className="btn btn-success w-32"
-                      onClick={() => guardarEdicion(video.id)}
+                      onClick={() => saveEdit(video.id)}
                     >
-                      Guardar
+                      Save
                     </button>
 
-                    {/* Cancelar */}
+                    {/* Cancel */}
                     <button
                       className="btn btn-outline w-32"
-                      onClick={cancelarEdicion}
+                      onClick={cancelEditing}
                     >
-                      Cancelar
+                      Cancel
                     </button>
                   </>
                 ) : (
                   <>
-                    {/* Eliminar */}
+                    {/* Delete */}
                     <button
                       className="btn btn-error w-32"
-                      onClick={() => eliminarVideo(video.id)}
+                      onClick={() => deleteVideo(video.id)}
                     >
-                      Eliminar
+                      Delete
                     </button>
 
-                    {/* Editar */}
+                    {/* Edit */}
                     <button
                       className="btn btn-outline w-32"
-                      onClick={() => comenzarEdicion(video)}
+                      onClick={() => startEditing(video)}
                     >
-                       Editar
+                       Edit
                     </button>
                   </>
                 )}
@@ -286,4 +286,4 @@ function MisVideosPage() {
   );
 }
 
-export default MisVideosPage;
+export default MyVideosPage;

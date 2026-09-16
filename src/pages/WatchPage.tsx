@@ -5,18 +5,18 @@ import { MovieDTO } from "../types/index.ts"
 import "../styles/WatchPage.css"
 
 const API_URL = import.meta.env.VITE_API_URL;
-//const IDIOMAS = ["Español (Latino)", "Español (España)", "English", "Français"]
+//const LANGUAGES = ["Spanish (Latin America)", "Spanish (Spain)", "English", "French"]
 
 function WatchPage() {
   const { id } = useParams()
   const [movie, setMovie] = useState<MovieDTO | null>(null)
-  const [cargando, setCargando] = useState(true)
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
-  const [descripcionExpandida, setDescripcionExpandida] = useState(false)
-  const [verMasBtn, setVerMasBtn] = useState(false)
+  const [descriptionExpanded, setDescriptionExpanded] = useState(false)
+  const [showMoreBtn, setShowMoreBtn] = useState(false)
 
   useEffect(() => {
-    setCargando(true)
+    setLoading(true)
     setError(false)
 
     fetch(`${API_URL}/api/movie/${id}`)
@@ -26,16 +26,16 @@ function WatchPage() {
       })
       .then((data: { movie: MovieDTO }) => setMovie(data.movie))
       .catch(() => setError(true))
-      .finally(() => setCargando(false))
+      .finally(() => setLoading(false))
   }, [id])
 
-  // CHEQUEANDO DATOS
-  if (cargando) return <p>Cargando...</p>
-  if (error || !movie) return <p>No se encontró el video.</p>
+  // CHECKING DATA
+  if (loading) return <p>Loading...</p>
+  if (error || !movie) return <p>Video not found.</p>
 
-  // Chequeando si la descripción es larga para mostrar el botón "Ver más"
-  if(movie.description.length > 100 && !verMasBtn)
-  setVerMasBtn(true)
+  // Checking if the description is long enough to show the "See more" button
+  if(movie.description.length > 100 && !showMoreBtn)
+  setShowMoreBtn(true)
 
   return (
     <div className="watch-container">
@@ -45,27 +45,27 @@ function WatchPage() {
 
         <div className="watch-video-box">
           <video src={`${API_URL}/api/movie/${id}/stream`} controls />
-          {/* opción custom: <video src={`${API_URL}/api/movie/${id}/stream`} controls />*/}
-          {/* opción con express.static: <video src={`${API_URL}${movie.path}`} controls /> */}
+          {/* custom option: <video src={`${API_URL}/api/movie/${id}/stream`} controls />*/}
+          {/* option with express.static: <video src={`${API_URL}${movie.path}`} controls /> */}
         </div>
 
-        <button className="watch-report-btn">Reportar</button>
+        <button className="watch-report-btn">Report</button>
       </div>
 
       <div className="watch-right">
         <h1 className="watch-title">{movie.title}</h1>
         <p className="watch-category">{movie.category}</p>
-        <p className={`watch-description ${descripcionExpandida ? "expanded" : ""}`}>
+        <p className={`watch-description ${descriptionExpanded ? "expanded" : ""}`}>
           {movie.description}
         </p>
         <button
-          className={`watch-vermas ${verMasBtn ? "" : "hide"} `}
-          onClick={() => setDescripcionExpandida(!descripcionExpandida)}
+          className={`watch-see-more ${showMoreBtn ? "" : "hide"} `}
+          onClick={() => setDescriptionExpanded(!descriptionExpanded)}
         >
-          {descripcionExpandida ? "Ver menos" : "Ver más"}
+          {descriptionExpanded ? "See less" : "See more"}
         </button>
 
-        <p className="watch-views">Vistas: {movie.views}</p>
+        <p className="watch-views">Views: {movie.views}</p>
       </div>
     </div>
   )

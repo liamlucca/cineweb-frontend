@@ -1,37 +1,37 @@
-.reporte-seccion {
+.report-section {
   padding: 40px; 
   max-width: 600px;
 }
 
-.opciones-reporte {
+.report-options {
   display: flex;
   justify-content: space-between;
   margin-bottom: 8px;
   margin-left: 20px;
 }
 
-.titulo_reporte {
+.report-title {
     font-size: 40px;
     font-weight: 800;
     margin-bottom: 30px;
 }
 
-.otro-reporte {
+.other-report {
   margin-top: 10px;
 }
 
-.motivo-otro-reporte {
+.other-reason-textarea {
   width: 100%;
   min-height: 120px;
 }
 
-.b-principal {
+.main-buttons {
   margin-top: 20px;
   display: flex;
   gap: 10px;
 }
 
-.boton-guardar-reporte {
+.save-report-button {
   padding: 10px 20px;
   border: 2px solid #333;
   background-color: rgb(197, 184, 184);
@@ -41,12 +41,12 @@
   color: #333;
 }
 
-.boton-guardar-reporte:hover {
+.save-report-button:hover {
   background-color: #333;
   color: white;
 }
 
-.boton-cerrar-reporte {
+.close-report-button {
   padding: 10px 20px;
   border: 2px solid #ccbebe;
   border-radius: 8px;
@@ -55,12 +55,12 @@
   color: #ccbebe;
 }
 
-.boton-cerrar-reporte:hover {
+.close-report-button:hover {
   background-color: #333;
   color: white;
 }
 
-.b-fondo {
+.modal-backdrop {
   position: fixed;
   top: 0;
   left: 0;
@@ -72,7 +72,7 @@
   align-items: center;
 }
 
-.recuadro {
+.modal-box {
   background-color: rgb(112, 101, 101);
   padding: 20px;
   border-radius: 10px;
@@ -80,26 +80,26 @@
   text-align: center;
 }
 
-.botones-confirmar {
+.confirm-buttons {
   margin-top: 20px;
   display: flex;
   justify-content: space-between;
 }
 
-.boton-confirmar-guardar {
+.confirm-save-button {
   background-color: #c2b3b3;
   color: white;
   padding: 12px 24px;
   border-radius: 12px;
 }
 
-.boton-cancelar-guardar {
+.cancel-save-button {
   background-color: #8f8686;
   color: white;
   padding: 12px 24px;
   border-radius: 12px;
 }
 
-.desea-guardar {
+.confirm-text {
   font-size: 20px;
 }

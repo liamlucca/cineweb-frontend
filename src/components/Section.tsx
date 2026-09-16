@@ -1,78 +1,78 @@
 import { Link } from "react-router-dom"
-import { Pelicula } from "../types/index.ts"
+import { Movie } from "../types/index.ts"
 
 interface SectionProps {
-  titulo: string
-  peliculas: Pelicula[]
+  title: string
+  movies: Movie[]
 }
 
-function Section({ titulo, peliculas }: SectionProps) {
+function Section({ title, movies }: SectionProps) {
 
 
-  function scrollIzquierda(e: React.MouseEvent<HTMLButtonElement>) {
+  function scrollLeft(e: React.MouseEvent<HTMLButtonElement>) {
     const carousel = e.currentTarget.parentElement?.querySelector('.carousel')
     carousel?.scrollBy({ left: -300, behavior: 'smooth' })
   }
 
-  function scrollDerecha(e: React.MouseEvent<HTMLButtonElement>) {
+  function scrollRight(e: React.MouseEvent<HTMLButtonElement>) {
     const carousel = e.currentTarget.parentElement?.querySelector('.carousel')
     carousel?.scrollBy({ left: 300, behavior: 'smooth' })
   }
 
   /*
   -------------------------------------
-  Explicacion del scroll derecha/izquierda:
+  Explanation of scroll right/left:
   1.
-   <div className="relative group">      parentElement (aca hacemos el querySelector)
-    ├── botón derecha                    currentTarget (el botón clickeado)
+   <div className="relative group">      parentElement (this is where we do the querySelector)
+    ├── right button                     currentTarget (the clicked button)
     ├── carousel
-    └── botón izquierda
+    └── left button
   </div>
 
   2.
   querySelector('.carousel')
-  Es una función que busca adentro del elemento un hijo que tenga esa clase (en este caso carousel1)
+  A function that looks inside the element for a child that has that class (in this case carousel1)
 
   3.
   scrollBy
-  Es una función del navegador que mueve el scroll de un elemento
+  A browser function that moves the scroll of an element
  -------------------------------------
   */
 
   return (
     <div className="my-6">
-      <h2 className="color-primary text-xl font-bold mb-3 px-4">{titulo}</h2>
+      <h2 className="color-primary text-xl font-bold mb-3 px-4">{title}</h2>
 
       <div className="flex group">
 
-        {/* Flecha izquierda */}
+        {/* Left arrow */}
         <button
-          onClick={scrollIzquierda}
+          onClick={scrollLeft}
           className="self-center left-0 top-1/2 -translate-y-1/2 z-10 btn btn-circle btn-sm opacity-0 group-hover:opacity-100 transition-opacity"
         >
           ❮
         </button>
 
-        {/* cada película */}
-        <div className="carousel carousel-center gap-4 px-4 w-full justify-items-start">  {/*ACÁ ESTÁ EL JUSTIFICADO/CENTRADO*/}
-          {peliculas.map((pelicula) => (
-              <div key={pelicula.id} className="carousel-item">
-              <div className="card bg-base-200 w-109 sm:w-44 md:w-48">  {/*ACÁ ESTÁ EL TAMAÑO DE LAS TARJETAS DE ACUERDO AL RESPONSIVE*/}
+        {/* each movie */}
+        <div className="carousel carousel-center gap-4 px-4 w-full justify-items-start">  {/*THIS IS WHERE THE JUSTIFY/CENTERING HAPPENS*/}
+          {movies.map((movie) => (
+              <div key={movie.id} className="carousel-item">
+              <div className="card bg-base-200 w-109 sm:w-44 md:w-48">  {/*THIS IS THE CARD SIZE FOR EACH BREAKPOINT*/}
                 <figure className="bg-base-300 h-24 sm:h-28">
                 </figure>
                 <div className="card-body p-3">
-                  <p className="text-sm font-bold">{pelicula.title}</p>
-                  <p className="text-xs text-gray-400">{pelicula.platform}</p>
-                  <Link to={`/ver/${pelicula.id}`}> <button className="btn btn-primary btn-sm mt-1">Ver más</button></Link>                
+                  <p className="text-sm font-bold">{movie.title}</p>
+                  <p className="text-xs text-gray-400">{movie.platform}</p>
+                  <Link to={`/watch/${movie.id}`}> <button className="btn btn-primary btn-sm mt-1">See more</button></Link>                
                   </div>
               </div>
             </div>
           ))}
         </div>
 
-        {/* Flecha derecha */}
+        {/* Right arrow */}
         <button
-          onClick={scrollDerecha}
+          onClick={scrollRight}
           className="self-center right-0 top-1/2 -translate-y-1/2 z-10 btn btn-circle btn-sm opacity-0 group-hover:opacity-100 transition-opacity"
         >
           ❯
@@ -85,5 +85,5 @@ function Section({ titulo, peliculas }: SectionProps) {
 export default Section
 
 /*
-[NOTA]: Esconder flecha a la izquierda si estás al principio de la pagina. Esconder flecha a la derecha si estás al final de la pagina.
+[NOTE]: Hide the left arrow when at the start of the page. Hide the right arrow when at the end of the page.
 */

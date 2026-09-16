@@ -1,17 +1,17 @@
 import { useParams, Link } from "react-router-dom"
-import { MOCK_SERIE } from "../mockup/mockSeries.ts"
+import { MOCK_SERIES } from "../mockup/mockSeries.ts"
 import "../styles/SeasonSelectPage.css"
 
 function EpisodeListPage() {
   const { seasonId } = useParams()
 
-  // TODO: reemplazar por fetch real cuando exista EpisodeRepository
-  const serie = MOCK_SERIE
-  const season = serie.seasons.find(t => String(t.id) === seasonId) ?? serie.seasons[0]
+  // TODO: replace with a real fetch once EpisodeRepository exists
+  const series = MOCK_SERIES
+  const season = series.seasons.find(s => String(s.id) === seasonId) ?? series.seasons[0]
 
   return (
     <div className="season-main" style={{ padding: 24 }}>
-      <h1 className="season-title">{serie.tittle} — Temporada {season?.numero}</h1>
+      <h1 className="season-title">{series.title} — Season {season?.number}</h1>
 
       {season?.episodes.map((episode) => (
         <div className="episode-row" key={episode.id}>
@@ -20,8 +20,8 @@ function EpisodeListPage() {
             <p className="episode-title">{episode.title}</p>
             <p className="episode-description">{episode.description}</p>
           </div>
-          <Link to={`/ver-serie/${serie.id}/${season.id}/${episode.id}`}>
-            <button className="watch-series-btn">Ver</button>
+          <Link to={`/watch-series/${series.id}/${season.id}/${episode.id}`}>
+            <button className="watch-series-btn">Watch</button>
           </Link>
         </div>
       ))}

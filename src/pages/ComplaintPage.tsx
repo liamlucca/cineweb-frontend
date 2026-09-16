@@ -3,76 +3,76 @@ import { useNavigate } from "react-router-dom"
 
 import "../styles/ComplaintPage.css";
 
-import type { DenunciaUI } from "../types/index.ts"
+import type { ComplaintUI } from "../types/index.ts"
 
 export default function ComplaintPage() {
   const navigate = useNavigate()
-  //const [mostrar, setMostrar] = useState(true) 
+  //const [show, setShow] = useState(true) 
   
-  //es para tener algo en el front por el momento
-  const denuncias: DenunciaUI[] = [
+  //placeholder data for the frontend for now
+  const complaints: ComplaintUI[] = [
     {
-      id_denuncia: 1,
-      id_audiovisual: 10,
-      tipo_reportes: "Acoso y bullying",
-      id_denunciado: 2,
-      id_administrador: 1,
-      estado: true,
-      es_nueva: true,
-      nombre_audiovisual: "Shrek 2",
+      complaint_id: 1,
+      media_id: 10,
+      report_type: "Harassment and bullying",
+      reported_user_id: 2,
+      admin_id: 1,
+      status: true,
+      is_new: true,
+      media_name: "Shrek 2",
     },
     {
-      id_denuncia: 2,
-      id_audiovisual: 11,
-      tipo_reportes: "Contenido sexual",
-      id_denunciado: 3,
-      id_administrador: 1,
-      estado: true,
-      es_nueva: false,
-      nombre_audiovisual: "Euphoria",
+      complaint_id: 2,
+      media_id: 11,
+      report_type: "Sexual content",
+      reported_user_id: 3,
+      admin_id: 1,
+      status: true,
+      is_new: false,
+      media_name: "Euphoria",
     },
   ]
 
-  //if (!mostrar) return null
+  //if (!show) return null
   
   return (
-    <div className="fondo-recuadro">
-        <div className="recuadro">
+    <div className="modal-backdrop">
+        <div className="modal-box">
           {
-          //<button className="cerrar-recuadro" onClick={() => setMostrar(false)}>
+          //<button className="close-modal" onClick={() => setShow(false)}>
           //  x
           //</button>
           }
-          <button className="cerrar-recuadro" onClick={() => navigate("/")}>
+          <button className="close-modal" onClick={() => navigate("/")}>
             x
           </button>    
-          <h2>Denuncias Recibidas</h2>
+          <h2>Received Complaints</h2>
 
-          {denuncias.map((d) =>(
-            <div key={d.id_denuncia} className="denuncia-c">
+          {complaints.map((c) =>(
+            <div key={c.complaint_id} className="complaint-card">
 
-              <div className="denuncia-titulo">
-                <div className="denuncia-texto">
+              <div className="complaint-title">
+                <div className="complaint-text">
                   <span>
-                     Recibió una denuncia.<br></br>
+                     Received a complaint.<br></br>
                   </span>
 
                   <span>
-                    Audiovisual: {d.nombre_audiovisual}
+                    Media: {c.media_name}
                   </span>
                 </div>
 
-                <span className={d.es_nueva ? "ojo azul":"ojo gris"} title={d.es_nueva ? "nueva" : "vista"}>
+                <span className={c.is_new ? "eye-blue":"eye-gray"} title={c.is_new ? "new" : "viewed"}>
                   👁
                 </span>
               </div>
 
-              <p className="denuncia-motivo">
-                Motivo: <b>{d.tipo_reportes}</b>
+              <p className="complaint-reason">
+                Reason: <b>{c.report_type}</b>
               </p>
 
-              <button className="apelar-boton" onClick={() => navigate("/")}>
-                Apelar
+              <button className="appeal-button" onClick={() => navigate("/")}>
+                Appeal
               </button>
             </div>
           ))}

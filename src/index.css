@@ -1,5 +1,5 @@
 @import "tailwindcss";
 @plugin "daisyui"  {
-  /*fijarse en https://daisyui.com/docs/themes/ los temas que se pueden usar*/
+  /* check https://daisyui.com/docs/themes/ for the themes you can use */
   themes: night --default; 
 };

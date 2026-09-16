@@ -1,114 +1,114 @@
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { TIPOS_REPORTE, MotivoReporte } from "../types"
+import { REPORT_REASONS, ReportReason } from "../types"
 import "../styles/ReportPage.css";
 
 export default function ReportPage() {
   const navigate = useNavigate()
 
-  //guarda la opcion seleccionada
-  const [motivoSeleccionado, setmotivoSeleccionado] = useState<MotivoReporte | "">("")
+  //holds the selected option
+  const [selectedReason, setSelectedReason] = useState<ReportReason | "">("")
   
-  //el usuario selecciona otro - guarda la descripcion
-  const [descripOtroMotivo, setdescripOtroMotivo] = useState("")
+  //when the user selects "Other" - holds the description
+  const [otherReasonDescription, setOtherReasonDescription] = useState("")
 
-  const [mostrarGuardarEstado, setMostrarGuardarEstado] = useState(false);
+  const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
 
-  //abre recuadro de confirmacion
-  const guardarReporte = () => {
-    setMostrarGuardarEstado(true);
+  //opens the confirmation box
+  const saveReport = () => {
+    setShowSaveConfirmation(true);
   }
-  //confirma guardar - aca iria el backend
-  const confirmarGuardarReporte = () => {
+  //confirms save - the backend call would go here
+  const confirmSaveReport = () => {
     console.log({
-      motivoSeleccionado,
-      descripOtroMotivo
+      selectedReason,
+      otherReasonDescription
     });
 
-    setMostrarGuardarEstado(false);
+    setShowSaveConfirmation(false);
   }
 
   return (
-    <div className="reporte-seccion">
+    <div className="report-section">
       
-      <h1 className="titulo_reporte">
-        Reportar:
+      <h1 className="report-title">
+        Report:
       </h1>
 
-      {/*opciones */}
+      {/*options */}
       <div>
-        {TIPOS_REPORTE.map((m) => (
-          <label className="opciones-reporte" key={m}>
+        {REPORT_REASONS.map((m) => (
+          <label className="report-options" key={m}>
             {m}
 
             <input
-              type="radio" //permite elegir solo uno
-              name="motivo"
+              type="radio" //only allows one to be selected
+              name="reason"
               value={m}
-              checked={motivoSeleccionado === m}
-              onChange={() => setmotivoSeleccionado(m)} //al hacer click guarda el valor
+              checked={selectedReason === m}
+              onChange={() => setSelectedReason(m)} //stores the value on click
             />
           </label>
         ))}
       </div>
 
-      {/*si selecciona "Otro" */}
-      {motivoSeleccionado === "Otro" && (
-        <div className="motivo-otro">
+      {/*if "Other" is selected */}
+      {selectedReason === "Other" && (
+        <div className="other-reason">
           <textarea 
-            className="motivo-otro-reporte"
-            placeholder="Escribí el motivo..."
-            value={descripOtroMotivo}
-            onChange={(e) => setdescripOtroMotivo(e.target.value)}
+            className="other-reason-textarea"
+            placeholder="Write the reason..."
+            value={otherReasonDescription}
+            onChange={(e) => setOtherReasonDescription(e.target.value)}
           />
         </div>
       )}
 
-      {/*botones principales*/}
-      <div className="b-principal">
+      {/*main buttons*/}
+      <div className="main-buttons">
         
         <button
-          className="boton-cerrar-reporte"
+          className="close-report-button"
           onClick={() => navigate("/")}
         >
-          Cerrar
+          Close
         </button>
 
         <button
-          className="boton-guardar-reporte"
-          onClick={guardarReporte}
+          className="save-report-button"
+          onClick={saveReport}
         >
-          Guardar
+          Save
         </button>
 
       </div>
 
-      {/*recuadro de confirmación */}
-      {mostrarGuardarEstado && (
-        <div className="b-fondo">
-          <div className="recuadro">
+      {/*confirmation box */}
+      {showSaveConfirmation && (
+        <div className="modal-backdrop">
+          <div className="modal-box">
 
-            <p className="desea-guardar">¿Desea guardar el reporte?</p>
+            <p className="confirm-text">Do you want to save the report?</p>
 
-            <div className="botones-confirmar">
+            <div className="confirm-buttons">
 
               <button 
-                className="boton-cancelar-guardar" 
-                onClick={() => {setMostrarGuardarEstado(false);
+                className="cancel-save-button" 
+                onClick={() => {setShowSaveConfirmation(false);
                 navigate("/");
               }}
             >
-                Cancelar
+                Cancel
               </button>
 
               <button 
-                className="boton-confirmar-guardar" 
+                className="confirm-save-button" 
                 onClick={() => {
-                  confirmarGuardarReporte();
+                  confirmSaveReport();
                   navigate("/");
                 }}
               >
-                Guardar
+                Save
               </button>
 
             </div>

@@ -1,25 +1,25 @@
 import { useState } from "react"
 
 interface LanguagePanelProps {
-  titulo: string
-  idiomas: string[]
+  title: string
+  languages: string[]
 }
 
-function LanguagePanel({ titulo, idiomas }: LanguagePanelProps) {
-  const [abierto, setAbierto] = useState(false)
+function LanguagePanel({ title, languages }: LanguagePanelProps) {
+  const [open, setOpen] = useState(false)
 
   return (
     <div className="watch-panel">
-      <button className="watch-panel-header" onClick={() => setAbierto(!abierto)}>
-        <span>{titulo}</span>
-        <span className={`watch-panel-arrow ${abierto ? "open" : ""}`}>▾</span>
+      <button className="watch-panel-header" onClick={() => setOpen(!open)}>
+        <span>{title}</span>
+        <span className={`watch-panel-arrow ${open ? "open" : ""}`}>▾</span>
       </button>
 
-      {abierto && (
+      {open && (
         <div className="watch-panel-body">
-          {idiomas.map((idioma) => (
-            <div className="watch-panel-row" key={idioma}>
-              <span>{idioma}</span>
+          {languages.map((language) => (
+            <div className="watch-panel-row" key={language}>
+              <span>{language}</span>
               <input type="checkbox" defaultChecked className="toggle" />
             </div>
           ))}

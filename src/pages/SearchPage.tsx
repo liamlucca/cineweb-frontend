@@ -2,40 +2,40 @@ import { useEffect, useState } from "react"
 import { useSearchParams } from "react-router-dom"
 import Section from "../components/Section.tsx"
 import SearchBar from "../components/SearchBar.tsx"
-import { Pelicula, MovieDTO } from "../types/index.ts"
+import { Movie, MovieDTO } from "../types/index.ts"
 
 const API_URL = import.meta.env.VITE_API_URL;
 
 function SearchPage() {
-  //la explicación de useSearchParams está abajo de todo
+  //explanation of useSearchParams is at the bottom
   const [searchParams] = useSearchParams()
-  const query = searchParams.get('q') ?? '' // si no hay nada, que sea un string vacío
+  const query = searchParams.get('q') ?? '' // if there's nothing, default to an empty string
 
-  const [resultados, setResultados] = useState<Pelicula[]>([])
+  const [results, setResults] = useState<Movie[]>([])
 
 useEffect(() => {
     fetch(`${API_URL}/api/movie`)
     .then(res => res.json())
     .then((response: MovieDTO[]) => {
-      const peliculasFixeadas: Pelicula[] = response.map((movie) => ({
+      const fixedMovies: Movie[] = response.map((movie) => ({
         id: movie.id,
         title: movie.title,
         platform: movie.category,
-        archivo: `${API_URL}${movie.path}`,
+        file: `${API_URL}${movie.path}`,
       }))
 
-      const filtradas = peliculasFixeadas.filter(p =>
-        p.title.toLowerCase().includes(query.toLowerCase())
+      const filtered = fixedMovies.filter(m =>
+        m.title.toLowerCase().includes(query.toLowerCase())
       )
 
-      setResultados(filtradas)
+      setResults(filtered)
     })
-}, [query]) // se vuelve a ejecutar cada vez que cambia el texto buscado
+}, [query]) // runs again every time the searched text changes
 
   return (
     <div>
       <SearchBar />
-      <Section titulo={`Resultados para: "${query}"`} peliculas={resultados} />
+      <Section title={`Results for: "${query}"`} movies={results} />
     </div>
   )
 }
@@ -43,6 +43,6 @@ useEffect(() => {
 export default SearchPage
 
 /*
-EXPLICACIÓN: useSearchParams.
-Es un hook de ReactRouter que lee los parámetros de la URL. Cuando alguien busca "Shrek", la URL queda /buscar?q=Shrek y searchParams.get('q') te devuelve "Shrek".
+EXPLANATION: useSearchParams.
+It's a React Router hook that reads the URL parameters. When someone searches "Shrek", the URL becomes /search?q=Shrek and searchParams.get('q') returns "Shrek".
 */

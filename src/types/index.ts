@@ -1,13 +1,13 @@
-//MOVIES
+// MOVIES
 
-export interface Pelicula {
+export interface Movie {
   id: number
   title: string
   platform: string
-  archivo: string
+  file: string
 }
 
-//forma del backend
+// shape coming from the backend
 export interface MovieDTO {
   id: number
   path: string
@@ -18,7 +18,7 @@ export interface MovieDTO {
   state: boolean
 }
 
-//SERIES
+// SERIES
 
 export interface Episode {
   id: number
@@ -30,58 +30,58 @@ export interface Episode {
 
 export interface Season {
   id: number
-  numero: number
-  descripcion: string
+  number: number
+  description: string
   episodes: Episode[]
 }
 
-export interface Serie {
+export interface Series {
   id: number
-  tittle: string
+  title: string
   category: string
   seasons: Season[]
 }
 
 
-/**REPORTES*/
+/** REPORTS */
 
-/* Array con los types posibles de Motivos en un Reporte */
-export const TIPOS_REPORTE = [
-  'Violencia',
-  'Contenido sexual',
-  'Acoso y bullying',
-  'Incitacion al odio y abuso',
-  'Actividades peligrosas o dañinas',
-  'Otro'
+/* Array with the possible Reasons for a Report */
+export const REPORT_REASONS = [
+  'Violence',
+  'Sexual content',
+  'Harassment and bullying',
+  'Hate speech and abuse',
+  'Dangerous or harmful activities',
+  'Other'
 ] as const
 
-/* Define el type de motivos */
-export type MotivoReporte = typeof TIPOS_REPORTE[number]
+/* Defines the report reason type */
+export type ReportReason = typeof REPORT_REASONS[number]
 
-/**seria necesario guardar el id de usuario para evitar que reporte mas de una vez? */
-export interface Reporte {
-  contador: number
-  motivo: MotivoReporte
-  otro_motivo: string
+/** would it be necessary to store the user id to avoid reporting more than once? */
+export interface Report {
+  count: number
+  reason: ReportReason
+  other_reason: string
 
-  id_usuarios: number[]
+  user_ids: number[]
 }
- /**DENUNCIAS */
+ /** COMPLAINTS */
 
-export interface Denuncia {
-  id_audiovisual: number
+export interface Complaint {
+  media_id: number
 
-  //motivo con la mayor cant de reportes
-  tipo_reportes: MotivoReporte
+  // reason with the highest number of reports
+  report_type: ReportReason
 
-  id_denunciado: number
-  id_administrador: number
-  estado: boolean
-  id_denuncia: number
+  reported_user_id: number
+  admin_id: number
+  status: boolean
+  complaint_id: number
 }
 
-/**esto es por ahora, hasta que avance el back - sirve para demostrar el estado visto/no_visto */
-export type DenunciaUI = Denuncia & {
-  es_nueva: boolean
-  nombre_audiovisual: string
+/** temporary, until the backend is further along - used to show the new/viewed state */
+export type ComplaintUI = Complaint & {
+  is_new: boolean
+  media_name: string
 }

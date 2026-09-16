@@ -10,27 +10,27 @@ import SeasonSelectPage from './pages/SeasonSelectPage.tsx'
 import EpisodeListPage from './pages/EpisodeListPage.tsx'
 import ReportPage from './pages/ReportPage.tsx'
 import ComplaintPage from './pages/ComplaintPage.tsx'
-import ApelarPage from './pages/ApelarPage.tsx'
-import MisVideosPage from './pages/MisVideosPage.tsx'
+import AppealPage from './pages/AppealPage.tsx'
+import MyVideosPage from './pages/MyVideosPage.tsx'
 
 
 function App() {
   return (
     <BrowserRouter>
-      <MainNavbar username='Fulanito'/>
+      <MainNavbar username='John Doe'/>
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<AuthPage />} />
-        <Route path="/subir" element={<UploadPage />} />
-        <Route path="/buscar" element={<SearchPage />} />
-        <Route path="/reportar" element={<ReportPage />} />
-        <Route path="/denuncia" element={<ComplaintPage/>} />
-        <Route path="/apelar" element={<ApelarPage/>} />
-        <Route path="/ver/:id" element={<WatchPage />} />
-        <Route path="/ver-serie/:id/:seasonId/:episodeId" element={<WatchSeriesPage />} />
-        <Route path="/serie/:id/seasons" element={<SeasonSelectPage />} />
-        <Route path="/serie/:id/season/:seasonId/episodes" element={<EpisodeListPage />} />
-        <Route path="/mis-videos" element={<MisVideosPage />} />
+        <Route path="/upload" element={<UploadPage />} />
+        <Route path="/search" element={<SearchPage />} />
+        <Route path="/report" element={<ReportPage />} />
+        <Route path="/complaint" element={<ComplaintPage/>} />
+        <Route path="/appeal" element={<AppealPage/>} />
+        <Route path="/watch/:id" element={<WatchPage />} />
+        <Route path="/watch-series/:id/:seasonId/:episodeId" element={<WatchSeriesPage />} />
+        <Route path="/series/:id/seasons" element={<SeasonSelectPage />} />
+        <Route path="/series/:id/season/:seasonId/episodes" element={<EpisodeListPage />} />
+        <Route path="/my-videos" element={<MyVideosPage />} />
       </Routes>
     </BrowserRouter>
   )
