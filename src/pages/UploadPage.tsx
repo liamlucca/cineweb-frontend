@@ -36,8 +36,8 @@ function UploadPage() {
    
     const formData = new FormData()
     formData.append('data', JSON.stringify(movieData))
-    // NOTE: keep this key as 'archivo', the backend's multer config expects that exact field name
-    formData.append('archivo', file) 
+    // NOTE: keep this key as 'file', the backend's multer config expects that exact field name
+    formData.append('file', file) 
 
     try {
       /*const response = await fetch(`${API_URL}/api/movie`, {
