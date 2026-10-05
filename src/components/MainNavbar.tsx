@@ -1,10 +1,20 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import type { User } from "../types/index.ts";
 
 interface MainNavbarProps {
-  username: string
+  // null when nobody is logged in
+  user: User | null
+  onLogout: () => void
 }
 
-function MainNavbar({username}: MainNavbarProps) {
+function MainNavbar({ user, onLogout }: MainNavbarProps) {
+  const navigate = useNavigate();
+
+  function handleLogout() {
+    onLogout();
+    navigate("/");
+  }
+
   return (
 <div className="navbar bg-base-100 shadow-sm">
   {/*============== LEFT ==============*/}
@@ -16,11 +26,17 @@ function MainNavbar({username}: MainNavbarProps) {
   
   {/*============== RIGHT ==============*/}
 
+  {/*Guests only see the log in button*/}
+  {!user && (
+    <Link className="btn btn-primary btn-sm md:mr-10" to="/login">Log In</Link>
+  )}
+
   {/*Messages for the user*/}
+  {user && (
   <div className="flex gap-2">
     <span className="text-rotate justify-end self-center mr-2">
       <span className="*:justify-self-end">
-        <span>Hi, {username}</span>  
+        <span>Hi, {user.username}</span>  
         <span>What are you going to watch today?</span>
       </span>
   </span>
@@ -41,10 +57,11 @@ function MainNavbar({username}: MainNavbarProps) {
         {/*<li><a className="justify-between">Profile<span className="badge">New</span></a></li>*/}
         <li><Link to="/my-videos">My Videos</Link></li>
         <li><a href="/upload">Upload Video</a></li>
-        {/*<li><a>Log Out</a></li>*/}
+        <li><button type="button" onClick={handleLogout}>Log Out</button></li>
       </ul>
     </div>
   </div>
+  )}
 </div>
   );
 }
