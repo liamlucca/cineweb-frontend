@@ -1,7 +1,7 @@
 import type { AuthResponse, LoginRequest, RegisterRequest } from '../types/index.ts';
 import { API_URL, ApiError } from './api.ts';
 import { isUser } from './session.ts';
-import MockAuthService from './mockAuthService.ts';
+import MockAuthService from '../mockup/mockAuthService.ts';
 
 /**
  * Strategy pattern: the app only depends on this interface. The real backend

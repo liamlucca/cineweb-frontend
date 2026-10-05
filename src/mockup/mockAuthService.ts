@@ -1,8 +1,8 @@
 import type {
   AuthResponse, LoginRequest, RegisterRequest, User,
 } from '../types/index.ts';
-import type { AuthService } from './authService.ts';
-import { ApiError } from './api.ts';
+import type { AuthService } from '../services/authService.ts';
+import { ApiError } from '../services/api.ts';
 
 /*
  * Development-only stand-in for the backend's /auth endpoints, which don't exist yet.

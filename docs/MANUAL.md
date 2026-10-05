@@ -86,9 +86,6 @@ Details behind the ⚠️ marks:
 - **Routers not mounted.** The backend's `src/index.ts` imports `movieRouter`, `seriesRouter`,
   `seasonRouter` and `episodeRouter`, but never calls `app.use(...)` with them. It only serves the
   static folders `/movies` and `/series`. In that local copy, no `/api/...` URL answers.
-- **Upload field name.** `UploadPage.tsx:40` sends the file as `'file'`, and a comment at
-  `UploadPage.tsx:39` says multer expects `'file'`. The backend's `movie.routes.ts` uses
-  `single('archivo')`; the `'file'` version is commented out.
 - **Response shape of `GET /api/movie/:id`.** `WatchPage.tsx:27` expects `{ movie: MovieDTO }`.
   The backend's `movie.controller.ts` does `res.send({movie})`, so this one matches.
 - **Agreed auth contract.** `POST /auth/login` receives `{ email, password }`.
@@ -105,10 +102,9 @@ Details behind the ⚠️ marks:
 1. Mount the routers in `src/index.ts` so the `/api/...` endpoints answer.
 2. Implement `POST /auth/login` and `POST /auth/register` with the agreed shape
    (see 1.3), and a users table.
-3. Agree on the upload field name (`file` vs `archivo`) and on the stream endpoint.
-4. Agree on error status codes. The frontend already maps 401 (wrong login), 400 (invalid data)
+3. Agree on error status codes. The frontend already maps 401 (wrong login), 400 (invalid data)
    and 409 (email or username in use) to messages (`authService.ts:28-37`).
-5. Optional but useful: an endpoint such as `GET /auth/me` to check a stored token (see 4.3).
+4. Optional but useful: an endpoint such as `GET /auth/me` to check a stored token (see 4.3).
 
 ---
 
@@ -124,7 +120,7 @@ Details behind the ⚠️ marks:
 | `src/context/` | App-wide state shared through React Context. Today: the session. |
 | `src/hooks/` | Custom hooks. Today: `useAuth`. |
 | `src/types/` | All TypeScript types for domain data and DTOs, in a single file `index.ts`. |
-| `src/mockup/` | Hardcoded fake data used while the backend is missing (`mockSeries.ts`). |
+| `src/mockup/` | Hardcoded fake data used while the backend is missing (`mockSeries.ts`, `mockAuthService.ts`). |
 | `src/styles/` | Plain CSS for a few pages (`WatchPage.css`, `ReportPage.css`, ...). |
 | `public/` | Static files copied as-is (`vite.svg`). |
 | `docs/` | This manual and the domain diagram: `dnd_cineweb.drawio` (source of truth for names) and `dnd_cineweb.png` (visual reference). |
@@ -145,7 +141,7 @@ Details behind the ⚠️ marks:
 | File | Role |
 |---|---|
 | `src/services/authService.ts` | `AuthService` interface, `HttpAuthService` (real backend) and the exported `authService` that picks real or mock. |
-| `src/services/mockAuthService.ts` | `MockAuthService`: fake login and register using localStorage. |
+| `src/mockup/mockAuthService.ts` | `MockAuthService`: fake login and register using localStorage. |
 | `src/services/session.ts` | Saves, reads and clears the session in localStorage. `isUser` type guard. |
 | `src/services/api.ts` | `API_URL`, the `ApiError` class and `authHeader()`. |
 | `src/context/AuthContext.ts` | The context object and its type `AuthContextValue`. |
@@ -214,7 +210,7 @@ Works end to end in the browser using the **mock** backend (`VITE_USE_MOCK_AUTH 
 The real HTTP version is written but has never run against a real backend, because the
 endpoints do not exist yet.
 
-Mock accounts (`src/services/mockAuthService.ts:21-46`):
+Mock accounts (`src/mockup/mockAuthService.ts:21-46`):
 
 | Email | Password | Role |
 |---|---|---|
@@ -395,7 +391,6 @@ extra render.
 ⚠️ Known issues:
 - `id_author: 2` is hardcoded (`UploadPage.tsx:28`). The agreed contract says the backend must take
   the uploader from the token, and the form must never send it (1.3).
-- The field name `'file'` does not match the backend's `'archivo'` (1.3).
 - The request does not send `authHeader()`, so the backend cannot know who is uploading.
 - The messages ("Uploaded!!!!", "ERROR (500): ...", "COULD NOT CONNECT TO THE SERVER.") are not
   user-friendly.
@@ -588,7 +583,6 @@ Trade-off: the file grows with every entity. Some types do not match the domain 
 | Pages call `fetch` directly, against the project rule that HTTP goes through `src/services`. | `LandingPage`, `SearchPage`, `WatchPage`, `MyVideosPage`, `UploadPage` |
 | Missing loading, error or empty states. | `LandingPage`, `SearchPage`, `MyVideosPage` (see 3.2–3.6) |
 | Series route parameters do not match. | `WatchSeriesPage.tsx:11`, `SeasonSelectPage.tsx:7` (3.7) |
-| Upload field name `file` vs backend `archivo`. | `UploadPage.tsx:40` |
 | Hardcoded `id_author: 2`. | `UploadPage.tsx:28` |
 | Lint error: unused `error`. | `UploadPage.tsx:57` |
 | `API_URL` without the localhost fallback in pages (only `services/api.ts` has it). | Pages listed above |
