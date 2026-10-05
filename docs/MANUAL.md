@@ -1,0 +1,745 @@
+# CineWeb Frontend — Code Manual
+
+A guide to how the CineWeb frontend works, written so that anyone can explain any part of it,
+including the parts they did not write.
+
+## How to read this manual
+
+Status labels used everywhere in this document:
+
+| Label | Meaning |
+|---|---|
+| ✅ Implemented | Works in the code today. |
+| 🧪 Mock | Works, but with fake or hardcoded data instead of the real backend. |
+| ⏳ Pending | Planned, not built yet. |
+| ⚠️ Known issue | Built, but has a bug or a gap you should know about. |
+
+Every statement about the code points to a file, usually as `path:line`. Line numbers were checked
+against the working tree on 2026-10-05 (base commit `a7dba18` plus the user system, which was not
+committed yet). If the code changes, line numbers may drift: search for the function name instead.
+
+When something could not be verified by reading the code, it says so explicitly.
+
+---
+
+## 1. Overview
+
+### 1.1 What the application does
+
+CineWeb is a movie and series platform. Viewers can upload videos, watch them, rate them and
+report them. Administrators moderate reports and the appeals that viewers send against them.
+
+Planned screens, taken from the project sketches ("Bosquejos TP DSW"). Section 3 of this manual
+explains which of them exist today.
+
+| Viewer | Administrator |
+|---|---|
+| 1. Landing page | A. Admin landing page |
+| 2. Search, filtering by category, type (movie/series) and director | B. Pending appeals (accept / reject) |
+| 3. Watch video (details, add to "Watch later") | C. Appeal history (filter, change a verdict) |
+| 4. Series: seasons and episodes | |
+| 5. Report a video: fixed reasons plus "Other" with free text | |
+| 6. Review: like / dislike, can be withdrawn | |
+| 7. See a received report and appeal it | |
+| 8. Upload video and "My videos" (edit, logical delete) | |
+
+Plus login (email, password) and sign-up (first name, last name, email, username, password).
+
+### 1.2 Frontend vs backend responsibilities
+
+| Frontend (this repo) | Backend (separate repo, separate team) |
+|---|---|
+| Shows the screens and handles user interaction. | Stores data in a MySQL database. |
+| Keeps the session (token + user) in the browser. | Checks passwords and issues tokens. |
+| Hides screens the current role should not see. | **Enforces** permissions on every request. |
+| Calls the backend through HTTP (`fetch`). | Exposes the HTTP API and serves the video files. |
+
+Important: hiding a screen in the frontend is only a convenience. Anyone can change the code that
+runs in their own browser, so real security must be enforced by the backend (see 4.8).
+
+This manual only describes the backend **from the frontend's point of view** (its API).
+Its internal implementation belongs to the backend team and is not covered here.
+
+### 1.3 The API contract (frontend's point of view)
+
+The base URL comes from `VITE_API_URL` in `.env` (`src/services/api.ts:3`, which falls back to
+`http://localhost:3000`). Note that the pages listed below read `import.meta.env.VITE_API_URL`
+directly and do **not** have that fallback.
+
+The "Backend status" column was checked by reading the backend's local copy (commit `09a445b`)
+on 2026-10-05. The backend team may have newer code that was not available locally.
+
+| Endpoint | Used by | Backend status |
+|---|---|---|
+| `POST /auth/login` → `{ token, user }` | `src/services/authService.ts:27` | ⏳ Does not exist. Agreed with the backend team. |
+| `POST /auth/register` → `{ token, user }` | `src/services/authService.ts:33` | ⏳ Does not exist. Agreed with the backend team. |
+| `GET /api/movie` → array of movies | `LandingPage.tsx:13`, `SearchPage.tsx:17`, `MyVideosPage.tsx:30` | ⚠️ Route defined but not mounted (see below). |
+| `GET /api/movie/:id` → `{ movie }` | `WatchPage.tsx:22` | ⚠️ Route defined but not mounted. |
+| `GET /api/movie/:id/stream` | `WatchPage.tsx:47` (video source) | ⚠️ Commented out in the backend's `movie.routes.ts`. |
+| `POST /api/movie` (multipart: `data` + file) | `UploadPage.tsx:80` | ⚠️ Not mounted, and the file field name does not match (see below). |
+| `PATCH /api/movie/:id` | `MyVideosPage.tsx:82` | ⚠️ Route defined but not mounted. |
+| `DELETE /api/movie/:id` | `MyVideosPage.tsx:43` | ⚠️ Route defined but not mounted. |
+| Static files under `/movies` and `/series` | `LandingPage.tsx:20`, `MyVideosPage.tsx:158` build video URLs from `path` | ✅ Served by the backend. |
+
+Details behind the ⚠️ marks:
+
+- **Routers not mounted.** The backend's `src/index.ts` imports `movieRouter`, `seriesRouter`,
+  `seasonRouter` and `episodeRouter`, but never calls `app.use(...)` with them. It only serves the
+  static folders `/movies` and `/series`. In that local copy, no `/api/...` URL answers.
+- **Upload field name.** `UploadPage.tsx:40` sends the file as `'file'`, and a comment at
+  `UploadPage.tsx:39` says multer expects `'file'`. The backend's `movie.routes.ts` uses
+  `single('archivo')`; the `'file'` version is commented out.
+- **Response shape of `GET /api/movie/:id`.** `WatchPage.tsx:27` expects `{ movie: MovieDTO }`.
+  The backend's `movie.controller.ts` does `res.send({movie})`, so this one matches.
+- **Agreed auth contract.** `POST /auth/login` receives `{ email, password }`.
+  `POST /auth/register` receives `{ username, firstName, lastName, email, password }` and
+  always creates a viewer. (`RegisterRequest` in the code still has an optional `phone`, which the
+  form never fills.) Both return `{ token, user }`. Authenticated requests must send
+  `Authorization: Bearer <token>`. When uploading content, the backend must take the uploader from
+  the token, so the frontend never sends it.
+- **Field naming.** The movie data uses snake_case (`id_author`), while the auth contract assumes
+  camelCase (`firstName`). Whether the backend will use camelCase is not confirmed.
+
+### 1.4 What the backend still needs (from the frontend's perspective)
+
+1. Mount the routers in `src/index.ts` so the `/api/...` endpoints answer.
+2. Implement `POST /auth/login` and `POST /auth/register` with the agreed shape
+   (see 1.3), and a users table.
+3. Agree on the upload field name (`file` vs `archivo`) and on the stream endpoint.
+4. Agree on error status codes. The frontend already maps 401 (wrong login), 400 (invalid data)
+   and 409 (email or username in use) to messages (`authService.ts:28-37`).
+5. Optional but useful: an endpoint such as `GET /auth/me` to check a stored token (see 4.3).
+
+---
+
+## 2. Code map
+
+### 2.1 Folder by folder
+
+| Folder | What lives there |
+|---|---|
+| `src/pages/` | One component per route (one screen each). |
+| `src/components/` | Reusable pieces of UI: navbar, search bar, carousel section, route guard. |
+| `src/services/` | Code that talks to the outside world (HTTP, localStorage). Today: auth only. |
+| `src/context/` | App-wide state shared through React Context. Today: the session. |
+| `src/hooks/` | Custom hooks. Today: `useAuth`. |
+| `src/types/` | All TypeScript types for domain data and DTOs, in a single file `index.ts`. |
+| `src/mockup/` | Hardcoded fake data used while the backend is missing (`mockSeries.ts`). |
+| `src/styles/` | Plain CSS for a few pages (`WatchPage.css`, `ReportPage.css`, ...). |
+| `public/` | Static files copied as-is (`vite.svg`). |
+| `docs/` | This manual and the domain diagram: `dnd_cineweb.drawio` (source of truth for names) and `dnd_cineweb.png` (visual reference). |
+
+### 2.2 Important files one by one
+
+**Entry and routing**
+
+| File | Role |
+|---|---|
+| `index.html` | The single HTML page. Has `<div id="root">` and loads `src/main.tsx`. |
+| `src/main.tsx` | Mounts React into `#root`, wrapping `<App />` in `<AuthProvider>` (`main.tsx:9-11`). |
+| `src/App.tsx` | Declares every route. Reads the session with `useAuth()` and passes it to the navbar (`App.tsx:20-24`). |
+| `src/index.css` | Loads Tailwind and DaisyUI, with the `night` theme as default. |
+
+**User system**
+
+| File | Role |
+|---|---|
+| `src/services/authService.ts` | `AuthService` interface, `HttpAuthService` (real backend) and the exported `authService` that picks real or mock. |
+| `src/services/mockAuthService.ts` | `MockAuthService`: fake login and register using localStorage. |
+| `src/services/session.ts` | Saves, reads and clears the session in localStorage. `isUser` type guard. |
+| `src/services/api.ts` | `API_URL`, the `ApiError` class and `authHeader()`. |
+| `src/context/AuthContext.ts` | The context object and its type `AuthContextValue`. |
+| `src/context/AuthProvider.tsx` | The component that owns the session state and provides it. |
+| `src/hooks/useAuth.ts` | The hook every component uses to read the session. |
+| `src/components/ProtectedRoute.tsx` | Route guard: login required and, optionally, specific roles. |
+| `src/pages/AuthPage.tsx` | Login and sign-up form (`/login`). |
+| `src/components/MainNavbar.tsx` | Shows "Log In" for guests, greeting and "Log Out" for users. |
+
+**Content screens**
+
+| File | Role |
+|---|---|
+| `src/pages/LandingPage.tsx` | Home page. Fetches movies and shows them in two `Section` carousels. |
+| `src/pages/SearchPage.tsx` | Fetches movies and filters them by title using `?q=`. |
+| `src/pages/WatchPage.tsx` | Shows one movie and plays it. |
+| `src/pages/UploadPage.tsx` | Upload form with a progress bar. |
+| `src/pages/MyVideosPage.tsx` | List with edit and delete. |
+| `src/pages/SeasonSelectPage.tsx`, `EpisodeListPage.tsx`, `WatchSeriesPage.tsx` | Series screens, using `MOCK_SERIES`. |
+| `src/pages/ReportPage.tsx` | Report form (reasons + "Other"). |
+| `src/pages/ComplaintPage.tsx` | "Received Complaints" list with hardcoded data. |
+| `src/pages/AppealPage.tsx` | Placeholder: only renders the word "appeal". |
+| `src/components/Section.tsx` | Horizontal carousel of movie cards. Props: `title`, `movies`. |
+| `src/components/SearchBar.tsx` | Search input that navigates to `/search?q=...`. Also links to `/complaint`. |
+| `src/components/LanguagePanel.tsx` | Collapsible panel of language toggles. Currently not used: its imports are commented out in `WatchPage.tsx:4` and `WatchSeriesPage.tsx:2`. |
+| `src/types/index.ts` | All types: `Movie`, `MovieDTO`, `Series`, `Season`, `Episode`, `Report`, `Complaint`, `User`, `LoginRequest`, ... |
+
+### 2.3 How the pieces connect
+
+```
+index.html
+└── src/main.tsx
+    └── <AuthProvider>                     session state (context/AuthProvider.tsx)
+        └── <App>                           routes (App.tsx)
+            ├── <MainNavbar user onLogout>  reads session through props
+            └── <Routes>
+                ├── public pages            LandingPage, SearchPage, WatchPage, series pages, AuthPage
+                └── <ProtectedRoute allowedRoles={['viewer']}>
+                    └── UploadPage, MyVideosPage, ReportPage, ComplaintPage, AppealPage
+
+Pages / components ──useAuth()──▶ AuthContext ◀── AuthProvider
+AuthProvider ──▶ authService (Http or Mock) ──▶ backend /auth or localStorage
+AuthProvider ──▶ session.ts ──▶ localStorage (cineweb_token, cineweb_user)
+Content pages ──fetch()──▶ backend /api/movie   (directly, not through a service: see 4.9)
+```
+
+### 2.4 Configuration files
+
+| File | What it does |
+|---|---|
+| `.env` | Local environment variables. Ignored by git (`.gitignore`). |
+| `.env.example` | Template to copy into `.env`: `VITE_API_URL` and `VITE_USE_MOCK_AUTH`. |
+| `src/vite-env.d.ts` | Tells TypeScript which `VITE_` variables exist. |
+| `vite.config.ts` | Vite plugins (React, Tailwind) and an allowed host for the dev server. |
+| `tsconfig.app.json` | TypeScript in strict mode, plus `noUnusedLocals` and `noUnusedParameters`. |
+| `eslint.config.js` | ESLint with TypeScript, React Hooks and React Refresh rules. |
+| `package.json` | Dependencies and scripts: `dev`, `dev:host`, `build`, `lint`, `preview`. |
+
+---
+
+## 3. Feature walkthroughs
+
+### 3.1 User system ✅ 🧪
+
+Works end to end in the browser using the **mock** backend (`VITE_USE_MOCK_AUTH = true`).
+The real HTTP version is written but has never run against a real backend, because the
+endpoints do not exist yet.
+
+Mock accounts (`src/services/mockAuthService.ts:21-46`):
+
+| Email | Password | Role |
+|---|---|---|
+| `admin@cineweb.com` | `admin123` | administrator |
+| `viewer@cineweb.com` | `viewer123` | viewer |
+
+#### Logging in: from the form to the protected page
+
+Example: a guest clicks "Upload Video", which leads to `/upload`.
+
+1. **The guard stops the guest.** `/upload` is inside `<ProtectedRoute allowedRoles={['viewer']}>`
+   (`App.tsx:35-36`). `ProtectedRoute` reads `user` from `useAuth()`. It is `null`, so it renders
+   `<Navigate to="/login" ... state={{ from: "/upload" }} />` (`ProtectedRoute.tsx:16-17`).
+   The `from` value remembers where the guest wanted to go.
+2. **The form is shown.** `AuthPage` renders the login form. The inputs are *uncontrolled*: they
+   have a `name` but no `useState`, so the password is never stored in React state
+   (`AuthPage.tsx:24`).
+3. **The user submits.** `handleSubmit` runs (`AuthPage.tsx:25`):
+   - `event.preventDefault()` stops the browser from reloading the page.
+   - `new FormData(event.currentTarget)` reads the input values by their `name`.
+   - It sets `submitting` to `true`, which disables the button and shows a spinner, and clears
+     old errors.
+   - It calls `login({ email, password })` from the context (`AuthPage.tsx:42`).
+4. **The context delegates.** `login` in `AuthProvider.tsx:26` calls `authService.login(request)`.
+   `authService` is either `MockAuthService` or `HttpAuthService`, chosen once at
+   `authService.ts:67` from `VITE_USE_MOCK_AUTH`.
+5. **The service answers.**
+   - Mock (`mockAuthService.ts:74-81`): waits 500 ms, finds the account by email (trimmed and
+     lowercased), compares the password, and returns `{ token: "mock-token-<id>", user }`.
+   - Real (`authService.ts:27-31`, `40-63`): `POST {API_URL}/auth/login` with a JSON body. It
+     checks that the response really is `{ token, user }` with `isAuthResponse` before trusting it.
+6. **The session starts.** `startSession` (`AuthProvider.tsx:19-22`) calls `saveSession`, which
+   writes `cineweb_token` and `cineweb_user` to localStorage (`session.ts:20-23`), and then
+   `setUser(user)`.
+7. **React re-renders.** Because `user` changed, `useMemo` builds a new context value
+   (`AuthProvider.tsx:18-33`), and every component that uses `useAuth()` re-renders:
+   - `MainNavbar` now shows "Hi, viewer" and the dropdown with "Log Out" (`MainNavbar.tsx:35-64`).
+   - `AuthPage` now has a `user`, so it renders `<Navigate to={from} replace />` with
+     `from = "/upload"` (`AuthPage.tsx:19-22`). The page never calls `navigate()` itself: the
+     redirect happens because the state changed.
+8. **The guard lets the user in.** `ProtectedRoute` runs again. `user` exists and its role is
+   `'viewer'`, which is in `allowedRoles`, so it renders `<Outlet />` (`ProtectedRoute.tsx:24`),
+   which shows `UploadPage`.
+
+#### Signing up
+
+The same form switches to sign-up mode with `toggleMode` (`AuthPage.tsx:50-53`), which shows the
+first name, last name and username inputs. On submit it calls `register(...)` (`AuthPage.tsx:34-40`).
+From there it follows the same path as login (steps 4–8).
+
+- Mock (`mockAuthService.ts:84-104`): rejects the request if the email or username is taken, creates
+  a user with the next free `id` and always `role: 'viewer'`, and saves the account under
+  `cineweb_mock_accounts`.
+- Real: `POST /auth/register` (`authService.ts:33-38`). The contract says public sign-up creates
+  viewers only, so `RegisterRequest` has no `role` field (`types/index.ts:111-119`).
+- The phone field exists in `RegisterRequest` as optional, but the form does not ask for it.
+
+#### How the session is saved and restored
+
+- **Saved:** on login or sign-up, in localStorage under `cineweb_token` and `cineweb_user`
+  (`session.ts:3-4`, `20-23`). localStorage survives reloads and closing the browser.
+- **Restored:** when the app starts, `AuthProvider` sets the initial `user` state with
+  `getStoredSession()` (`AuthProvider.tsx:16`). This happens **synchronously**, before the first
+  render, so a protected page does not flash to `/login` on reload.
+- **Validated:** `getStoredSession` (`session.ts:31-44`) returns `null` if the token or user is
+  missing. If the saved user is not valid JSON, or does not look like a `User` (checked by `isUser`,
+  `session.ts:7-14`), it clears the session and also returns `null`.
+- **Not validated:** the token itself. Nothing checks whether it expired or was revoked, because
+  there is no backend endpoint for that (see 4.3).
+
+#### How a route is protected by role
+
+`ProtectedRoute` (`ProtectedRoute.tsx`) is a *layout route*: it has no `path` of its own, and it
+wraps child routes (`App.tsx:35-41`). For each visit it decides one of three outcomes:
+
+| Situation | Result | Code |
+|---|---|---|
+| No user | Redirect to `/login`, remembering `from` | `ProtectedRoute.tsx:15-18` |
+| User, but role not in `allowedRoles` | Redirect to `/` | `ProtectedRoute.tsx:20-22` |
+| User with an allowed role (or no `allowedRoles` given) | Render the child page through `<Outlet />` | `ProtectedRoute.tsx:24` |
+
+Today only one group exists: `allowedRoles={['viewer']}` for `/upload`, `/my-videos`, `/report`,
+`/complaint` and `/appeal`. No administrator screens exist yet, so an administrator who logs in can
+only see the public pages.
+
+#### Logging out
+
+The "Log Out" button calls `handleLogout` (`MainNavbar.tsx:13-16`). It calls the `onLogout` prop,
+which `App` connects to `logout` from the context (`App.tsx:24`), and then navigates to `/`.
+`logout` (`AuthProvider.tsx:28-31`) removes both localStorage keys and sets `user` to `null`.
+
+#### What happens when something fails
+
+| Failure | Where it is handled | What the user sees |
+|---|---|---|
+| Wrong email or password | Mock: `mockAuthService.ts:78-80`. Real: status 401 → `authService.ts:29` | "Incorrect email or password." |
+| Email or username already used | Mock: `mockAuthService.ts:90-91`. Real: status 409 | "That email or username is already in use." |
+| Invalid data (real backend) | Status 400 → `authService.ts:35` | "Please check the information you entered." |
+| Server unreachable / network down | `fetch` throws → `authService.ts:52-54` | "We couldn't reach the server. Please try again later." |
+| Any other HTTP error | `authService.ts:56-58` | "Something went wrong. Please try again." |
+| Response is not `{ token, user }` | `isAuthResponse` → `authService.ts:60-61` | "Something went wrong. Please try again." |
+| Unexpected error (a bug, not an `ApiError`) | `AuthPage.tsx:45` | "Something went wrong. Please try again." |
+| Corrupted session in localStorage | `session.ts:36-43` | Nothing visible: they are treated as logged out. |
+| `useAuth()` used outside `AuthProvider` | `useAuth.ts:7` | Developer error, thrown on purpose to catch the bug early. |
+| Empty fields, invalid email format | HTML `required` and `type="email"` in `AuthPage.tsx` | The browser's own validation message. |
+
+The error appears in a DaisyUI `alert` with `role="alert"` (`AuthPage.tsx:89-93`), and
+`submitting` goes back to `false` so they can try again (`AuthPage.tsx:46`).
+
+How the messages travel: services throw `ApiError` (`api.ts:6-11`), an `Error` whose message is
+already friendly. The page shows `err.message` only when the error is an `ApiError`. Anything else
+gets the generic message, so technical details never reach the user.
+
+#### Switching from the mock to the real backend
+
+1. The backend implements `/auth/login` and `/auth/register` with the agreed shape.
+2. In `.env`, set `VITE_USE_MOCK_AUTH = false` (or remove it) and restart `pnpm dev`, because Vite
+   reads `.env` only at startup.
+3. Nothing else changes: the rest of the app depends on the `AuthService` interface, not on
+   either implementation.
+4. When the mock is no longer needed, delete `mockAuthService.ts` and the switch at the bottom of
+   `authService.ts`, as its header comment says (`mockAuthService.ts:7-11`).
+
+### 3.2 Landing page ✅ ⚠️
+
+1. `LandingPage` starts with an empty `movies` array (`LandingPage.tsx:10`).
+2. A `useEffect` with `[]` runs once when the page mounts and calls `GET {API_URL}/api/movie`
+   (`LandingPage.tsx:12-24`).
+3. Each `MovieDTO` from the backend is converted into the simpler `Movie` type: `category` becomes
+   `platform`, and `path` becomes a full URL in `file` (`LandingPage.tsx:16-21`).
+4. The same list is shown twice, in "Uploaded" and "More Videos" (`LandingPage.tsx:30-31`), by
+   `Section`, a carousel with left and right arrows that use `scrollBy` (`Section.tsx:12-20`).
+5. Each card links to `/watch/:id` (`Section.tsx:66`).
+
+⚠️ There is no `.catch`, no loading state and no empty message. If the backend is down, the page
+shows the headings with no cards and no explanation.
+
+### 3.3 Search ✅ ⚠️
+
+1. `SearchBar` keeps the typed text in state. Pressing Enter or clicking the button runs
+   `handleSearch`, which ignores empty text and navigates to `/search?q=<text>`
+   (`SearchBar.tsx:10-13`, `33-39`).
+2. `SearchPage` reads `q` with `useSearchParams` (`SearchPage.tsx:11-12`).
+3. Its `useEffect` depends on `[query]`, so it runs again whenever the search changes. It fetches
+   **all** movies and filters them in the browser by title, ignoring case (`SearchPage.tsx:16-33`).
+
+⚠️ The filter checkboxes ("CATEGORY 1/2/3", `SearchBar.tsx:44-53`) are visual only: they are not
+read anywhere. Filtering by category, type or director (sketch 2) is ⏳ pending. Like the landing
+page, there is no error, loading or empty handling. The text is put into the URL without
+`encodeURIComponent` (`SearchBar.tsx:12`).
+
+### 3.4 Watching a movie ✅ ⚠️
+
+1. The route `/watch/:id` gives `WatchPage` the `id` through `useParams` (`WatchPage.tsx:11`).
+2. A `useEffect` on `[id]` fetches `GET /api/movie/:id`. It handles **loading**, **error** and
+   success (`WatchPage.tsx:18-30`), and shows "Loading..." or "Video not found."
+   (`WatchPage.tsx:33-34`).
+3. The video plays from `/api/movie/:id/stream` (`WatchPage.tsx:47`).
+4. If the description is longer than 100 characters, a "See more / See less" button appears
+   (`WatchPage.tsx:37-38`, `61-66`).
+
+⚠️ The stream route is commented out in the backend (1.3). The "Report" button
+(`WatchPage.tsx:52`) has no `onClick`. "Add to Watch later" (sketch 3) is ⏳ pending.
+`WatchPage.tsx:37-38` calls `setShowMoreBtn` during render, which React allows but which causes an
+extra render.
+
+### 3.5 Uploading a movie ✅ ⚠️
+
+1. The user picks a file. `handleFileSelect` stores it and uses the file name as the default title
+   (`UploadPage.tsx:14-20`).
+2. On "Save Movie", `handleSubmit` builds `movieData` and a `FormData` with two parts: `data` (the
+   JSON text) and `file` (the video) (`UploadPage.tsx:22-40`).
+3. It sends it with `uploadWithProgress` (`UploadPage.tsx:64-83`), which uses `XMLHttpRequest`
+   instead of `fetch`, because `fetch` cannot report upload progress. Each `progress` event updates
+   the progress bar (`UploadPage.tsx:68-73`, `132`).
+4. The result is shown as a text message (`UploadPage.tsx:51-59`, `134`).
+
+⚠️ Known issues:
+- `id_author: 2` is hardcoded (`UploadPage.tsx:28`). The agreed contract says the backend must take
+  the uploader from the token, and the form must never send it (1.3).
+- The field name `'file'` does not match the backend's `'archivo'` (1.3).
+- The request does not send `authHeader()`, so the backend cannot know who is uploading.
+- The messages ("Uploaded!!!!", "ERROR (500): ...", "COULD NOT CONNECT TO THE SERVER.") are not
+  user-friendly.
+- `pnpm lint` reports `error` as unused at `UploadPage.tsx:57`.
+
+### 3.6 My Videos ✅ ⚠️
+
+1. On mount, it fetches `GET /api/movie` (`MyVideosPage.tsx:28-38`), meaning **all** movies,
+   not only the user's own.
+2. **Delete:** `deleteVideo` sends `DELETE /api/movie/:id` and removes the video from the list on
+   success (`MyVideosPage.tsx:41-61`). This is a real delete request, while the planned design describes a
+   logical delete (an `active` flag). Whether the backend deletes the row or marks it inactive was not
+   checked.
+3. **Edit:** `startEditing` copies the video into the edit fields (`MyVideosPage.tsx:64-69`).
+   `saveEdit` sends `PATCH /api/movie/:id` and updates the list locally (`MyVideosPage.tsx:80-120`).
+   `cancelEditing` clears the fields (`MyVideosPage.tsx:72-77`).
+4. With no videos, it shows "You have no uploaded videos." (`MyVideosPage.tsx:145-148`).
+
+⚠️ Errors only go to `console.error`, so the user sees nothing when something fails. There is no
+loading state. The `Video` type is declared locally (`MyVideosPage.tsx:6-15`) instead of in
+`src/types`. Delete has no confirmation step.
+
+### 3.7 Series: seasons, episodes, watching an episode 🧪 ⚠️
+
+All three pages read `MOCK_SERIES` from `src/mockup/mockSeries.ts` (one series, two seasons,
+three episodes). There is no backend call.
+
+- `SeasonSelectPage` (`/series/:id/seasons`): two `<select>` inputs choose the active season and
+  show its description. "View Episodes" navigates to that season's episode list
+  (`SeasonSelectPage.tsx:17-18`, `68-73`).
+- `EpisodeListPage` (`/series/:id/season/:seasonId/episodes`): finds the season by `seasonId`,
+  falling back to the first one, and lists its episodes with "Watch" links
+  (`EpisodeListPage.tsx:10`, `16-27`).
+- `WatchSeriesPage` (`/watch-series/:id/:seasonId/:episodeId`): plays the selected episode and
+  links back to seasons and episodes.
+
+⚠️ **Bug:** the route defines `:seasonId` and `:episodeId` (`App.tsx:30`), but `WatchSeriesPage`
+reads `seasonIndex` and `episodeIndex` (`WatchSeriesPage.tsx:11`), which do not exist on that
+route. Both are always `undefined`, so it always plays season 0, episode 0. It also uses them as
+array positions, while the links pass IDs (`EpisodeListPage.tsx:23`). `SeasonSelectPage.tsx:7` has
+the same problem with `seasonIndex`. The mock episodes have `path: "/"`, so no real video plays.
+`EpisodeListPage.tsx:13` uses an inline style.
+
+Nothing links to the series pages from the landing page: they can only be reached by typing the URL.
+
+### 3.8 Report a video 🧪
+
+`ReportPage` (`/report`, viewers only) shows a radio button for each reason in `REPORT_REASONS`
+(`types/index.ts`) and a text area when "Other" is selected (`ReportPage.tsx:55-65`). "Save" opens
+a confirmation box (`ReportPage.tsx:86-118`).
+
+🧪 Confirming does **not** send anything: `confirmSaveReport` only does `console.log` of the
+selection (`ReportPage.tsx:22-28`). Nothing links to this page yet; the "Report" button on
+`WatchPage` does nothing.
+
+### 3.9 Received complaints and appeals 🧪 ⏳
+
+- `ComplaintPage` (`/complaint`, viewers only) shows "Received Complaints" from an array hardcoded
+  in the component (`ComplaintPage.tsx:13-34`). Each "Appeal" button just navigates to `/`
+  (`ComplaintPage.tsx:74`). It can be reached from the flag button in `SearchBar`
+  (`SearchBar.tsx:56`).
+- `AppealPage` (`/appeal`) is a placeholder that renders the text "appeal" (`AppealPage.tsx`). ⏳
+
+### 3.10 Administrator screens ⏳
+
+None of them exist yet: admin landing page, pending appeals and appeal history (sketches A, B, C).
+When they are built, they should go in a new route group wrapped in
+`<ProtectedRoute allowedRoles={['administrator']}>`.
+
+---
+
+## 4. Design decisions and trade-offs
+
+### 4.1 Fake backend behind an interface (Strategy pattern)
+
+**What:** `AuthService` is an interface with two implementations, `HttpAuthService` and
+`MockAuthService`. A single line chooses one from `.env` (`authService.ts:67-69`).
+
+**Why:** the backend has no auth yet, and frontend work should not be blocked. The rest of the app
+(context, pages) only knows the interface, so switching to the real backend changes one variable,
+not the components. It is also the OOP design pattern that the course requires.
+
+**Trade-offs:**
+- The mock is not the backend. It can drift from what the backend really does (status codes, field
+  names, validation rules). `HttpAuthService` has **never run against a real server**.
+- The mock stores passwords in plain text in localStorage. It is only acceptable because it is fake
+  data for development.
+- If someone forgets to set `VITE_USE_MOCK_AUTH = false` in production, users would log in against
+  the fake service.
+
+### 4.2 React Context for the session
+
+**What:** `AuthProvider` keeps `user` in state and shares `{ user, login, register, logout }`
+through `AuthContext`. Components read it with `useAuth()`.
+
+**Why:** many unrelated components need the session (navbar, guard, login page). Passing it
+through props at every level ("prop drilling") would be repetitive. Context is built into React,
+so no extra library is needed.
+
+**Trade-offs:**
+- Every component that uses `useAuth()` re-renders when the session changes. That is fine for
+  something that changes rarely, like login and logout. `useMemo` (`AuthProvider.tsx:18-33`) makes
+  sure the value only changes when `user` changes.
+- The context, the provider and the hook are in three files (`AuthContext.ts`, `AuthProvider.tsx`,
+  `useAuth.ts`). This keeps the project's ESLint `react-refresh` rule happy, because that rule wants
+  `.tsx` files to export only components.
+
+### 4.3 Token and user in localStorage
+
+**What:** `cineweb_token` and `cineweb_user` are saved in localStorage (`session.ts`), as agreed with
+the backend team.
+
+**Why:** it is simple, survives reloads, and works with a `Bearer` header (`authHeader()`,
+`api.ts:14-17`).
+
+**Trade-offs and risks:**
+- **XSS:** any JavaScript running on the page can read localStorage. If an attacker manages to
+  inject a script, they can steal the token. An `httpOnly` cookie would protect against that, but
+  it requires backend support.
+- **The stored user is trusted.** Anyone can open the browser tools and change `role` to
+  `"administrator"` in `cineweb_user`. The frontend would then show admin screens. This is why the
+  backend must check the token on every request: the frontend check is not security.
+- **No expiry check:** the frontend does not decode the token or check when it expires. A user
+  could look logged in with a token the backend already rejects. There is no endpoint to verify
+  the token (`GET /auth/me` does not exist).
+- **No sync between tabs:** logging out in one tab does not update other open tabs until they
+  reload.
+
+### 4.4 Session restored synchronously
+
+`useState(() => getStoredSession()?.user ?? null)` (`AuthProvider.tsx:16`) reads localStorage
+**before** the first render. If it were done in a `useEffect`, the first render would have
+`user = null`, and `ProtectedRoute` would send a logged-in user to `/login` for a moment.
+Trade-off: it only works because localStorage is synchronous. A check against the server would
+need a real "loading" state.
+
+### 4.5 Uncontrolled inputs for the password
+
+The login form reads its values with `FormData` on submit (`AuthPage.tsx:27-28`) instead of
+keeping every keystroke in `useState`. This follows the project rule that the password only
+exists in `LoginRequest` / `RegisterRequest`, never in state.
+Trade-off: there is no live validation as the user types (for example "password too short"). It
+relies on HTML validation (`required`, `type="email"`).
+
+### 4.6 Route protection with a layout route
+
+`ProtectedRoute` renders `<Outlet />` and wraps a group of routes (`App.tsx:35-41`), instead of
+wrapping each page separately. Adding a protected page means adding one line inside the group.
+Trade-off: everything in a group shares the same roles. A page that needs other roles needs its
+own group.
+
+### 4.7 Types in a single file
+
+All types live in `src/types/index.ts`, because that is how the project already worked.
+Trade-off: the file grows with every entity. Some types do not match the domain diagram yet
+(for example `Report`, `Complaint`, `Series`). The domain diagram
+(`docs/dnd_cineweb.drawio`) is the source of truth for names.
+
+### 4.8 Honest limits
+
+**What is mock or hardcoded today**
+- Authentication (`mockAuthService.ts`), while `VITE_USE_MOCK_AUTH = true`.
+- Series, seasons and episodes (`src/mockup/mockSeries.ts`).
+- Received complaints (`ComplaintPage.tsx:13-34`).
+- Report submission (only `console.log`).
+- Uploader id (`id_author: 2` in `UploadPage.tsx:28`).
+- Navbar avatar: a fixed DaisyUI sample image (`MainNavbar.tsx:49-51`).
+
+**What is not tested**
+- There are **no automated tests**. `package.json` has no test runner and no test script.
+- The user system was checked with `tsc -b` and `pnpm build`, both passing. It was **not**
+  tested by clicking through the browser before this manual was written.
+- `HttpAuthService` has never talked to a real backend.
+- The movie pages could not be tested against the local backend copy, because its routers are not
+  mounted (1.3).
+
+**Known security risks**
+- Token in localStorage, readable by any script on the page (4.3).
+- The role shown in the frontend can be changed by the user. The backend must enforce permissions.
+- No token expiry or revocation check.
+- Mock passwords in plain text in localStorage (development only).
+- Upload, edit and delete requests do not send the token, so today the backend cannot know who
+  makes them.
+- No backend authorization exists yet on any endpoint.
+
+### 4.9 Known issues and technical debt
+
+| Issue | Where |
+|---|---|
+| Pages call `fetch` directly, against the project rule that HTTP goes through `src/services`. | `LandingPage`, `SearchPage`, `WatchPage`, `MyVideosPage`, `UploadPage` |
+| Missing loading, error or empty states. | `LandingPage`, `SearchPage`, `MyVideosPage` (see 3.2–3.6) |
+| Series route parameters do not match. | `WatchSeriesPage.tsx:11`, `SeasonSelectPage.tsx:7` (3.7) |
+| Upload field name `file` vs backend `archivo`. | `UploadPage.tsx:40` |
+| Hardcoded `id_author: 2`. | `UploadPage.tsx:28` |
+| Lint error: unused `error`. | `UploadPage.tsx:57` |
+| `API_URL` without the localhost fallback in pages (only `services/api.ts` has it). | Pages listed above |
+| The navbar shows "My Videos" and "Upload Video" to administrators too, who are then redirected. | `MainNavbar.tsx:58-59` |
+| Navbar "Home" and "Upload Video" use `<a href>`, which reloads the whole page. They still work, because the session is in localStorage. | `MainNavbar.tsx:56`, `59` |
+| Custom CSS files instead of DaisyUI classes in several pages. | `src/styles/` |
+| Both `pnpm-lock.yaml` and `package-lock.json` exist, but the project uses pnpm only. | repo root |
+| `.env` has a `VITE_API_URL_HOST` variable that no code reads and `vite-env.d.ts` does not declare. | `.env` |
+
+---
+
+## 5. Course requirements compliance
+
+Requirements set by the course for regularity and approval. Status: ✅ Met · 🟡 Partial · ❌ Pending.
+
+### 5.1 Regularity
+
+| Requirement | Where in the code | Status |
+|---|---|---|
+| Handle user events (click, input...) | `AuthPage.tsx` (`onSubmit`, `toggleMode`), `SearchBar.tsx:33-39` (`onChange`, `onKeyDown`, `onClick`), `UploadPage.tsx:93-130`, `MyVideosPage.tsx` (edit/delete buttons) | ✅ |
+| Handle errors in a user-friendly way | ✅ `AuthPage` + `authService.ts`, ✅ `WatchPage.tsx:33-34`. ❌ `LandingPage`, `SearchPage`, `MyVideosPage` (console only), and `UploadPage` messages are not friendly | 🟡 |
+| React to state changes | `SearchPage.tsx:33` (effect on `[query]`), `WatchPage.tsx:30` (`[id]`), `AuthPage.tsx:19-22` (redirect when `user` changes), `MainNavbar` (guest vs user) | ✅ |
+| Use input props | `Section` (`title`, `movies`), `MainNavbar` (`user`), `ProtectedRoute` (`allowedRoles`), `AuthProvider` (`children`) | ✅ |
+| Use output props | `MainNavbar` `onLogout` (`MainNavbar.tsx:7`, `App.tsx:24`). It is the only one so far | ✅ |
+| At least one service | `src/services/authService.ts` (+ `session.ts`, `api.ts`) | ✅ |
+| Model API data with interfaces/types | `src/types/index.ts` (`MovieDTO`, `User`, `LoginRequest`, `AuthResponse`, ...). `MyVideosPage` still declares its own local `Video` type | ✅ |
+| Apply an OOP design pattern | Strategy: `AuthService` interface with `HttpAuthService` and `MockAuthService` classes (`authService.ts`, `mockAuthService.ts`) | ✅ |
+| Dependencies registered in `package.json` | `package.json` lists React, React Router, Tailwind, DaisyUI, Vite, TypeScript, ESLint. A stray `package-lock.json` exists next to `pnpm-lock.yaml` | ✅ |
+
+### 5.2 Approval
+
+| Requirement | Where in the code | Status |
+|---|---|---|
+| At least one component unit test | None. No test runner in `package.json` | ❌ |
+| At least one end-to-end test | None | ❌ |
+| Login, with access protected by the backend's user levels via `ProtectedRoute` | Frontend side done: `ProtectedRoute.tsx`, `AuthPage.tsx`, `AuthProvider.tsx`, roles `administrator` / `viewer` in `types/index.ts:92`. But the user levels come from the **mock**, because the backend has no auth, and no admin routes exist yet | 🟡 |
+| Environments defined with `.env` | `.env` (git-ignored), `.env.example`, `VITE_API_URL`, `VITE_USE_MOCK_AUTH`, typed in `vite-env.d.ts`. There is one environment, with no separate development/production files | ✅ |
+
+---
+
+## 6. Glossary
+
+**API / endpoint** — The set of URLs a server answers. An endpoint is one of them, such as
+`POST /auth/login`.
+
+**Async / await, Promise** — A Promise is a value that will be ready later, like a server
+response. `await` pauses an `async` function until the Promise is ready. `.then()` does the same
+with callbacks (`LandingPage.tsx` explains it in its bottom comment).
+
+**Bearer token / Authorization header** — How a request proves who is sending it: the header
+`Authorization: Bearer <token>`. Built by `authHeader()` (`api.ts:14`).
+
+**Component** — A function that returns UI (JSX). Example: `Section`, `AuthPage`.
+
+**Context / Provider** — React's way to share a value with many components without passing props
+through every level. The Provider (`AuthProvider`) holds the value. Components read it with
+`useContext`, here wrapped in `useAuth`.
+
+**Controlled vs uncontrolled input** — Controlled: React state holds the value
+(`value={title} onChange=...` in `UploadPage`). Uncontrolled: the browser holds the value and you
+read it when needed (`FormData` in `AuthPage`).
+
+**CORS** — A browser rule that blocks requests to another origin unless the server allows them.
+The backend enables it with `cors()`. It matters because the frontend (port 5173) and the backend
+(port 3000) are different origins.
+
+**DaisyUI** — A Tailwind plugin with ready-made component classes such as `btn`, `card`, `input`,
+`alert` and `navbar`.
+
+**Discriminator field** — A field whose value tells which variant an object is. `User.role` tells
+whether a user is an `administrator` or a `viewer`.
+
+**DTO (Data Transfer Object)** — The shape of data as it travels between frontend and backend.
+Examples: `MovieDTO`, `LoginRequest`, `AuthResponse`.
+
+**Environment variables / `.env`** — Settings outside the code, such as the API URL. Vite only
+exposes variables that start with `VITE_`, through `import.meta.env`. It reads them when the dev
+server starts.
+
+**fetch** — The browser function for HTTP requests. It returns a Promise. It only throws on
+network failure: an HTTP error such as 404 must be checked with `response.ok`.
+
+**FormData** — A browser object holding form fields. Used to read the login form, and to send a
+file plus data in the upload (`multipart/form-data`).
+
+**Hook** — A React function whose name starts with `use` (`useState`, `useEffect`...). A
+**custom hook** is one written by us, such as `useAuth`.
+
+**Interface (TypeScript)** — A description of an object's shape, or of the methods a class must
+have (`AuthService`). It only exists at compile time.
+
+**JWT (JSON Web Token)** — A signed token format the backend is expected to issue on login. The
+frontend only stores it and sends it. The mock's `mock-token-<id>` is **not** a real JWT.
+
+**Layout route / `<Outlet />`** — A route without a path that wraps child routes. `<Outlet />` is
+where the matching child renders. `ProtectedRoute` uses it.
+
+**localStorage** — Key-value storage in the browser that survives reloads. Only the same site can
+read it, but any script running on that site can.
+
+**Mock** — A fake stand-in for something not available yet. Here: `MockAuthService` and
+`MOCK_SERIES`.
+
+**Mobile-first** — Styles without a prefix apply to phones, and `sm:`, `md:`, `lg:` add rules for
+bigger screens.
+
+**multer** — The backend library that receives uploaded files. It expects the file under a
+specific field name (see 1.3).
+
+**`<Navigate />`** — A React Router component that redirects as soon as it renders. `replace`
+means the redirect replaces the current history entry, so "Back" does not loop.
+
+**Props (input props)** — Values a parent passes to a child component, such as
+`<Section title="Uploaded" movies={movies} />`.
+
+**Output props** — Props that are functions, named `onSomething`, which the child calls to tell
+the parent that something happened. Example: `onLogout` in `MainNavbar`.
+
+**React Router** — The library that maps URLs to components (`BrowserRouter`, `Routes`, `Route`),
+and provides `useNavigate`, `useParams`, `useSearchParams` and `useLocation`.
+
+**Service** — A module whose job is talking to the outside world (HTTP, storage), so components
+do not have to. Here: `src/services/`.
+
+**SPA (Single Page Application)** — The browser loads one HTML page (`index.html`) and JavaScript
+swaps the screens. Changing route does not reload the page, unless a plain `<a href>` is used.
+
+**State (`useState`)** — Data a component remembers between renders. Calling its setter makes
+React render the component again.
+
+**Strategy pattern** — An OOP design pattern: several classes implement the same interface, and
+the code using them does not care which one it gets. Here: `HttpAuthService` and
+`MockAuthService` behind `AuthService`.
+
+**Tailwind CSS** — Styling through small utility classes in the markup (`flex`, `px-4`,
+`text-xl`).
+
+**Type guard** — A function that checks at runtime that a value has a type and tells TypeScript
+so (`value is User`). Examples: `isUser`, `isAuthResponse`. Needed because data from the network
+or storage could be anything.
+
+**`useEffect`** — Runs code after rendering, such as fetching data. The dependency array decides
+when it runs again: `[]` means once, `[query]` means whenever `query` changes.
+
+**`useMemo`** — Remembers a computed value and recalculates it only when its dependencies change.
+Used so the context value stays the same object until `user` changes.
+
+**Vite** — The dev server and build tool (`pnpm dev`, `pnpm build`).
+
+**XMLHttpRequest (XHR)** — The older browser API for HTTP requests. Used in `UploadPage` because,
+unlike `fetch`, it reports upload progress.
+
+**XSS (Cross-Site Scripting)** — An attack where someone gets their JavaScript to run on your
+page. It is the main risk of keeping tokens in localStorage.
