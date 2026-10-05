@@ -85,3 +85,40 @@ export type ComplaintUI = Complaint & {
   is_new: boolean
   media_name: string
 }
+
+
+/** USERS */
+
+export type UserRole = 'administrator' | 'viewer'
+
+export interface User {
+  id: number
+  username: string
+  firstName: string
+  lastName: string
+  email: string
+  phone: string | null
+  role: UserRole
+}
+
+/** AUTH - request/response DTOs (contract not confirmed with the backend yet) */
+
+export interface LoginRequest {
+  email: string
+  password: string
+}
+
+// public registration always creates a viewer, so there is no role here
+export interface RegisterRequest {
+  username: string
+  firstName: string
+  lastName: string
+  email: string
+  password: string
+  phone?: string
+}
+
+export interface AuthResponse {
+  token: string
+  user: User
+}
