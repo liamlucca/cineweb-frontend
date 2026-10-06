@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { REPORT_REASONS, ReportReason } from "../types"
+import { REPORT_REASONS } from "../types/index.ts"
+import type { ReportReason } from "../types/index.ts"
 import "../styles/ReportPage.css";
 
 export default function ReportPage() {
@@ -13,6 +14,10 @@ export default function ReportPage() {
   const [otherReasonDescription, setOtherReasonDescription] = useState("")
 
   const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
+
+  // a reason is required, and "Other" also needs its description
+  const canSave = selectedReason !== ""
+    && (selectedReason !== "Other" || otherReasonDescription.trim() !== "")
 
   //opens the confirmation box
   const saveReport = () => {
@@ -75,8 +80,10 @@ export default function ReportPage() {
         </button>
 
         <button
+          type="button"
           className="save-report-button"
           onClick={saveReport}
+          disabled={!canSave}
         >
           Save
         </button>
@@ -94,10 +101,9 @@ export default function ReportPage() {
 
               <button 
                 className="cancel-save-button" 
-                onClick={() => {setShowSaveConfirmation(false);
-                navigate("/");
-              }}
-            >
+                // only closes the box, so the user can still change the report
+                onClick={() => setShowSaveConfirmation(false)}
+              >
                 Cancel
               </button>
 

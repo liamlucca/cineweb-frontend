@@ -21,7 +21,7 @@ function MainNavbar({ user, onLogout }: MainNavbarProps) {
 
   {/*Title*/}
   <div className="flex-1">
-    <a className="btn btn-ghost text-xl" href="/">Absolute Cinema</a>
+    <Link className="btn btn-ghost text-xl" to="/">Absolute Cinema</Link>
   </div>
   
   {/*============== RIGHT ==============*/}
@@ -47,16 +47,21 @@ function MainNavbar({ user, onLogout }: MainNavbarProps) {
       <div tabIndex={0} role="button" className="btn btn-ghost btn-circle avatar md:mr-10">
         <div className="w-10 rounded-full">
           <img
-            alt="Tailwind CSS Navbar component"
+            alt="Your avatar"
             src="https://img.daisyui.com/images/stock/photo-1534528741775-53994a69daeb.webp" />
         </div>
       </div>
       {/*avatar dropdown menu*/}
       <ul tabIndex={-1} className="menu menu-sm dropdown-content bg-base-100 rounded-box z-1 mt-3 w-52 p-2 shadow">
-        <li><a href="/">Home</a></li>
+        <li><Link to="/">Home</Link></li>
         {/*<li><a className="justify-between">Profile<span className="badge">New</span></a></li>*/}
-        <li><Link to="/my-videos">My Videos</Link></li>
-        <li><a href="/upload">Upload Video</a></li>
+        {/*these routes are viewer-only, so administrators would just be sent back home*/}
+        {user.role === 'viewer' && (
+          <>
+            <li><Link to="/my-videos">My Videos</Link></li>
+            <li><Link to="/upload">Upload Video</Link></li>
+          </>
+        )}
         <li><button type="button" onClick={handleLogout}>Log Out</button></li>
       </ul>
     </div>
