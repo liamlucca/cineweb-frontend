@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom"
-import { Movie } from "../types/index.ts"
+import type { Movie } from "../types/index.ts"
 
 interface SectionProps {
   title: string
@@ -57,13 +57,13 @@ function Section({ title, movies }: SectionProps) {
         <div className="carousel carousel-center gap-4 px-4 w-full justify-items-start">  {/*THIS IS WHERE THE JUSTIFY/CENTERING HAPPENS*/}
           {movies.map((movie) => (
               <div key={movie.id} className="carousel-item">
-              <div className="card bg-base-200 w-109 sm:w-44 md:w-48">  {/*THIS IS THE CARD SIZE FOR EACH BREAKPOINT*/}
+              <div className="card bg-base-200 w-60 sm:w-44 md:w-48">  {/*THIS IS THE CARD SIZE FOR EACH BREAKPOINT*/}
                 <figure className="bg-base-300 h-24 sm:h-28">
                 </figure>
                 <div className="card-body p-3">
                   <p className="text-sm font-bold">{movie.title}</p>
                   <p className="text-xs text-gray-400">{movie.platform}</p>
-                  <Link to={`/watch/${movie.id}`}> <button className="btn btn-primary btn-sm mt-1">See more</button></Link>                
+                  <Link to={`/watch/${movie.id}`} className="btn btn-primary btn-sm mt-1">See more</Link>
                   </div>
               </div>
             </div>

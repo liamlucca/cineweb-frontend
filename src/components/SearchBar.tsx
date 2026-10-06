@@ -2,14 +2,21 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { useState } from 'react'
 
-function SearchBar() {
+interface SearchBarProps {
+  // text already searched, so the input keeps showing it on the results page
+  initialText?: string
+}
+
+function SearchBar({ initialText = '' }: SearchBarProps) {
   //explanation of useNavigate is at the bottom
-  const [text, setText] = useState('')
+  const [text, setText] = useState(initialText)
   const navigate = useNavigate()
 
   function handleSearch() {
-    if (text.trim() === '') return
-    navigate(`/search?q=${text}`)
+    const trimmed = text.trim()
+    if (trimmed === '') return
+    // encodeURIComponent keeps characters like & or # from breaking the URL
+    navigate(`/search?q=${encodeURIComponent(trimmed)}`)
   }
 
   return (
@@ -36,7 +43,7 @@ function SearchBar() {
         </label>
 
         {/*SEARCH BUTTON*/}
-        <button className="btn btn-square" onClick={handleSearch}>
+        <button type="button" className="btn btn-square" onClick={handleSearch} aria-label="Search">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6"><path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" /></svg>
         </button>
 
@@ -53,9 +60,8 @@ function SearchBar() {
         </details>
 
         {/*REPORT BUTTON*/}
-        <Link to="/complaint">
-            <button className="btn btn-square"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6"><path strokeLinecap="round" strokeLinejoin="round" d="M3 3v1.5M3 21v-6m0 0 2.77-.693a9 9 0 0 1 6.208.682l.108.054a9 9 0 0 0 6.086.71l3.114-.732a48.524 48.524 0 0 1-.005-10.499l-3.11.732a9 9 0 0 1-6.085-.711l-.108-.054a9 9 0 0 0-6.208-.682L3 4.5M3 15V4.5" /></svg>
-            </button>
+        <Link to="/complaint" className="btn btn-square" aria-label="Received complaints">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6"><path strokeLinecap="round" strokeLinejoin="round" d="M3 3v1.5M3 21v-6m0 0 2.77-.693a9 9 0 0 1 6.208.682l.108.054a9 9 0 0 0 6.086.71l3.114-.732a48.524 48.524 0 0 1-.005-10.499l-3.11.732a9 9 0 0 1-6.085-.711l-.108-.054a9 9 0 0 0-6.208-.682L3 4.5M3 15V4.5" /></svg>
         </Link>
 
     </div>

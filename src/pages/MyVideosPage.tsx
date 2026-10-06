@@ -1,21 +1,21 @@
 import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
-
-const API_URL = import.meta.env.VITE_API_URL;
-
-type Video = {
-  id: number;
-  id_author: number;
-  title: string;
-  category: string;
-  description: string;
-  path: string;
-  state: boolean;
-  views: number;
-};
+import type { MovieDTO, MovieUpdate } from "../types/index.ts";
+import RequestStatus from "../components/RequestStatus.tsx";
+import {
+  deleteMovie, getMovies, updateMovie, videoUrl,
+} from "../services/movieService.ts";
+import { errorMessage } from "../services/api.ts";
 
 function MyVideosPage() {
-  const [videos, setVideos] = useState<Video[]>([]);
+  const [videos, setVideos] = useState<MovieDTO[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
+
+  // error of the last edit or delete, shown above the list
+  const [actionError, setActionError] = useState("");
+  // id of the video being saved or deleted, to disable its buttons
+  const [busyVideoId, setBusyVideoId] = useState<number | null>(null);
 
   // Stores which video is currently being edited
   const [editingVideoId, setEditingVideoId] = useState<number | null>(null);
@@ -27,45 +27,38 @@ function MyVideosPage() {
 
   useEffect(() => {
     // Fetches the videos from the backend
-    fetch(`${API_URL}/api/movie`)
-      .then((response) => response.json())
-      .then((data) => {
-        setVideos(data);
-      })
-      .catch((error) => {
-        console.error("Error fetching videos:", error);
-      });
+    getMovies()
+      .then(setVideos)
+      .catch((err: unknown) => setLoadError(errorMessage(err)))
+      .finally(() => setLoading(false));
   }, []);
 
   // Deletes a video from the backend
-  const deleteVideo = async (id: number) => {
+  const deleteVideo = async (video: MovieDTO) => {
+    if (!window.confirm(`Delete "${video.title}"? This cannot be undone.`)) return;
+
+    setBusyVideoId(video.id);
+    setActionError("");
     try {
-      const response = await fetch(
-        `${API_URL}/api/movie/${id}`,
-        {
-          method: "DELETE",
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("Could not delete the video");
-      }
-
+      await deleteMovie(video.id);
       // Removes the video from the list shown on screen
       setVideos((currentVideos) =>
-        currentVideos.filter((video) => video.id !== id)
+        currentVideos.filter((v) => v.id !== video.id)
       );
-    } catch (error) {
-      console.error("Error deleting video:", error);
+    } catch (err) {
+      setActionError(errorMessage(err));
+    } finally {
+      setBusyVideoId(null);
     }
   };
 
   // Starts editing a video
-  const startEditing = (video: Video) => {
+  const startEditing = (video: MovieDTO) => {
     setEditingVideoId(video.id);
     setEditedTitle(video.title);
     setEditedCategory(video.category);
     setEditedDescription(video.description);
+    setActionError("");
   };
 
   // Cancels editing
@@ -78,49 +71,40 @@ function MyVideosPage() {
 
   // Saves the video changes
   const saveEdit = async (id: number) => {
-    try {
-      const response = await fetch(
-        `${API_URL}/api/movie/${id}`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            title: editedTitle,
-            category: editedCategory,
-            description: editedDescription,
-          }),
-        }
-      );
+    if (editedTitle.trim() === "") {
+      setActionError("The title can't be empty.");
+      return;
+    }
 
-      if (!response.ok) {
-        throw new Error("Could not update the video");
-      }
+    const changes: MovieUpdate = {
+      title: editedTitle.trim(),
+      category: editedCategory.trim(),
+      description: editedDescription.trim(),
+    };
+
+    setBusyVideoId(id);
+    setActionError("");
+    try {
+      await updateMovie(id, changes);
 
       // Updates the video shown on screen
       setVideos((currentVideos) =>
         currentVideos.map((video) =>
-          video.id === id
-            ? {
-                ...video,
-                title: editedTitle,
-                category: editedCategory,
-                description: editedDescription,
-              }
-            : video
+          video.id === id ? { ...video, ...changes } : video
         )
       );
 
       // Exits edit mode
       cancelEditing();
-    } catch (error) {
-      console.error("Error editing video:", error);
+    } catch (err) {
+      setActionError(errorMessage(err));
+    } finally {
+      setBusyVideoId(null);
     }
   };
 
   return (
-    <div className="min-h-screen p-8">
+    <div className="min-h-screen p-4 sm:p-8">
 
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
@@ -140,14 +124,19 @@ function MyVideosPage() {
       <hr className="mb-8" />
 
       {/* Video list */}
+      {actionError && (
+        <div role="alert" className="alert alert-error mb-6">{actionError}</div>
+      )}
+
       <div className="space-y-6">
 
-        {videos.length === 0 ? (
-          <p className="text-lg">
-            You have no uploaded videos.
-          </p>
-        ) : (
-          videos.map((video) => (
+        <RequestStatus
+          loading={loading}
+          error={loadError}
+          isEmpty={videos.length === 0}
+          emptyMessage="You have no uploaded videos."
+        >
+          {videos.map((video) => (
             <div
               key={video.id}
               className="flex flex-col md:flex-row items-center gap-6 border-b pb-6"
@@ -155,7 +144,7 @@ function MyVideosPage() {
 
               {/* Video */}
               <video
-                src={`${API_URL}${video.path}`}
+                src={videoUrl(video.path)}
                 controls
                 className="w-full max-w-64 h-36 object-cover rounded"
               />
@@ -169,7 +158,7 @@ function MyVideosPage() {
 
                     <div>
                       <label className="font-bold block mb-1">
-                        File name:
+                        Title:
                       </label>
 
                       <input
@@ -216,7 +205,7 @@ function MyVideosPage() {
                   /* Normal mode */
                   <>
                     <p className="text-lg">
-                      <strong>File name:</strong>{" "}
+                      <strong>Title:</strong>{" "}
                       {video.title}
                     </p>
 
@@ -241,16 +230,21 @@ function MyVideosPage() {
                   <>
                     {/* Save */}
                     <button
+                      type="button"
                       className="btn btn-success w-32"
                       onClick={() => saveEdit(video.id)}
+                      disabled={busyVideoId === video.id}
                     >
+                      {busyVideoId === video.id && <span className="loading loading-spinner loading-sm" />}
                       Save
                     </button>
 
                     {/* Cancel */}
                     <button
+                      type="button"
                       className="btn btn-outline w-32"
                       onClick={cancelEditing}
+                      disabled={busyVideoId === video.id}
                     >
                       Cancel
                     </button>
@@ -259,16 +253,21 @@ function MyVideosPage() {
                   <>
                     {/* Delete */}
                     <button
+                      type="button"
                       className="btn btn-error w-32"
-                      onClick={() => deleteVideo(video.id)}
+                      onClick={() => deleteVideo(video)}
+                      disabled={busyVideoId === video.id}
                     >
+                      {busyVideoId === video.id && <span className="loading loading-spinner loading-sm" />}
                       Delete
                     </button>
 
                     {/* Edit */}
                     <button
+                      type="button"
                       className="btn btn-outline w-32"
                       onClick={() => startEditing(video)}
+                      disabled={busyVideoId === video.id}
                     >
                        Edit
                     </button>
@@ -278,8 +277,8 @@ function MyVideosPage() {
               </div>
 
             </div>
-          ))
-        )}
+          ))}
+        </RequestStatus>
 
       </div>
     </div>

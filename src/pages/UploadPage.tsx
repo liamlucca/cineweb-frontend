@@ -1,6 +1,9 @@
 import { useState } from 'react'
-
-const API_URL = import.meta.env.VITE_API_URL;
+import type { ChangeEvent } from 'react'
+import { Link } from 'react-router-dom'
+import type { MovieUploadData } from '../types/index.ts'
+import { uploadMovie } from '../services/movieService.ts'
+import { errorMessage } from '../services/api.ts'
 
 function UploadPage() {
   const [file, setFile] = useState<File | null>(null)
@@ -8,13 +11,15 @@ function UploadPage() {
   const [category, setCategory] = useState('')
   const [description, setDescription] = useState('')
   const [uploading, setUploading] = useState(false)
-  const [message, setMessage] = useState('')
+  const [success, setSuccess] = useState(false)
+  const [error, setError] = useState('')
   const [progress, setProgress] = useState(0)
 
-  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) { //e: the event fired when the input changes
+  function handleFileSelect(e: ChangeEvent<HTMLInputElement>) { //e: the event fired when the input changes
     const selectedFile = e.target.files?.[0]  //e.target is the HTML input. If nothing is found it returns undefined (hence the ?)
     if (selectedFile) {
       setFile(selectedFile)
+      setSuccess(false)
       if (!title) setTitle(selectedFile.name) // use the file name as default
     }
   }
@@ -22,65 +27,36 @@ function UploadPage() {
   async function handleSubmit() {
     if (!file) return
 
+    if (title.trim() === '') {
+      setError('Please give your video a title.')
+      return
+    }
+
     setUploading(true)
-  
-    const movieData = {
+    setProgress(0)
+    setSuccess(false)
+    setError('')
+
+    const movieData: MovieUploadData = {
+      // TODO: the backend still requires id_author. Remove it once it takes the uploader from the token.
       id_author: 2,
-      title: title,
-      category: category || 'General',
+      title: title.trim(),
+      category: category.trim() || 'General',
       views: 0,
-      description: description || 'No description',
+      description: description.trim() || 'No description',
       report: false,
       state: true
     }
-   
-    const formData = new FormData()
-    formData.append('data', JSON.stringify(movieData))
-    // NOTE: keep this key as 'file', the backend's multer config expects that exact field name
-    formData.append('file', file) 
 
     try {
-      /*const response = await fetch(`${API_URL}/api/movie`, {
-        method: 'POST',
-        body: formData
-      })*/
-
-      const response = await uploadWithProgress(formData, setProgress)
-
-
-      if (response.ok) {
-        setMessage('Uploaded!!!!')
-      } else {
-        const errorData = await response.json().catch(() => ({}))
-        setMessage(`ERROR (${response.status}): ${errorData.message || 'ERROR :('}`)
-      }
-    } catch (error) {
-      setMessage('COULD NOT CONNECT TO THE SERVER.')
+      await uploadMovie(movieData, file, setProgress)
+      setSuccess(true)
+    } catch (err) {
+      setError(errorMessage(err))
     }
 
     setUploading(false)
   }
-
-function uploadWithProgress(formData: FormData, onProgress: (pct: number) => void): Promise<Response> {
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-
-    xhr.upload.addEventListener("progress", (e) => {
-      if (e.lengthComputable) {
-        const pct = Math.round((e.loaded / e.total) * 100);
-        onProgress(pct);
-      }
-    });
-
-    xhr.addEventListener("load", () => {
-      resolve(new Response(xhr.responseText, { status: xhr.status }));
-    });
-    xhr.addEventListener("error", () => reject(new Error("upload failed")));
-
-    xhr.open("POST", `${API_URL}/api/movie`);
-    xhr.send(formData);
-  });
-}
 
   return (
     <div className="min-h-[78vh] flex items-center justify-center bg-base-100 p-6">
@@ -122,16 +98,24 @@ function uploadWithProgress(formData: FormData, onProgress: (pct: number) => voi
           />
  
           <button
+            type="button"
             className="btn bg-primary text-primary-content w-full mt-2"
             onClick={handleSubmit}
-            disabled={!file || uploading /* disable the submit button if there's no file or it's already uploading */}   
+            disabled={!file || uploading /* disable the submit button if there's no file or it's already uploading */}
           >
             {uploading ? 'Saving...' : 'Save Movie'}
           </button>
- 
+
           {uploading && <progress className="progress progress-primary w-full" value={progress} max={100} />} {/*the progress bar*/}
- 
-          {message && <p className="text-sm text-center">{message}</p>}
+
+          {error && <div role="alert" className="alert alert-error text-sm">{error}</div>}
+
+          {success && (
+            <div role="status" className="alert alert-success text-sm">
+              Your video was uploaded.
+              <Link to="/my-videos" className="link">See my videos</Link>
+            </div>
+          )}
         </div>
       </div>
     </div>

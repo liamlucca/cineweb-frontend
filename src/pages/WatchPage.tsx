@@ -1,41 +1,54 @@
-import { useParams } from "react-router-dom"
+import { Link, useParams } from "react-router-dom"
 import { useEffect, useState } from "react"
-import { MovieDTO } from "../types/index.ts"
+import type { MovieDTO } from "../types/index.ts"
 //import LanguagePanel from "../components/LanguagePanel.tsx"
+import { getMovie, videoUrl } from "../services/movieService.ts"
+import { errorMessage } from "../services/api.ts"
 import "../styles/WatchPage.css"
 
-const API_URL = import.meta.env.VITE_API_URL;
 //const LANGUAGES = ["Spanish (Latin America)", "Spanish (Spain)", "English", "French"]
 
 function WatchPage() {
-  const { id } = useParams()
+  const { id = '' } = useParams()
   const [movie, setMovie] = useState<MovieDTO | null>(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(false)
+  const [error, setError] = useState('')
   const [descriptionExpanded, setDescriptionExpanded] = useState(false)
-  const [showMoreBtn, setShowMoreBtn] = useState(false)
 
   useEffect(() => {
+    let cancelled = false
     setLoading(true)
-    setError(false)
+    setError('')
+    setDescriptionExpanded(false)
 
-    fetch(`${API_URL}/api/movie/${id}`)
-      .then(res => {
-        if (!res.ok) throw new Error("movie not found")
-        return res.json()
+    getMovie(id)
+      .then((data) => {
+        if (!cancelled) setMovie(data)
       })
-      .then((data: { movie: MovieDTO }) => setMovie(data.movie))
-      .catch(() => setError(true))
-      .finally(() => setLoading(false))
+      .catch((err: unknown) => {
+        if (!cancelled) setError(errorMessage(err))
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+
+    return () => { cancelled = true }
   }, [id])
 
   // CHECKING DATA
-  if (loading) return <p>Loading...</p>
-  if (error || !movie) return <p>Video not found.</p>
+  if (loading) {
+    return (
+      <div className="flex justify-center p-8">
+        <span className="loading loading-spinner loading-lg" aria-label="Loading" />
+      </div>
+    )
+  }
+  if (error || !movie) {
+    return <div role="alert" className="alert alert-error m-4">{error || "We couldn't find that video."}</div>
+  }
 
-  // Checking if the description is long enough to show the "See more" button
-  if(movie.description.length > 100 && !showMoreBtn)
-  setShowMoreBtn(true)
+  // the "See more" button only makes sense for long descriptions
+  const showMoreBtn = movie.description.length > 100
 
   return (
     <div className="watch-container">
@@ -44,12 +57,11 @@ function WatchPage() {
         </div>
 
         <div className="watch-video-box">
-          <video src={`${API_URL}/api/movie/${id}/stream`} controls />
-          {/* custom option: <video src={`${API_URL}/api/movie/${id}/stream`} controls />*/}
-          {/* option with express.static: <video src={`${API_URL}${movie.path}`} controls /> */}
+          {/* plays the file from the backend's static folder (the backend also offers /api/movie/:id/stream) */}
+          <video src={videoUrl(movie.path)} controls />
         </div>
 
-        <button className="watch-report-btn">Report</button>
+        <Link to="/report" className="watch-report-btn">Report</Link>
       </div>
 
       <div className="watch-right">
