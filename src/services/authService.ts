@@ -1,5 +1,7 @@
 import type { AuthResponse, LoginRequest, RegisterRequest } from '../types/index.ts';
-import { API_URL, ApiError } from './api.ts';
+import {
+  API_URL, ApiError, CONNECTION_ERROR, GENERIC_ERROR,
+} from './api.ts';
 import { isUser } from './session.ts';
 import MockAuthService from '../mockup/mockAuthService.ts';
 
@@ -12,9 +14,6 @@ export interface AuthService {
   login(request: LoginRequest): Promise<AuthResponse>;
   register(request: RegisterRequest): Promise<AuthResponse>;
 }
-
-const CONNECTION_ERROR = 'We couldn\'t reach the server. Please try again later.';
-const GENERIC_ERROR = 'Something went wrong. Please try again.';
 
 function isAuthResponse(value: unknown): value is AuthResponse {
   if (typeof value !== 'object' || value === null) return false;

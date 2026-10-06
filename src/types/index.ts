@@ -18,6 +18,20 @@ export interface MovieDTO {
   state: boolean
 }
 
+// fields a viewer can change from "My Videos"
+export type MovieUpdate = Pick<MovieDTO, 'title' | 'category' | 'description'>
+
+// JSON sent in the "data" part of the upload request (the backend requires id_author for now)
+export interface MovieUploadData {
+  id_author: number
+  title: string
+  category: string
+  views: number
+  description: string
+  report: boolean
+  state: boolean
+}
+
 // SERIES
 
 export interface Episode {
