@@ -4,17 +4,15 @@ import { MOCK_SERIES } from "../mockup/mockSeries.ts"
 import "../styles/SeasonSelectPage.css"
 
 function SeasonSelectPage() {
-const { id, seasonIndex } = useParams();
-
-//converting them from string to int
-const sIndex = seasonIndex ? parseInt(seasonIndex, 10) : 0;
+  // the route is /series/:id/seasons, so there is no season in the URL: start with the first one
+  const { id } = useParams()
 
   const navigate = useNavigate()
 
   // TODO: replace with a real fetch once SeasonRepository exists
   const series = MOCK_SERIES
 
-  const [activeSeasonId, setActiveSeasonId] = useState(series.seasons[sIndex]?.id)
+  const [activeSeasonId, setActiveSeasonId] = useState(series.seasons[0]?.id)
   const activeSeason = series.seasons.find(s => s.id === activeSeasonId)
 
   return (
@@ -66,8 +64,10 @@ const sIndex = seasonIndex ? parseInt(seasonIndex, 10) : 0;
         </div>
 
         <button
+          type="button"
           className="season-episodes-btn"
-          onClick={() => navigate(`/series/${id}/season/${activeSeason?.id}/episodes`)}
+          disabled={!activeSeason}
+          onClick={() => activeSeason && navigate(`/series/${id}/season/${activeSeason.id}/episodes`)}
         >
           View Episodes
         </button>
