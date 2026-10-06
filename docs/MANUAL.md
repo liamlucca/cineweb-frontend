@@ -136,6 +136,7 @@ Details:
 | `src/context/` | App-wide state shared through React Context. Today: the session. |
 | `src/hooks/` | Custom hooks. Today: `useAuth`. |
 | `src/types/` | All TypeScript types for domain data and DTOs, in a single file `index.ts`. |
+| `src/test/` | Test setup (`setup.ts`). Test files live next to the code they test, as `*.test.tsx`. |
 | `src/mockup/` | Hardcoded fake data used while the backend is missing (`mockSeries.ts`, `mockAuthService.ts`). |
 | `src/styles/` | Plain CSS for a few pages (`WatchPage.css`, `ReportPage.css`, ...). |
 | `public/` | Static files copied as-is (`vite.svg`). |
@@ -213,10 +214,10 @@ Content pages ──▶ movieService.ts ──fetch / XMLHttpRequest──▶ ba
 | `.env` | Local environment variables. Ignored by git (`.gitignore`). |
 | `.env.example` | Template to copy into `.env`: `VITE_API_URL` and `VITE_USE_MOCK_AUTH`. |
 | `src/vite-env.d.ts` | Tells TypeScript which `VITE_` variables exist. |
-| `vite.config.ts` | Vite plugins (React, Tailwind) and an allowed host for the dev server. |
+| `vite.config.ts` | Vite plugins (React, Tailwind), an allowed host for the dev server, and the Vitest settings (`test`: jsdom, `src/test/setup.ts`, `src/**/*.test.{ts,tsx}`). |
 | `tsconfig.app.json` | TypeScript in strict mode, plus `noUnusedLocals` and `noUnusedParameters`. |
 | `eslint.config.js` | ESLint with TypeScript, React Hooks and React Refresh rules. |
-| `package.json` | Dependencies and scripts: `dev`, `dev:host`, `build`, `lint`, `preview`. |
+| `package.json` | Dependencies and scripts: `dev`, `dev:host`, `build`, `lint`, `preview`, `test` (runs the unit tests once), `test:watch`. |
 
 ---
 
@@ -577,7 +578,7 @@ Trade-off: the file grows with every entity. Some types do not match the domain 
 - Navbar avatar: a fixed DaisyUI sample image (`MainNavbar.tsx:49-51`).
 
 **What is not tested**
-- There are **no automated tests**. `package.json` has no test runner and no test script.
+- Unit tests cover only `ProtectedRoute` and `AuthPage` (5.2). There is no end-to-end test yet.
 - The user system was checked with `tsc -b` and `pnpm build`, both passing. It was **not**
   tested by clicking through the browser before this manual was written.
 - `HttpAuthService` has never talked to a real backend.
@@ -629,7 +630,7 @@ Requirements set by the course for regularity and approval. Status: ✅ Met · �
 
 | Requirement | Where in the code | Status |
 |---|---|---|
-| At least one component unit test | None. No test runner in `package.json` | ❌ |
+| At least one component unit test | Vitest + Testing Library, run with `pnpm test`. `ProtectedRoute.test.tsx` (guest → `/login`, wrong role → `/`, allowed role sees the page) and `AuthPage.test.tsx` (sends the login request, friendly and generic error messages, switch to sign up). Both give the component a fake `AuthContext` value, so they do not use the mock service or localStorage | ✅ |
 | At least one end-to-end test | None | ❌ |
 | Login, with access protected by the backend's user levels via `ProtectedRoute` | Frontend side done: `ProtectedRoute.tsx`, `AuthPage.tsx`, `AuthProvider.tsx`, roles `administrator` / `viewer` in `types/index.ts:92`. But the user levels come from the **mock**, because the backend has no auth, and no admin routes exist yet | 🟡 |
 | Environments defined with `.env` | `.env` (git-ignored), `.env.example`, `VITE_API_URL`, `VITE_USE_MOCK_AUTH`, typed in `vite-env.d.ts`. There is one environment, with no separate development/production files | ✅ |

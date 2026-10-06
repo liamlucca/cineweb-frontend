@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite'
+import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
@@ -9,5 +9,11 @@ export default defineConfig({
     allowedHosts: [
       'cinema.onthewifi.com'
     ]
-  }
+  },
+  // unit tests (pnpm test): run in a fake browser (jsdom)
+  test: {
+    environment: 'jsdom',
+    setupFiles: ['./src/test/setup.ts'],
+    include: ['src/**/*.test.{ts,tsx}'],
+  },
 })
