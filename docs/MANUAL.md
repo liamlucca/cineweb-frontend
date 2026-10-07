@@ -164,7 +164,7 @@ Details:
 | `src/mockup/` | Fake stand-ins used while the backend is missing. Today only `mockAuthService.ts`. |
 | `src/styles/` | Plain CSS for a few pages (`WatchPage.css`, `ReportPage.css`, ...). |
 | `public/` | Static files copied as-is (`vite.svg`). |
-| `docs/` | This manual and the domain diagram: `dnd_cineweb.drawio` (source of truth for names) and `dnd_cineweb.png` (visual reference). |
+| `docs/` | This manual, the domain diagram (`dnd_cineweb.drawio`, source of truth for names, and `dnd_cineweb.png`, visual reference) and the screen sketches (`frontend sketch by Cande.drawio.pdf`, 19 pages, in Spanish). |
 
 ### 2.2 Important files one by one
 
@@ -416,7 +416,8 @@ gets the generic message, so technical details never reach the user.
 4. `RequestStatus` handles loading, error and "No videos match ..." (`SearchPage.tsx:46-53`).
 
 ⚠️ The filter checkboxes ("CATEGORY 1/2/3", `SearchBar.tsx:51-60`) are visual only: they are not
-read anywhere. Filtering by category, type or director (sketch 2) is ⏳ pending.
+read anywhere. Filtering by category, type or director (sketch 2) is ⏳ pending. Search only looks
+at movies: series do not appear in the results, although they do appear on the landing page.
 
 ### 3.4 Watching a movie ✅ ⚠️
 
@@ -673,6 +674,8 @@ Trade-off: the file grows with every entity. Some types do not match the domain 
 - `HttpAuthService` has never talked to a real backend.
 - The movie pages were not tested against the backend. The local backend copy now exposes the
   movie endpoints (1.3), so they can be tested by running it.
+- The series pages, the series upload page and the series block of "My Videos" were checked with
+  `tsc -b`, `pnpm lint`, `pnpm test` and `pnpm build` only. They were not run against a backend.
 
 **Known security risks**
 - Token in localStorage, readable by any script on the page (4.3).
@@ -693,6 +696,14 @@ Trade-off: the file grows with every entity. Some types do not match the domain 
 | Series and episodes send the logged-in user's id as `id_author`, against the agreed contract. | `UploadSeriesPage.tsx:43`, `47` |
 | Uploaded episodes with the same title overwrite each other's video (backend file naming). | `POST /api/episodes` (1.3) |
 | "My Videos" lists every movie, not only the user's own (series are filtered by user). | `MyVideosPage.tsx:37-43` |
+| Series cannot be edited or deleted from "My Videos" (the backend has `PATCH` / `DELETE /api/series/:id`). The sketch asks for a logical delete. | `MyVideosPage.tsx` |
+| "My Videos" does not show season, episode, duration, subtitles or audio, as the sketch does. The backend has no duration, subtitle or audio fields. | `MyVideosPage.tsx` |
+| Any user can add seasons or episodes to someone else's series, or edit and delete any content, by sending the request by hand. The frontend only hides other users' series; the backend must check ownership (1.4). | `UploadSeriesPage.tsx:21-28` |
+| A 403 (forbidden) answer would show the generic "Something went wrong" message, because no friendly message is mapped for it yet. | `api.ts:41-44`, `api.ts:68-70` |
+| Search does not include series. | `SearchPage.tsx` |
+| On the landing page, if the series request fails, the movies are not shown either (`Promise.all`). | `LandingPage.tsx:19` |
+| The series pages do not check that the season belongs to the series in the URL, or the episode to the season. | `EpisodeListPage.tsx`, `WatchSeriesPage.tsx` |
+| The movie upload form is not a `<form>`: Enter does not submit and the inputs have no `required`. The series forms are. | `UploadPage.tsx:61-122` |
 | The report page does not know which video is reported, and sends nothing. | `ReportPage.tsx:27-34` |
 | The flag button that opens received complaints is shown to everyone; guests go to login and administrators are sent home. | `SearchBar.tsx:63` |
 | Custom CSS files instead of DaisyUI classes in several pages. | `src/styles/` |
