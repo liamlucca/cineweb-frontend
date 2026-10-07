@@ -17,6 +17,7 @@ function toSeries(dto: SeriesDTO): Series {
     title: dto.title,
     category: dto.category,
     description: dto.description,
+    uploaderId: dto.id_author,
   };
 }
 

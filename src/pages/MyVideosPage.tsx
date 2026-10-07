@@ -1,11 +1,13 @@
 import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
-import type { MovieDTO, MovieUpdate } from "../types/index.ts";
+import type { MovieDTO, MovieUpdate, Series } from "../types/index.ts";
 import RequestStatus from "../components/RequestStatus.tsx";
 import {
   deleteMovie, getMovies, updateMovie, videoUrl,
 } from "../services/movieService.ts";
+import { getAllSeries } from "../services/seriesService.ts";
 import { errorMessage } from "../services/api.ts";
+import useAuth from "../hooks/useAuth.ts";
 
 function MyVideosPage() {
   const [videos, setVideos] = useState<MovieDTO[]>([]);
@@ -25,6 +27,13 @@ function MyVideosPage() {
   const [editedCategory, setEditedCategory] = useState("");
   const [editedDescription, setEditedDescription] = useState("");
 
+  // Series uploaded by the logged-in user (only listed for now, not edited)
+  const { user } = useAuth();
+  const userId = user?.id;
+  const [mySeries, setMySeries] = useState<Series[]>([]);
+  const [loadingSeries, setLoadingSeries] = useState(true);
+  const [seriesError, setSeriesError] = useState("");
+
   useEffect(() => {
     // Fetches the videos from the backend
     getMovies()
@@ -32,6 +41,14 @@ function MyVideosPage() {
       .catch((err: unknown) => setLoadError(errorMessage(err)))
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    // There is no "series of a user" endpoint, so all series are fetched and filtered here
+    getAllSeries()
+      .then((allSeries) => setMySeries(allSeries.filter((item) => item.uploaderId === userId)))
+      .catch((err: unknown) => setSeriesError(errorMessage(err)))
+      .finally(() => setLoadingSeries(false));
+  }, [userId]);
 
   // Deletes a video from the backend
   const deleteVideo = async (video: MovieDTO) => {
@@ -112,18 +129,25 @@ function MyVideosPage() {
           My Videos
         </h1>
 
-        <Link
-          to="/upload"
-          className="btn btn-primary"
-        >
-          Upload videos
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            to="/upload"
+            className="btn btn-primary"
+          >
+            Upload videos
+          </Link>
+          <Link to="/upload-series" className="btn btn-primary">
+            Upload series
+          </Link>
+        </div>
       </div>
 
       {/* Horizontal line */}
       <hr className="mb-8" />
 
       {/* Video list */}
+      <h2 className="text-2xl font-bold mb-4">Movies</h2>
+
       {actionError && (
         <div role="alert" className="alert alert-error mb-6">{actionError}</div>
       )}
@@ -280,6 +304,53 @@ function MyVideosPage() {
           ))}
         </RequestStatus>
 
+      </div>
+
+      {/* Series list */}
+      <h2 className="text-2xl font-bold mt-10 mb-4">Series</h2>
+
+      <div className="space-y-6">
+        <RequestStatus
+          loading={loadingSeries}
+          error={seriesError}
+          isEmpty={mySeries.length === 0}
+          emptyMessage="You have no uploaded series."
+        >
+          {mySeries.map((item) => (
+            <div
+              key={item.id}
+              className="flex flex-col md:flex-row items-center gap-6 border-b pb-6"
+            >
+              {/* Cover placeholder, same size as the movie videos */}
+              <div className="w-full max-w-64 h-36 rounded bg-base-300 flex items-center justify-center">
+                <span className="badge badge-secondary">Series</span>
+              </div>
+
+              {/* Details */}
+              <div className="flex-1 w-full">
+                <p className="text-lg">
+                  <strong>Title:</strong>{" "}
+                  {item.title}
+                </p>
+                <p className="text-lg">
+                  <strong>Category:</strong>{" "}
+                  {item.category}
+                </p>
+                <p className="text-lg">
+                  <strong>Description:</strong>{" "}
+                  {item.description}
+                </p>
+              </div>
+
+              {/* Buttons */}
+              <div className="flex flex-col items-center justify-center gap-3">
+                <Link to={`/series/${item.id}/seasons`} className="btn btn-outline w-32">
+                  See seasons
+                </Link>
+              </div>
+            </div>
+          ))}
+        </RequestStatus>
       </div>
     </div>
   );

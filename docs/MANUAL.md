@@ -170,7 +170,7 @@ Details:
 |---|---|
 | `index.html` | The single HTML page. Has `<div id="root">` and loads `src/main.tsx`. |
 | `src/main.tsx` | Mounts React into `#root`, wrapping `<App />` in `<AuthProvider>` (`main.tsx:9-11`). |
-| `src/App.tsx` | Declares every route. Reads the session with `useAuth()` and passes it to the navbar (`App.tsx:20-24`). |
+| `src/App.tsx` | Declares every route. Reads the session with `useAuth()` and passes it to the navbar (`App.tsx:21-25`). |
 | `src/index.css` | Loads Tailwind and DaisyUI, with the `night` theme as default. |
 
 **User system**
@@ -266,7 +266,7 @@ Mock accounts (`src/mockup/mockAuthService.ts:21-46`):
 Example: a guest clicks "Upload Video", which leads to `/upload`.
 
 1. **The guard stops the guest.** `/upload` is inside `<ProtectedRoute allowedRoles={['viewer']}>`
-   (`App.tsx:35-36`). `ProtectedRoute` reads `user` from `useAuth()`. It is `null`, so it renders
+   (`App.tsx:36-37`). `ProtectedRoute` reads `user` from `useAuth()`. It is `null`, so it renders
    `<Navigate to="/login" ... state={{ from: "/upload" }} />` (`ProtectedRoute.tsx:16-17`).
    The `from` value remembers where the guest wanted to go.
 2. **The form is shown.** `AuthPage` renders the login form. The inputs are *uncontrolled*: they
@@ -291,7 +291,7 @@ Example: a guest clicks "Upload Video", which leads to `/upload`.
    `setUser(user)`.
 7. **React re-renders.** Because `user` changed, `useMemo` builds a new context value
    (`AuthProvider.tsx:18-33`), and every component that uses `useAuth()` re-renders:
-   - `MainNavbar` now shows "Hi, viewer" and the dropdown with "Log Out" (`MainNavbar.tsx:35-69`).
+   - `MainNavbar` now shows "Hi, viewer" and the dropdown with "Log Out" (`MainNavbar.tsx:35-70`).
    - `AuthPage` now has a `user`, so it renders `<Navigate to={from} replace />` with
      `from = "/upload"` (`AuthPage.tsx:19-22`). The page never calls `navigate()` itself: the
      redirect happens because the state changed.
@@ -328,7 +328,7 @@ From there it follows the same path as login (steps 4–8).
 #### How a route is protected by role
 
 `ProtectedRoute` (`ProtectedRoute.tsx`) is a *layout route*: it has no `path` of its own, and it
-wraps child routes (`App.tsx:35-41`). For each visit it decides one of three outcomes:
+wraps child routes (`App.tsx:36-43`). For each visit it decides one of three outcomes:
 
 | Situation | Result | Code |
 |---|---|---|
@@ -343,7 +343,7 @@ only see the public pages.
 #### Logging out
 
 The "Log Out" button calls `handleLogout` (`MainNavbar.tsx:13-16`). It calls the `onLogout` prop,
-which `App` connects to `logout` from the context (`App.tsx:24`), and then navigates to `/`.
+which `App` connects to `logout` from the context (`App.tsx:25`), and then navigates to `/`.
 `logout` (`AuthProvider.tsx:28-31`) removes both localStorage keys and sets `user` to `null`.
 
 #### What happens when something fails
@@ -449,20 +449,29 @@ requires `id_author` today. Remove it once the backend reads the token.
 
 ### 3.6 My Videos ✅ ⚠️
 
-1. On mount, it calls `getMovies()` (`MyVideosPage.tsx:28-34`), meaning **all** movies,
+1. On mount, it calls `getMovies()` (`MyVideosPage.tsx:37-43`), meaning **all** movies,
    not only the user's own. `RequestStatus` handles loading, error and "You have no uploaded
-   videos." (`MyVideosPage.tsx:133-137`).
+   videos." (`MyVideosPage.tsx:157-162`).
 2. **Delete:** `deleteVideo` asks for confirmation with `window.confirm`, then calls `deleteMovie`
-   and removes the video from the list on success (`MyVideosPage.tsx:37-53`). This is a real
+   and removes the video from the list on success (`MyVideosPage.tsx:54-70`). This is a real
    delete request, while the planned design describes a logical delete (an `active` flag). Whether
    the backend deletes the row or marks it inactive was not checked.
-3. **Edit:** `startEditing` copies the video into the edit fields (`MyVideosPage.tsx:56-62`).
+3. **Edit:** `startEditing` copies the video into the edit fields (`MyVideosPage.tsx:73-79`).
    `saveEdit` rejects an empty title, calls `updateMovie` and updates the list locally
-   (`MyVideosPage.tsx:73-104`). `cancelEditing` clears the fields (`MyVideosPage.tsx:65-70`).
-4. Errors from edit or delete are shown above the list (`MyVideosPage.tsx:127-129`). While a video
+   (`MyVideosPage.tsx:90-121`). `cancelEditing` clears the fields (`MyVideosPage.tsx:82-87`).
+4. Errors from edit or delete are shown above the list (`MyVideosPage.tsx:151-153`). While a video
    is being saved or deleted, its buttons are disabled (`busyVideoId`).
 
-⚠️ It lists every movie, because there is no "my movies" endpoint yet.
+5. **Series:** a second block, "Series", lists the series uploaded by the logged-in user. There is
+   no "series of a user" endpoint, so it fetches every series with `getAllSeries()` and keeps the
+   ones whose `uploaderId` is the user's `id` (`MyVideosPage.tsx:45-51`). It has its own loading,
+   error and "You have no uploaded series." state (`MyVideosPage.tsx:313`), so a failure in one
+   block does not hide the other. Each series links to its seasons. Series cannot be edited or
+   deleted from here yet.
+6. The header has "Upload videos" and "Upload series" buttons (`MyVideosPage.tsx:139`).
+
+⚠️ It lists every movie, because there is no "my movies" endpoint yet, while series are filtered by
+user. `uploaderId` comes from the backend's `id_author`; the diagram calls it `upladerId`, a typo.
 
 ### 3.7 Series: seasons, episodes, watching and uploading ✅ ⚠️
 
@@ -630,7 +639,7 @@ relies on HTML validation (`required`, `type="email"`).
 
 ### 4.6 Route protection with a layout route
 
-`ProtectedRoute` renders `<Outlet />` and wraps a group of routes (`App.tsx:35-41`), instead of
+`ProtectedRoute` renders `<Outlet />` and wraps a group of routes (`App.tsx:36-43`), instead of
 wrapping each page separately. Adding a protected page means adding one line inside the group.
 Trade-off: everything in a group shares the same roles. A page that needs other roles needs its
 own group.
@@ -676,7 +685,7 @@ Trade-off: the file grows with every entity. Some types do not match the domain 
 | Hardcoded `id_author: 2`, because the backend still requires it. | `UploadPage.tsx:42` |
 | Series and episodes send the logged-in user's id as `id_author`, against the agreed contract. | `UploadSeriesPage.tsx:39`, `43` |
 | Uploaded episodes with the same title overwrite each other's video (backend file naming). | `POST /api/episodes` (1.3) |
-| "My Videos" lists every movie, not only the user's own. | `MyVideosPage.tsx:28-34` |
+| "My Videos" lists every movie, not only the user's own (series are filtered by user). | `MyVideosPage.tsx:37-43` |
 | The report page does not know which video is reported, and sends nothing. | `ReportPage.tsx:27-34` |
 | The flag button that opens received complaints is shown to everyone; guests go to login and administrators are sent home. | `SearchBar.tsx:63` |
 | Custom CSS files instead of DaisyUI classes in several pages. | `src/styles/` |
@@ -697,7 +706,7 @@ Requirements set by the course for regularity and approval. Status: ✅ Met · �
 | Handle errors in a user-friendly way | `AuthPage` + `authService.ts`; content pages through `movieService.ts` (`ApiError`) + `errorMessage()` (`api.ts:18-20`), shown by `RequestStatus` or alerts in `WatchPage`, `UploadPage`, `MyVideosPage` | ✅ |
 | React to state changes | `SearchPage.tsx:33` (effect on `[query]`), `WatchPage.tsx:30` (`[id]`), the series pages (effects on their route params), `AuthPage.tsx:19-22` (redirect when `user` changes), `MainNavbar` (guest vs user) | ✅ |
 | Use input props | `Section` (`title`, `movies`), `MainNavbar` (`user`), `ProtectedRoute` (`allowedRoles`), `AuthProvider` (`children`), `RequestStatus`, `SearchBar` (`initialText`) | ✅ |
-| Use output props | `MainNavbar` `onLogout` (`MainNavbar.tsx:7`, `App.tsx:24`), `NewSeriesForm` and `NewSeasonForm` `onCreated` (`UploadSeriesPage.tsx:40`, `42`) | ✅ |
+| Use output props | `MainNavbar` `onLogout` (`MainNavbar.tsx:7`, `App.tsx:25`), `NewSeriesForm` and `NewSeasonForm` `onCreated` (`UploadSeriesPage.tsx:40`, `42`) | ✅ |
 | At least one service | `src/services/authService.ts`, `src/services/movieService.ts`, `src/services/seriesService.ts` (+ `session.ts`, `api.ts`) | ✅ |
 | Model API data with interfaces/types | `src/types/index.ts` (`MovieDTO`, `MovieUpdate`, `MovieUploadData`, `SeriesDTO`, `SeasonDTO`, `EpisodeDTO`, `User`, `LoginRequest`, `AuthResponse`, ...) | ✅ |
 | Apply an OOP design pattern | Strategy: `AuthService` interface with `HttpAuthService` and `MockAuthService` classes (`authService.ts`, `mockAuthService.ts`) | ✅ |

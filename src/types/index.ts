@@ -43,6 +43,8 @@ export interface Series {
   title: string
   category: string
   description: string
+  // id of the user who uploaded it ("upladerId" in the diagram, a typo)
+  uploaderId: number
 }
 
 export interface Season {
