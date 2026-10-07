@@ -11,17 +11,21 @@ import NewEpisodeForm from '../components/NewEpisodeForm.tsx';
 // Upload a series step by step: create the series, add seasons, then upload episodes
 function UploadSeriesPage() {
   const { user } = useAuth();
+  const userId = user?.id;
+  // only the user's own series: nobody can add seasons or episodes to someone else's series
   const [series, setSeries] = useState<Series[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [newestSeason, setNewestSeason] = useState<Season | null>(null);
 
   useEffect(() => {
+    // There is no "series of a user" endpoint, so all series are fetched and filtered here.
+    // This only hides other users' series: the backend must also reject those requests.
     getAllSeries()
-      .then(setSeries)
+      .then((allSeries) => setSeries(allSeries.filter((item) => item.uploaderId === userId)))
       .catch((err: unknown) => setError(errorMessage(err)))
       .finally(() => setLoading(false));
-  }, []);
+  }, [userId]);
 
   // ProtectedRoute only lets logged-in viewers in, so this only satisfies TypeScript
   if (!user) return null;

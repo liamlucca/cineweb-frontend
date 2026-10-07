@@ -47,7 +47,7 @@ function NewSeasonForm({ series, onCreated }: NewSeasonFormProps) {
       <div className="card-body gap-3">
         <h2 className="card-title">2. New season</h2>
 
-        {series.length === 0 && <p className="text-sm opacity-70">Create a series first.</p>}
+        {series.length === 0 && <p className="text-sm opacity-70">You have no series yet. Create one first.</p>}
 
         <label className="label" htmlFor="season-series">Series</label>
         <select
