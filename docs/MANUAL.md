@@ -80,7 +80,7 @@ branch `Liam`) on 2026-10-05. The backend team may have newer code that was not 
 | `POST /api/movie` (multipart: `data` + `file`) | `uploadMovie` (`movieService.ts:50-60`), used by `UploadPage` | ✅ Available. Requires `id_author` (see below). |
 | `PATCH /api/movie/:id` | `updateMovie` (`movieService.ts:38-44`), used by `MyVideosPage` | ✅ Available. |
 | `DELETE /api/movie/:id` | `deleteMovie` (`movieService.ts:46-48`), used by `MyVideosPage` | ✅ Available. |
-| `GET /api/series` → array of series | `getAllSeries` (`seriesService.ts:70-73`), used by `SeriesListPage` | ✅ Available. |
+| `GET /api/series` → array of series | `getAllSeries` (`seriesService.ts:70-73`), used by `LandingPage` and `UploadSeriesPage` | ✅ Available. |
 | `GET /api/series/:id` → `{ serie }` | `getSeries` (`seriesService.ts:75-78`), used by the three series pages | ✅ Available. |
 | `GET /api/seasons/serie/:serieId` → array of seasons | `getSeasons` (`seriesService.ts:81-84`), used by `SeasonSelectPage` | ✅ Available. |
 | `GET /api/seasons/:id` → `{ season }` | `getSeason` (`seriesService.ts:86-89`), used by `EpisodeListPage`, `WatchSeriesPage` | ✅ Available. |
@@ -170,7 +170,7 @@ Details:
 |---|---|
 | `index.html` | The single HTML page. Has `<div id="root">` and loads `src/main.tsx`. |
 | `src/main.tsx` | Mounts React into `#root`, wrapping `<App />` in `<AuthProvider>` (`main.tsx:9-11`). |
-| `src/App.tsx` | Declares every route. Reads the session with `useAuth()` and passes it to the navbar (`App.tsx:21-25`). |
+| `src/App.tsx` | Declares every route. Reads the session with `useAuth()` and passes it to the navbar (`App.tsx:20-24`). |
 | `src/index.css` | Loads Tailwind and DaisyUI, with the `night` theme as default. |
 
 **User system**
@@ -186,7 +186,7 @@ Details:
 | `src/hooks/useAuth.ts` | The hook every component uses to read the session. |
 | `src/components/ProtectedRoute.tsx` | Route guard: login required and, optionally, specific roles. |
 | `src/pages/AuthPage.tsx` | Login and sign-up form (`/login`). |
-| `src/components/MainNavbar.tsx` | Shows a "Series" link to everyone, "Log In" for guests, greeting and "Log Out" for users. |
+| `src/components/MainNavbar.tsx` | Shows "Log In" for guests, greeting and "Log Out" for users. |
 
 **Content screens**
 
@@ -195,19 +195,18 @@ Details:
 | `src/services/movieService.ts` | Every `/api/movie` call (`getMovies`, `getMovie`, `updateMovie`, `deleteMovie`, `uploadMovie`) plus `videoUrl` and `toMovie`. |
 | `src/services/seriesService.ts` | Every `/api/series`, `/api/seasons` and `/api/episodes` call. Converts the backend's snake_case DTOs into `Series`, `Season` and `Episode`. |
 | `src/components/RequestStatus.tsx` | Shows a spinner, a friendly error or an empty message, and its `children` only when there is data. |
-| `src/pages/LandingPage.tsx` | Home page. Fetches movies and shows them in two `Section` carousels. |
+| `src/pages/LandingPage.tsx` | Home page. Fetches movies and series and shows them together in two `Section` carousels. |
 | `src/pages/SearchPage.tsx` | Fetches movies and filters them by title using `?q=`. |
 | `src/pages/WatchPage.tsx` | Shows one movie and plays it. |
 | `src/pages/UploadPage.tsx` | Upload form with a progress bar. |
 | `src/pages/UploadSeriesPage.tsx` | Upload a series in three steps (`/upload-series`). Holds the list of series and passes it to the three forms below. |
 | `src/components/NewSeriesForm.tsx`, `NewSeasonForm.tsx`, `NewEpisodeForm.tsx` | The three forms of `UploadSeriesPage`: create a series, add a season, upload an episode. |
 | `src/pages/MyVideosPage.tsx` | List with edit and delete. |
-| `src/pages/SeriesListPage.tsx` | Grid of every series (`/series`), each linking to its seasons. |
 | `src/pages/SeasonSelectPage.tsx`, `EpisodeListPage.tsx`, `WatchSeriesPage.tsx` | Series screens: seasons of a series, episodes of a season, and the episode player. |
 | `src/pages/ReportPage.tsx` | Report form (reasons + "Other"). |
 | `src/pages/ComplaintPage.tsx` | "Received Complaints" list with hardcoded data. |
 | `src/pages/AppealPage.tsx` | Placeholder: only renders the word "appeal". |
-| `src/components/Section.tsx` | Horizontal carousel of movie cards. Props: `title`, `movies`. |
+| `src/components/Section.tsx` | Horizontal carousel of movie and series cards, each with a "Movie" or "Series" badge. Props: `title`, `movies`, optional `series`. |
 | `src/components/SearchBar.tsx` | Search input that navigates to `/search?q=...`. Also links to `/complaint`. |
 | `src/components/LanguagePanel.tsx` | Collapsible panel of language toggles. Currently not used: its imports are commented out in `WatchPage.tsx:4` and `WatchSeriesPage.tsx:2`. |
 | `src/types/index.ts` | All types: `Movie`, `MovieDTO`, `Series`, `Season`, `Episode` and their DTOs, `Report`, `Complaint`, `User`, `LoginRequest`, ... |
@@ -221,7 +220,7 @@ index.html
         └── <App>                           routes (App.tsx)
             ├── <MainNavbar user onLogout>  reads session through props
             └── <Routes>
-                ├── public pages            LandingPage, SearchPage, WatchPage, SeriesListPage, series pages, AuthPage
+                ├── public pages            LandingPage, SearchPage, WatchPage, series pages, AuthPage
                 └── <ProtectedRoute allowedRoles={['viewer']}>
                     └── UploadPage, UploadSeriesPage, MyVideosPage, ReportPage, ComplaintPage, AppealPage
 
@@ -267,7 +266,7 @@ Mock accounts (`src/mockup/mockAuthService.ts:21-46`):
 Example: a guest clicks "Upload Video", which leads to `/upload`.
 
 1. **The guard stops the guest.** `/upload` is inside `<ProtectedRoute allowedRoles={['viewer']}>`
-   (`App.tsx:37-38`). `ProtectedRoute` reads `user` from `useAuth()`. It is `null`, so it renders
+   (`App.tsx:35-36`). `ProtectedRoute` reads `user` from `useAuth()`. It is `null`, so it renders
    `<Navigate to="/login" ... state={{ from: "/upload" }} />` (`ProtectedRoute.tsx:16-17`).
    The `from` value remembers where the guest wanted to go.
 2. **The form is shown.** `AuthPage` renders the login form. The inputs are *uncontrolled*: they
@@ -292,7 +291,7 @@ Example: a guest clicks "Upload Video", which leads to `/upload`.
    `setUser(user)`.
 7. **React re-renders.** Because `user` changed, `useMemo` builds a new context value
    (`AuthProvider.tsx:18-33`), and every component that uses `useAuth()` re-renders:
-   - `MainNavbar` now shows "Hi, viewer" and the dropdown with "Log Out" (`MainNavbar.tsx:38-72`).
+   - `MainNavbar` now shows "Hi, viewer" and the dropdown with "Log Out" (`MainNavbar.tsx:35-69`).
    - `AuthPage` now has a `user`, so it renders `<Navigate to={from} replace />` with
      `from = "/upload"` (`AuthPage.tsx:19-22`). The page never calls `navigate()` itself: the
      redirect happens because the state changed.
@@ -329,7 +328,7 @@ From there it follows the same path as login (steps 4–8).
 #### How a route is protected by role
 
 `ProtectedRoute` (`ProtectedRoute.tsx`) is a *layout route*: it has no `path` of its own, and it
-wraps child routes (`App.tsx:37-43`). For each visit it decides one of three outcomes:
+wraps child routes (`App.tsx:35-41`). For each visit it decides one of three outcomes:
 
 | Situation | Result | Code |
 |---|---|---|
@@ -344,7 +343,7 @@ only see the public pages.
 #### Logging out
 
 The "Log Out" button calls `handleLogout` (`MainNavbar.tsx:13-16`). It calls the `onLogout` prop,
-which `App` connects to `logout` from the context (`App.tsx:25`), and then navigates to `/`.
+which `App` connects to `logout` from the context (`App.tsx:24`), and then navigates to `/`.
 `logout` (`AuthProvider.tsx:28-31`) removes both localStorage keys and sets `user` to `null`.
 
 #### What happens when something fails
@@ -381,17 +380,23 @@ gets the generic message, so technical details never reach the user.
 
 ### 3.2 Landing page ✅
 
-1. `LandingPage` starts with an empty `movies` array, `loading = true` and no `error`
-   (`LandingPage.tsx:11-13`).
-2. A `useEffect` with `[]` runs once when the page mounts and calls `getMovies()`, which does
-   `GET {API_URL}/api/movie` (`LandingPage.tsx:15-20`, `movieService.ts:25-29`).
+1. `LandingPage` starts with empty `movies` and `series` arrays, `loading = true` and no `error`
+   (`LandingPage.tsx:12-15`).
+2. A `useEffect` with `[]` runs once when the page mounts. It calls `getMovies()` and
+   `getAllSeries()` at the same time with `Promise.all` (`LandingPage.tsx:19`), which do
+   `GET {API_URL}/api/movie` and `GET {API_URL}/api/series` (`movieService.ts:25-29`,
+   `seriesService.ts:70-73`). If either request fails, the page shows that friendly error.
 3. Each `MovieDTO` is converted into the simpler `Movie` type by `toMovie`: `category` becomes
    `platform`, and `path` becomes a full URL in `file` (`movieService.ts:16-23`).
-4. `RequestStatus` shows a spinner while loading, a friendly error if the call fails, or
-   "There are no videos yet." when the list is empty (`LandingPage.tsx:26-34`).
-5. Otherwise, the same list is shown twice, in "Uploaded" and "More Videos", by `Section`, a
-   carousel with left and right arrows that use `scrollBy` (`Section.tsx:12-20`).
-6. Each card links to `/watch/:id` (`Section.tsx:66`).
+4. `RequestStatus` shows a spinner while loading, a friendly error if a call fails, or
+   "There are no videos yet." when there are no movies and no series (`LandingPage.tsx:32-40`).
+5. Otherwise, the same movies and series are shown twice, in "Uploaded" and "More Videos", by
+   `Section`, a carousel with left and right arrows that use `scrollBy` (`Section.tsx:31-39`).
+6. `Section` turns both lists into one list of cards (`Section.tsx:22`). Each card has a `kind`
+   (`'movie'` or `'series'`) that decides its badge, "Movie" or "Series" (`Section.tsx:84`), and
+   where "See more" goes: `/watch/:id` for a movie, `/series/:id/seasons` for a series
+   (`Section.tsx:89`). The React `key` includes the kind, because a movie and a series can have
+   the same `id` (`Section.tsx:79`).
 
 ### 3.3 Search ✅ ⚠️
 
@@ -459,7 +464,7 @@ requires `id_author` today. Remove it once the backend reads the token.
 
 ⚠️ It lists every movie, because there is no "my movies" endpoint yet.
 
-### 3.7 Series: list, seasons, episodes, watching and uploading ✅ ⚠️
+### 3.7 Series: seasons, episodes, watching and uploading ✅ ⚠️
 
 The three pages read from the backend through `seriesService.ts`. Each one follows the same pattern
 as `WatchPage`: a `useEffect` that depends on the route params, a `cancelled` flag that ignores
@@ -467,11 +472,8 @@ answers for old params, and `RequestStatus` for loading and errors. When a page 
 things, it asks for them at the same time with `Promise.all`; if any request fails, the page shows
 that request's friendly error.
 
-- `SeriesListPage` (`/series`): loads every series once on mount with `getAllSeries()` and shows
-  them in a DaisyUI card grid: 1 column on phones, 2 from `sm`, 3 from `md`, 4 from `lg`
-  (`SeriesListPage.tsx:30`). Each card links to `/series/:id/seasons`. Shows "There are no series
-  yet." when the list is empty. It is reached from the "Series" link in the navbar, shown to
-  everyone (`MainNavbar.tsx:30`).
+Series are reached from the landing page carousels, where they appear next to the movies with a
+"Series" badge (3.2). There is no separate series list page.
 
 **Types.** `Series`, `Season` and `Episode` (`types/index.ts`) are the shapes the pages use. Their
 names follow the domain diagram except where it is known to be wrong: `Series` uses `id` (the
@@ -496,7 +498,7 @@ belongs to the season: they trust the links.
 #### Uploading a series ✅ ⚠️
 
 `UploadSeriesPage` (`/upload-series`, viewers only, linked as "Upload Series" in the avatar menu,
-`MainNavbar.tsx:66`) shows three forms side by side on large screens and stacked on phones
+`MainNavbar.tsx:63`) shows three forms side by side on large screens and stacked on phones
 (`UploadSeriesPage.tsx:37`). The order matters, because each step needs the one before it.
 
 1. **Loading.** On mount the page calls `getAllSeries()` (`UploadSeriesPage.tsx:19-24`), so the
@@ -628,7 +630,7 @@ relies on HTML validation (`required`, `type="email"`).
 
 ### 4.6 Route protection with a layout route
 
-`ProtectedRoute` renders `<Outlet />` and wraps a group of routes (`App.tsx:37-43`), instead of
+`ProtectedRoute` renders `<Outlet />` and wraps a group of routes (`App.tsx:35-41`), instead of
 wrapping each page separately. Adding a protected page means adding one line inside the group.
 Trade-off: everything in a group shares the same roles. A page that needs other roles needs its
 own group.
@@ -648,7 +650,7 @@ Trade-off: the file grows with every entity. Some types do not match the domain 
 - Report submission (only `console.log`).
 - Uploader id (`id_author: 2` in `UploadPage.tsx:42`). Series and episodes send the logged-in
   user's id instead, which is a mock id while the mock login is used.
-- Navbar avatar: a fixed DaisyUI sample image (`MainNavbar.tsx:52-54`).
+- Navbar avatar: a fixed DaisyUI sample image (`MainNavbar.tsx:49-51`).
 
 **What is not tested**
 - Unit tests cover only `ProtectedRoute` and `AuthPage` (5.2). There is no end-to-end test yet.
@@ -695,7 +697,7 @@ Requirements set by the course for regularity and approval. Status: ✅ Met · �
 | Handle errors in a user-friendly way | `AuthPage` + `authService.ts`; content pages through `movieService.ts` (`ApiError`) + `errorMessage()` (`api.ts:18-20`), shown by `RequestStatus` or alerts in `WatchPage`, `UploadPage`, `MyVideosPage` | ✅ |
 | React to state changes | `SearchPage.tsx:33` (effect on `[query]`), `WatchPage.tsx:30` (`[id]`), the series pages (effects on their route params), `AuthPage.tsx:19-22` (redirect when `user` changes), `MainNavbar` (guest vs user) | ✅ |
 | Use input props | `Section` (`title`, `movies`), `MainNavbar` (`user`), `ProtectedRoute` (`allowedRoles`), `AuthProvider` (`children`), `RequestStatus`, `SearchBar` (`initialText`) | ✅ |
-| Use output props | `MainNavbar` `onLogout` (`MainNavbar.tsx:7`, `App.tsx:25`), `NewSeriesForm` and `NewSeasonForm` `onCreated` (`UploadSeriesPage.tsx:40`, `42`) | ✅ |
+| Use output props | `MainNavbar` `onLogout` (`MainNavbar.tsx:7`, `App.tsx:24`), `NewSeriesForm` and `NewSeasonForm` `onCreated` (`UploadSeriesPage.tsx:40`, `42`) | ✅ |
 | At least one service | `src/services/authService.ts`, `src/services/movieService.ts`, `src/services/seriesService.ts` (+ `session.ts`, `api.ts`) | ✅ |
 | Model API data with interfaces/types | `src/types/index.ts` (`MovieDTO`, `MovieUpdate`, `MovieUploadData`, `SeriesDTO`, `SeasonDTO`, `EpisodeDTO`, `User`, `LoginRequest`, `AuthResponse`, ...) | ✅ |
 | Apply an OOP design pattern | Strategy: `AuthService` interface with `HttpAuthService` and `MockAuthService` classes (`authService.ts`, `mockAuthService.ts`) | ✅ |

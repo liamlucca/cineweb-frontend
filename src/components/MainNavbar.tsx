@@ -26,9 +26,6 @@ function MainNavbar({ user, onLogout }: MainNavbarProps) {
   
   {/*============== RIGHT ==============*/}
 
-  {/*Series list is public, so everyone sees this link*/}
-  <Link className="btn btn-ghost btn-sm mr-2" to="/series">Series</Link>
-
   {/*Guests only see the log in button*/}
   {!user && (
     <Link className="btn btn-primary btn-sm md:mr-10" to="/login">Log In</Link>

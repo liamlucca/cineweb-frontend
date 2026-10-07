@@ -1,20 +1,26 @@
 import Section from "../components/Section.tsx"
 import SearchBar from "../components/SearchBar.tsx"
 import RequestStatus from "../components/RequestStatus.tsx"
-import type { Movie } from "../types/index.ts"
+import type { Movie, Series } from "../types/index.ts"
 import { useEffect, useState } from "react"
 import { getMovies, toMovie } from "../services/movieService.ts"
+import { getAllSeries } from "../services/seriesService.ts"
 import { errorMessage } from "../services/api.ts"
 
 function LandingPage() {
 
   const [movies, setMovies] = useState<Movie[]>([])
+  const [series, setSeries] = useState<Series[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
   useEffect(() => {
-    getMovies()
-      .then((response) => setMovies(response.map(toMovie)))
+    // movies and series are requested at the same time
+    Promise.all([getMovies(), getAllSeries()])
+      .then(([moviesData, seriesData]) => {
+        setMovies(moviesData.map(toMovie))
+        setSeries(seriesData)
+      })
       .catch((err: unknown) => setError(errorMessage(err)))
       .finally(() => setLoading(false))
   }, [])
@@ -26,11 +32,11 @@ function LandingPage() {
       <RequestStatus
         loading={loading}
         error={error}
-        isEmpty={movies.length === 0}
+        isEmpty={movies.length === 0 && series.length === 0}
         emptyMessage="There are no videos yet."
       >
-        <Section title="Uploaded" movies={movies} />
-        <Section title="More Videos" movies={movies} />
+        <Section title="Uploaded" movies={movies} series={series} />
+        <Section title="More Videos" movies={movies} series={series} />
       </RequestStatus>
     </div>
   )

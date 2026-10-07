@@ -1,13 +1,32 @@
 import { Link } from "react-router-dom"
-import type { Movie } from "../types/index.ts"
+import type { Movie, Series } from "../types/index.ts"
 
 interface SectionProps {
   title: string
   movies: Movie[]
+  // optional, so pages that only have movies (like search) don't need to pass it
+  series?: Series[]
 }
 
-function Section({ title, movies }: SectionProps) {
+// One card of the carousel: "kind" tells movies and series apart
+interface CarouselItem {
+  kind: 'movie' | 'series'
+  id: number
+  title: string
+  subtitle: string
+  link: string
+}
 
+function Section({ title, movies, series = [] }: SectionProps) {
+
+  const items: CarouselItem[] = [
+    ...movies.map((movie): CarouselItem => ({
+      kind: 'movie', id: movie.id, title: movie.title, subtitle: movie.platform, link: `/watch/${movie.id}`,
+    })),
+    ...series.map((item): CarouselItem => ({
+      kind: 'series', id: item.id, title: item.title, subtitle: item.category, link: `/series/${item.id}/seasons`,
+    })),
+  ]
 
   function scrollLeft(e: React.MouseEvent<HTMLButtonElement>) {
     const carousel = e.currentTarget.parentElement?.querySelector('.carousel')
@@ -53,17 +72,21 @@ function Section({ title, movies }: SectionProps) {
           ❮
         </button>
 
-        {/* each movie */}
+        {/* each movie or series */}
         <div className="carousel carousel-center gap-4 px-4 w-full justify-items-start">  {/*THIS IS WHERE THE JUSTIFY/CENTERING HAPPENS*/}
-          {movies.map((movie) => (
-              <div key={movie.id} className="carousel-item">
+          {items.map((item) => (
+              // a movie and a series can share the same id, so the key needs the kind too
+              <div key={`${item.kind}-${item.id}`} className="carousel-item">
               <div className="card bg-base-200 w-60 sm:w-44 md:w-48">  {/*THIS IS THE CARD SIZE FOR EACH BREAKPOINT*/}
                 <figure className="bg-base-300 h-24 sm:h-28">
                 </figure>
                 <div className="card-body p-3">
-                  <p className="text-sm font-bold">{movie.title}</p>
-                  <p className="text-xs text-gray-400">{movie.platform}</p>
-                  <Link to={`/watch/${movie.id}`} className="btn btn-primary btn-sm mt-1">See more</Link>
+                  <span className={`badge badge-sm ${item.kind === 'series' ? 'badge-secondary' : 'badge-primary'}`}>
+                    {item.kind === 'series' ? 'Series' : 'Movie'}
+                  </span>
+                  <p className="text-sm font-bold">{item.title}</p>
+                  <p className="text-xs text-gray-400">{item.subtitle}</p>
+                  <Link to={item.link} className="btn btn-primary btn-sm mt-1">See more</Link>
                   </div>
               </div>
             </div>
