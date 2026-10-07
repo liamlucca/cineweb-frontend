@@ -63,6 +63,7 @@ function MainNavbar({ user, onLogout }: MainNavbarProps) {
           <>
             <li><Link to="/my-videos">My Videos</Link></li>
             <li><Link to="/upload">Upload Video</Link></li>
+            <li><Link to="/upload-series">Upload Series</Link></li>
           </>
         )}
         <li><button type="button" onClick={handleLogout}>Log Out</button></li>

@@ -3,6 +3,7 @@ import LandingPage from './pages/LandingPage.tsx'
 import SearchPage from './pages/SearchPage'
 import AuthPage from './pages/AuthPage.tsx'
 import UploadPage from './pages/UploadPage.tsx'
+import UploadSeriesPage from './pages/UploadSeriesPage.tsx'
 import MainNavbar from './components/MainNavbar.tsx'
 import WatchPage from './pages/WatchPage.tsx'
 import WatchSeriesPage from './pages/WatchSeriesPage.tsx'
@@ -36,6 +37,7 @@ function App() {
         {/* viewer-only screens (sketches 5, 7 and 8) */}
         <Route element={<ProtectedRoute allowedRoles={['viewer']} />}>
           <Route path="/upload" element={<UploadPage />} />
+          <Route path="/upload-series" element={<UploadSeriesPage />} />
           <Route path="/my-videos" element={<MyVideosPage />} />
           <Route path="/report" element={<ReportPage />} />
           <Route path="/complaint" element={<ComplaintPage/>} />

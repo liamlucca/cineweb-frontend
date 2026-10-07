@@ -86,6 +86,9 @@ branch `Liam`) on 2026-10-05. The backend team may have newer code that was not 
 | `GET /api/seasons/:id` → `{ season }` | `getSeason` (`seriesService.ts:86-89`), used by `EpisodeListPage`, `WatchSeriesPage` | ✅ Available. |
 | `GET /api/episodes/season/:seasonId` → array of episodes | `getEpisodes` (`seriesService.ts:92-95`), used by `EpisodeListPage` | ✅ Available. |
 | `GET /api/episodes/:id` → `{ episode }` | `getEpisode` (`seriesService.ts:97-100`), used by `WatchSeriesPage` | ✅ Available. |
+| `POST /api/series` (JSON) → `{ message, data }` | `createSeries` (`seriesService.ts:102-104`), used by `NewSeriesForm` | ✅ Available. Requires `id_author` (see below). |
+| `POST /api/seasons` (JSON) → `{ message, data }` | `createSeason` (`seriesService.ts:106-108`), used by `NewSeasonForm` | ✅ Available. |
+| `POST /api/episodes` (multipart: `data` + `archivo`) | `uploadEpisode` (`seriesService.ts:110-121`), used by `NewEpisodeForm` | ✅ Available. Requires `id_author`. The file field is `archivo`, not `file` (`seriesService.ts:119`). |
 | Static files under `/movies` and `/series` | `videoUrl` (`movieService.ts:11-13`) builds video URLs from `path` | ✅ Available. |
 
 **Endpoints available but not used by the frontend yet**
@@ -93,7 +96,6 @@ branch `Liam`) on 2026-10-05. The backend team may have newer code that was not 
 | Endpoints | Notes |
 |---|---|
 | `GET /api/movie/:id/stream` | Streams the video in chunks. `WatchPage` plays the static file instead (`WatchPage.tsx:61`); both work. |
-| `POST /api/series`, `POST /api/seasons`, `POST /api/episodes` | Written in `seriesService.ts` (`createSeries`, `createSeason`, `uploadEpisode`) but not used by any page yet. Episode upload expects the file field `archivo`, not `file` (`seriesService.ts:119`). |
 | `PUT` / `PATCH` / `DELETE` on series, seasons and episodes, `GET /api/episodes/:id/stream` | Not used. `WatchSeriesPage` plays the static file, like `WatchPage`. |
 | `/api/reviews` (also `/api/reviews/viewer/:viewerId` and `/api/reviews/audiovisual/:type/:audiovisualId`) | Reviews (sketch 6) are not built in the frontend. |
 
@@ -108,8 +110,14 @@ Details:
 
 - **Response shape of `GET /api/movie/:id`.** `getMovie` (`movieService.ts:31-36`) expects
   `{ movie: MovieDTO }`, which matches what the backend sends.
-- **`id_author` on upload.** The backend rejects a movie without `id_author`, so the frontend still
-  sends it, hardcoded (`UploadPage.tsx:42`). This goes against the agreed contract below.
+- **`id_author` on upload.** The backend rejects a movie, a series or an episode without
+  `id_author`, so the frontend still sends it. For movies it is hardcoded (`UploadPage.tsx:42`).
+  For series and episodes it is the logged-in user's `id` (`UploadSeriesPage.tsx:39`, `43`). Both
+  go against the agreed contract below.
+- **Stored episode file name.** The `path` the backend returns for an uploaded episode is built from
+  the episode title, and `data` must be sent before the file for that to work
+  (`seriesService.ts:116-117`). Two episodes with the same title (for example "Pilot" in two
+  series) get the same `path`, so the second upload replaces the first one's video.
 - **Agreed auth contract.** `POST /auth/login` receives `{ email, password }`.
   `POST /auth/register` receives `{ username, firstName, lastName, email, password }` and
   always creates a viewer. (`RegisterRequest` in the code still has an optional `phone`, which the
@@ -131,6 +139,8 @@ Details:
 3. Agree on error status codes. The frontend already maps 401 (wrong login), 400 (invalid data)
    and 409 (email or username in use) to messages (`authService.ts:27-36`).
 4. Optional but useful: an endpoint such as `GET /auth/me` to check a stored token (see 4.3).
+5. Give each uploaded episode a unique file name, so episodes with the same title do not overwrite
+   each other (see 1.3).
 
 ---
 
@@ -189,6 +199,8 @@ Details:
 | `src/pages/SearchPage.tsx` | Fetches movies and filters them by title using `?q=`. |
 | `src/pages/WatchPage.tsx` | Shows one movie and plays it. |
 | `src/pages/UploadPage.tsx` | Upload form with a progress bar. |
+| `src/pages/UploadSeriesPage.tsx` | Upload a series in three steps (`/upload-series`). Holds the list of series and passes it to the three forms below. |
+| `src/components/NewSeriesForm.tsx`, `NewSeasonForm.tsx`, `NewEpisodeForm.tsx` | The three forms of `UploadSeriesPage`: create a series, add a season, upload an episode. |
 | `src/pages/MyVideosPage.tsx` | List with edit and delete. |
 | `src/pages/SeriesListPage.tsx` | Grid of every series (`/series`), each linking to its seasons. |
 | `src/pages/SeasonSelectPage.tsx`, `EpisodeListPage.tsx`, `WatchSeriesPage.tsx` | Series screens: seasons of a series, episodes of a season, and the episode player. |
@@ -211,7 +223,7 @@ index.html
             └── <Routes>
                 ├── public pages            LandingPage, SearchPage, WatchPage, SeriesListPage, series pages, AuthPage
                 └── <ProtectedRoute allowedRoles={['viewer']}>
-                    └── UploadPage, MyVideosPage, ReportPage, ComplaintPage, AppealPage
+                    └── UploadPage, UploadSeriesPage, MyVideosPage, ReportPage, ComplaintPage, AppealPage
 
 Pages / components ──useAuth()──▶ AuthContext ◀── AuthProvider
 AuthProvider ──▶ authService (Http or Mock) ──▶ backend /auth or localStorage
@@ -447,7 +459,7 @@ requires `id_author` today. Remove it once the backend reads the token.
 
 ⚠️ It lists every movie, because there is no "my movies" endpoint yet.
 
-### 3.7 Series: seasons, episodes, watching an episode ✅ ⚠️
+### 3.7 Series: list, seasons, episodes, watching and uploading ✅ ⚠️
 
 The three pages read from the backend through `seriesService.ts`. Each one follows the same pattern
 as `WatchPage`: a `useEffect` that depends on the route params, a `cancelled` flag that ignores
@@ -457,7 +469,7 @@ that request's friendly error.
 
 - `SeriesListPage` (`/series`): loads every series once on mount with `getAllSeries()` and shows
   them in a DaisyUI card grid: 1 column on phones, 2 from `sm`, 3 from `md`, 4 from `lg`
-  (`SeriesListPage.tsx:31`). Each card links to `/series/:id/seasons`. Shows "There are no series
+  (`SeriesListPage.tsx:30`). Each card links to `/series/:id/seasons`. Shows "There are no series
   yet." when the list is empty. It is reached from the "Series" link in the navbar, shown to
   everyone (`MainNavbar.tsx:30`).
 
@@ -480,6 +492,39 @@ relationships, and the backend serves them from separate endpoints.
 
 ⚠️ The pages do not check that the season belongs to the series in the URL, or that the episode
 belongs to the season: they trust the links.
+
+#### Uploading a series ✅ ⚠️
+
+`UploadSeriesPage` (`/upload-series`, viewers only, linked as "Upload Series" in the avatar menu,
+`MainNavbar.tsx:66`) shows three forms side by side on large screens and stacked on phones
+(`UploadSeriesPage.tsx:37`). The order matters, because each step needs the one before it.
+
+1. **Loading.** On mount the page calls `getAllSeries()` (`UploadSeriesPage.tsx:19-24`), so the
+   season and episode forms can offer the existing series. `RequestStatus` shows a spinner or a
+   friendly error.
+2. **New series.** `NewSeriesForm` sends title, category, description and `id_author` with
+   `createSeries` (`NewSeriesForm.tsx:28`). On success it clears its fields and calls its
+   `onCreated` output prop (`NewSeriesForm.tsx:38`). The page adds the new series to its list
+   (`UploadSeriesPage.tsx:40`), so it appears at once in the other two forms.
+3. **New season.** `NewSeasonForm` receives the list through its `series` prop. It sends the chosen
+   series, the season number and a description with `createSeason` (`NewSeasonForm.tsx:28`). On
+   success it suggests the next season number (`NewSeasonForm.tsx:36`) and calls `onCreated`, which
+   the page stores as `newestSeason` (`UploadSeriesPage.tsx:42`).
+4. **New episode.** `NewEpisodeForm` loads the seasons of the chosen series in a `useEffect` on
+   `[seriesId, newestSeason]` (`NewEpisodeForm.tsx:35-54`), so a season added in step 3 shows up
+   without reloading. Changing the series clears the chosen season (`NewEpisodeForm.tsx:56-61`). On
+   submit it calls `uploadEpisode` with a progress bar (`NewEpisodeForm.tsx:80`), the same way as
+   movies (3.5). On success it shows a link to that season's episodes, suggests the next episode
+   number and clears the form, including the file input with `form.reset()`
+   (`NewEpisodeForm.tsx:89-93`).
+
+All three are real `<form>` elements with `required` inputs, so Enter submits and the browser
+checks empty fields. Each form has its own `submitting` (or `uploading`), `error` and success
+state.
+
+⚠️ `id_author` is the logged-in user's `id`. With the mock login this is a mock id, which may not
+match any user in the backend. Episodes with the same title overwrite each other's video (1.3).
+Not tested against a running backend yet.
 
 ### 3.8 Report a video 🧪
 
@@ -601,7 +646,8 @@ Trade-off: the file grows with every entity. Some types do not match the domain 
 - Authentication (`mockAuthService.ts`), while `VITE_USE_MOCK_AUTH = true`.
 - Received complaints (`ComplaintPage.tsx:13-34`).
 - Report submission (only `console.log`).
-- Uploader id (`id_author: 2` in `UploadPage.tsx:42`).
+- Uploader id (`id_author: 2` in `UploadPage.tsx:42`). Series and episodes send the logged-in
+  user's id instead, which is a mock id while the mock login is used.
 - Navbar avatar: a fixed DaisyUI sample image (`MainNavbar.tsx:52-54`).
 
 **What is not tested**
@@ -626,6 +672,8 @@ Trade-off: the file grows with every entity. Some types do not match the domain 
 | Issue | Where |
 |---|---|
 | Hardcoded `id_author: 2`, because the backend still requires it. | `UploadPage.tsx:42` |
+| Series and episodes send the logged-in user's id as `id_author`, against the agreed contract. | `UploadSeriesPage.tsx:39`, `43` |
+| Uploaded episodes with the same title overwrite each other's video (backend file naming). | `POST /api/episodes` (1.3) |
 | "My Videos" lists every movie, not only the user's own. | `MyVideosPage.tsx:28-34` |
 | The report page does not know which video is reported, and sends nothing. | `ReportPage.tsx:27-34` |
 | The flag button that opens received complaints is shown to everyone; guests go to login and administrators are sent home. | `SearchBar.tsx:63` |
@@ -643,11 +691,11 @@ Requirements set by the course for regularity and approval. Status: ✅ Met · �
 
 | Requirement | Where in the code | Status |
 |---|---|---|
-| Handle user events (click, input...) | `AuthPage.tsx` (`onSubmit`, `toggleMode`), `SearchBar.tsx:41-46` (`onChange`, `onKeyDown`, `onClick`), `UploadPage.tsx:68-107`, `MyVideosPage.tsx` (edit/delete buttons) | ✅ |
+| Handle user events (click, input...) | `AuthPage.tsx` (`onSubmit`, `toggleMode`), `SearchBar.tsx:41-46` (`onChange`, `onKeyDown`, `onClick`), `UploadPage.tsx:68-107`, `MyVideosPage.tsx` (edit/delete buttons), the series upload forms (`onSubmit`, `onChange`) | ✅ |
 | Handle errors in a user-friendly way | `AuthPage` + `authService.ts`; content pages through `movieService.ts` (`ApiError`) + `errorMessage()` (`api.ts:18-20`), shown by `RequestStatus` or alerts in `WatchPage`, `UploadPage`, `MyVideosPage` | ✅ |
 | React to state changes | `SearchPage.tsx:33` (effect on `[query]`), `WatchPage.tsx:30` (`[id]`), the series pages (effects on their route params), `AuthPage.tsx:19-22` (redirect when `user` changes), `MainNavbar` (guest vs user) | ✅ |
 | Use input props | `Section` (`title`, `movies`), `MainNavbar` (`user`), `ProtectedRoute` (`allowedRoles`), `AuthProvider` (`children`), `RequestStatus`, `SearchBar` (`initialText`) | ✅ |
-| Use output props | `MainNavbar` `onLogout` (`MainNavbar.tsx:7`, `App.tsx:25`). It is the only one so far | ✅ |
+| Use output props | `MainNavbar` `onLogout` (`MainNavbar.tsx:7`, `App.tsx:25`), `NewSeriesForm` and `NewSeasonForm` `onCreated` (`UploadSeriesPage.tsx:40`, `42`) | ✅ |
 | At least one service | `src/services/authService.ts`, `src/services/movieService.ts`, `src/services/seriesService.ts` (+ `session.ts`, `api.ts`) | ✅ |
 | Model API data with interfaces/types | `src/types/index.ts` (`MovieDTO`, `MovieUpdate`, `MovieUploadData`, `SeriesDTO`, `SeasonDTO`, `EpisodeDTO`, `User`, `LoginRequest`, `AuthResponse`, ...) | ✅ |
 | Apply an OOP design pattern | Strategy: `AuthService` interface with `HttpAuthService` and `MockAuthService` classes (`authService.ts`, `mockAuthService.ts`) | ✅ |
