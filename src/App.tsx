@@ -6,6 +6,7 @@ import UploadPage from './pages/UploadPage.tsx'
 import MainNavbar from './components/MainNavbar.tsx'
 import WatchPage from './pages/WatchPage.tsx'
 import WatchSeriesPage from './pages/WatchSeriesPage.tsx'
+import SeriesListPage from './pages/SeriesListPage.tsx'
 import SeasonSelectPage from './pages/SeasonSelectPage.tsx'
 import EpisodeListPage from './pages/EpisodeListPage.tsx'
 import ReportPage from './pages/ReportPage.tsx'
@@ -27,6 +28,7 @@ function App() {
         <Route path="/login" element={<AuthPage />} />
         <Route path="/search" element={<SearchPage />} />
         <Route path="/watch/:id" element={<WatchPage />} />
+        <Route path="/series" element={<SeriesListPage />} />
         <Route path="/watch-series/:id/:seasonId/:episodeId" element={<WatchSeriesPage />} />
         <Route path="/series/:id/seasons" element={<SeasonSelectPage />} />
         <Route path="/series/:id/season/:seasonId/episodes" element={<EpisodeListPage />} />
