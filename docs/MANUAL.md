@@ -75,12 +75,12 @@ branch `Liam`) on 2026-10-05. The backend team may have newer code that was not 
 |---|---|---|
 | `POST /auth/login` → `{ token, user }` | `src/services/authService.ts:26` | ⏳ Does not exist. Agreed with the backend team. |
 | `POST /auth/register` → `{ token, user }` | `src/services/authService.ts:32` | ⏳ Does not exist. Agreed with the backend team. |
-| `GET /api/movie` → array of movies | `getMovies` (`movieService.ts:42-46`), used by `LandingPage`, `SearchPage`, `MyVideosPage` | ✅ Available. |
-| `GET /api/movie/:id` → `{ movie }` | `getMovie` (`movieService.ts:48-53`), used by `WatchPage` | ✅ Available. |
-| `POST /api/movie` (multipart: `data` + `file`) | `uploadMovie` (`movieService.ts:68-97`), used by `UploadPage` | ✅ Available. Requires `id_author` (see below). |
-| `PATCH /api/movie/:id` | `updateMovie` (`movieService.ts:55-61`), used by `MyVideosPage` | ✅ Available. |
-| `DELETE /api/movie/:id` | `deleteMovie` (`movieService.ts:63-65`), used by `MyVideosPage` | ✅ Available. |
-| Static files under `/movies` and `/series` | `videoUrl` (`movieService.ts:28-30`) builds video URLs from `path` | ✅ Available. |
+| `GET /api/movie` → array of movies | `getMovies` (`movieService.ts:25-29`), used by `LandingPage`, `SearchPage`, `MyVideosPage` | ✅ Available. |
+| `GET /api/movie/:id` → `{ movie }` | `getMovie` (`movieService.ts:31-36`), used by `WatchPage` | ✅ Available. |
+| `POST /api/movie` (multipart: `data` + `file`) | `uploadMovie` (`movieService.ts:50-60`), used by `UploadPage` | ✅ Available. Requires `id_author` (see below). |
+| `PATCH /api/movie/:id` | `updateMovie` (`movieService.ts:38-44`), used by `MyVideosPage` | ✅ Available. |
+| `DELETE /api/movie/:id` | `deleteMovie` (`movieService.ts:46-48`), used by `MyVideosPage` | ✅ Available. |
+| Static files under `/movies` and `/series` | `videoUrl` (`movieService.ts:11-13`) builds video URLs from `path` | ✅ Available. |
 
 **Endpoints available but not used by the frontend yet**
 
@@ -99,7 +99,7 @@ branch `Liam`) on 2026-10-05. The backend team may have newer code that was not 
 
 Details:
 
-- **Response shape of `GET /api/movie/:id`.** `getMovie` (`movieService.ts:48-53`) expects
+- **Response shape of `GET /api/movie/:id`.** `getMovie` (`movieService.ts:31-36`) expects
   `{ movie: MovieDTO }`, which matches what the backend sends.
 - **`id_author` on upload.** The backend rejects a movie without `id_author`, so the frontend still
   sends it, hardcoded (`UploadPage.tsx:42`). This goes against the agreed contract below.
@@ -160,7 +160,7 @@ Details:
 | `src/services/authService.ts` | `AuthService` interface, `HttpAuthService` (real backend) and the exported `authService` that picks real or mock. |
 | `src/mockup/mockAuthService.ts` | `MockAuthService`: fake login and register using localStorage. |
 | `src/services/session.ts` | Saves, reads and clears the session in localStorage. `isUser` type guard. |
-| `src/services/api.ts` | `API_URL`, the shared error messages, the `ApiError` class, `errorMessage()` and `authHeader()`. |
+| `src/services/api.ts` | `API_URL`, the shared error messages, the `ApiError` class, `errorMessage()`, `authHeader()`, and the HTTP helpers every content service uses: `request()` (fetch + friendly errors), `readJson()` and `uploadWithProgress()`. |
 | `src/context/AuthContext.ts` | The context object and its type `AuthContextValue`. |
 | `src/context/AuthProvider.tsx` | The component that owns the session state and provides it. |
 | `src/hooks/useAuth.ts` | The hook every component uses to read the session. |
@@ -339,7 +339,7 @@ which `App` connects to `logout` from the context (`App.tsx:24`), and then navig
 The error appears in a DaisyUI `alert` with `role="alert"` (`AuthPage.tsx:89-93`), and
 `submitting` goes back to `false` so they can try again (`AuthPage.tsx:46`).
 
-How the messages travel: services throw `ApiError` (`api.ts:9-14`), an `Error` whose message is
+How the messages travel: services throw `ApiError` (`api.ts:10-15`), an `Error` whose message is
 already friendly. The page shows `err.message` only when the error is an `ApiError`. Anything else
 gets the generic message, so technical details never reach the user.
 
@@ -358,9 +358,9 @@ gets the generic message, so technical details never reach the user.
 1. `LandingPage` starts with an empty `movies` array, `loading = true` and no `error`
    (`LandingPage.tsx:11-13`).
 2. A `useEffect` with `[]` runs once when the page mounts and calls `getMovies()`, which does
-   `GET {API_URL}/api/movie` (`LandingPage.tsx:15-20`, `movieService.ts:42-46`).
+   `GET {API_URL}/api/movie` (`LandingPage.tsx:15-20`, `movieService.ts:25-29`).
 3. Each `MovieDTO` is converted into the simpler `Movie` type by `toMovie`: `category` becomes
-   `platform`, and `path` becomes a full URL in `file` (`movieService.ts:33-40`).
+   `platform`, and `path` becomes a full URL in `file` (`movieService.ts:16-23`).
 4. `RequestStatus` shows a spinner while loading, a friendly error if the call fails, or
    "There are no videos yet." when the list is empty (`LandingPage.tsx:26-34`).
 5. Otherwise, the same list is shown twice, in "Uploaded" and "More Videos", by `Section`, a
@@ -404,11 +404,11 @@ reporting yet (3.8).
    (`UploadPage.tsx:18-25`).
 2. On "Save Movie", `handleSubmit` checks that the title is not empty, then builds `movieData`
    (`UploadPage.tsx:27-49`).
-3. It calls `uploadMovie` (`UploadPage.tsx:52`, `movieService.ts:68-97`). The service builds a
-   `FormData` with two parts, `data` (the JSON text) and `file` (the video), and sends it with
-   `XMLHttpRequest` instead of `fetch`, because `fetch` cannot report upload progress. Each
-   `progress` event updates the progress bar (`UploadPage.tsx:109`). The request carries
-   `authHeader()` (`movieService.ts:94`).
+3. It calls `uploadMovie` (`UploadPage.tsx:52`, `movieService.ts:50-60`). The service builds a
+   `FormData` with two parts, `data` (the JSON text) and `file` (the video), and passes it to
+   `uploadWithProgress` (`api.ts:54-78`). That helper sends it with `XMLHttpRequest` instead of
+   `fetch`, because `fetch` cannot report upload progress. Each `progress` event updates the
+   progress bar (`UploadPage.tsx:109`). The request carries `authHeader()` (`api.ts:75`).
 4. On success it shows "Your video was uploaded." with a link to "My Videos". On failure it shows a
    friendly error (`UploadPage.tsx:111-118`).
 
@@ -522,7 +522,7 @@ so no extra library is needed.
 the backend team.
 
 **Why:** it is simple, survives reloads, and works with a `Bearer` header (`authHeader()`,
-`api.ts:22-25`).
+`api.ts:23-26`).
 
 **Trade-offs and risks:**
 - **XSS:** any JavaScript running on the page can read localStorage. If an attacker manages to
@@ -590,7 +590,7 @@ Trade-off: the file grows with every entity. Some types do not match the domain 
 - The role shown in the frontend can be changed by the user. The backend must enforce permissions.
 - No token expiry or revocation check.
 - Mock passwords in plain text in localStorage (development only).
-- Upload, edit and delete requests send the token (`movieService.ts:58`, `64`, `94`), but the
+- Upload, edit and delete requests send the token (`movieService.ts:41`, `47`, `api.ts:75`), but the
   backend does not check it yet, so today it cannot know who makes them.
 - No backend authorization exists yet on any endpoint.
 
@@ -617,7 +617,7 @@ Requirements set by the course for regularity and approval. Status: ✅ Met · �
 | Requirement | Where in the code | Status |
 |---|---|---|
 | Handle user events (click, input...) | `AuthPage.tsx` (`onSubmit`, `toggleMode`), `SearchBar.tsx:41-46` (`onChange`, `onKeyDown`, `onClick`), `UploadPage.tsx:68-107`, `MyVideosPage.tsx` (edit/delete buttons) | ✅ |
-| Handle errors in a user-friendly way | `AuthPage` + `authService.ts`; content pages through `movieService.ts` (`ApiError`) + `errorMessage()` (`api.ts:17-19`), shown by `RequestStatus` or alerts in `WatchPage`, `UploadPage`, `MyVideosPage` | ✅ |
+| Handle errors in a user-friendly way | `AuthPage` + `authService.ts`; content pages through `movieService.ts` (`ApiError`) + `errorMessage()` (`api.ts:18-20`), shown by `RequestStatus` or alerts in `WatchPage`, `UploadPage`, `MyVideosPage` | ✅ |
 | React to state changes | `SearchPage.tsx:33` (effect on `[query]`), `WatchPage.tsx:30` (`[id]`), `AuthPage.tsx:19-22` (redirect when `user` changes), `MainNavbar` (guest vs user) | ✅ |
 | Use input props | `Section` (`title`, `movies`), `MainNavbar` (`user`), `ProtectedRoute` (`allowedRoles`), `AuthProvider` (`children`), `RequestStatus`, `SearchBar` (`initialText`) | ✅ |
 | Use output props | `MainNavbar` `onLogout` (`MainNavbar.tsx:7`, `App.tsx:24`). It is the only one so far | ✅ |
@@ -647,7 +647,7 @@ response. `await` pauses an `async` function until the Promise is ready. `.then(
 with callbacks (`LandingPage.tsx` explains it in its bottom comment).
 
 **Bearer token / Authorization header** — How a request proves who is sending it: the header
-`Authorization: Bearer <token>`. Built by `authHeader()` (`api.ts:22`).
+`Authorization: Bearer <token>`. Built by `authHeader()` (`api.ts:23`).
 
 **Component** — A function that returns UI (JSX). Example: `Section`, `AuthPage`.
 
