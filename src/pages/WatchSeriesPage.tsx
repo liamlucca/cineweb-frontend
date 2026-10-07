@@ -1,7 +1,11 @@
 import { useParams, Link } from "react-router-dom"
+import { useEffect, useState } from "react"
+import type { Episode, Season, Series } from "../types/index.ts"
 //import LanguagePanel from "../components/LanguagePanel.tsx"
-import { MOCK_SERIES } from "../mockup/mockSeries.ts" // [CHANGE]
+import { getEpisode, getSeason, getSeries } from "../services/seriesService.ts"
 import { videoUrl } from "../services/movieService.ts"
+import { errorMessage } from "../services/api.ts"
+import RequestStatus from "../components/RequestStatus.tsx"
 import "../styles/WatchPage.css"
 
 //const LANGUAGES = ["Spanish (Latin America)", "Spanish (Spain)", "English", "French"]
@@ -9,60 +13,76 @@ import "../styles/WatchPage.css"
 
 function WatchSeriesPage() {
   // names must match the route in App.tsx: /watch-series/:id/:seasonId/:episodeId
-  const { seasonId, episodeId } = useParams()
+  const { id = '', seasonId = '', episodeId = '' } = useParams()
 
-  // TODO: replace with a real fetch once SeasonRepository/EpisodeRepository exists // [CHANGE]
-  // for now we only have 1 mock series, so the :id in the URL is not checked
-  const series = MOCK_SERIES
+  const [series, setSeries] = useState<Series | null>(null)
+  const [season, setSeason] = useState<Season | null>(null)
+  const [episode, setEpisode] = useState<Episode | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
 
-  const season = series.seasons.find(s => String(s.id) === seasonId)
-  const episode = season?.episodes.find(e => String(e.id) === episodeId)
+  useEffect(() => {
+    let cancelled = false
+    setLoading(true)
+    setError('')
 
-  if (!season || !episode) {
-    return (
-      <div role="alert" className="alert alert-error m-4">
-        We couldn't find that episode.
-        <Link to={`/series/${series.id}/seasons`} className="btn btn-sm">See seasons</Link>
-      </div>
-    )
-  }
+    Promise.all([getSeries(id), getSeason(seasonId), getEpisode(episodeId)])
+      .then(([seriesData, seasonData, episodeData]) => {
+        if (cancelled) return
+        setSeries(seriesData)
+        setSeason(seasonData)
+        setEpisode(episodeData)
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) setError(errorMessage(err))
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+
+    return () => { cancelled = true }
+  }, [id, seasonId, episodeId])
 
   return (
-    <div className="watch-container">
-      <div className="watch-left">
-        <div className="watch-panels">
+    <RequestStatus loading={loading} error={error} isEmpty={!episode} emptyMessage="We couldn't find that episode.">
+      <div className="watch-container">
+        <div className="watch-left">
+          <div className="watch-panels">
+          </div>
+
+          <div className="watch-video-box">
+            {episode && <video src={videoUrl(episode.path)} controls />}
+          </div>
+
+          <div className="watch-progress-bar">
+            <div className="watch-progress-fill" />
+          </div>
+
+          <Link to="/report" className="watch-report-btn">Report</Link>
         </div>
 
-        <div className="watch-video-box">
-          <video src={videoUrl(episode.path)} controls />
-        </div>
+        <div className="watch-right">
+          <h1 className="watch-title">{series?.title}</h1>
+          <p className="watch-category">{series?.category}</p>
+          <p className="watch-category">
+            Season {season?.seasonNumber} · Episode {episode?.number}: {episode?.title}
+          </p>
 
-        <div className="watch-progress-bar">
-          <div className="watch-progress-fill" />
-        </div>
+          <p className="watch-description">
+            {episode?.description}
+          </p>
 
-        <Link to="/report" className="watch-report-btn">Report</Link>
+          <div className="watch-series-actions">
+            <Link to={`/series/${id}/seasons`} className="watch-series-btn">
+              Seasons
+            </Link>
+            <Link to={`/series/${id}/season/${seasonId}/episodes`} className="watch-series-btn">
+              Episodes
+            </Link>
+          </div>
+        </div>
       </div>
-
-      <div className="watch-right">
-        <h1 className="watch-title">{series.title}</h1>
-        <p className="watch-category">{series.category}</p>
-        <p className="watch-category">{episode.title}</p>
-
-        <p className="watch-description">
-          {season.description}
-        </p>
-
-        <div className="watch-series-actions">
-          <Link to={`/series/${series.id}/seasons`} className="watch-series-btn">
-            Seasons
-          </Link>
-          <Link to={`/series/${series.id}/season/${season.id}/episodes`} className="watch-series-btn">
-            Episodes
-          </Link>
-        </div>
-      </div>
-    </div>
+    </RequestStatus>
   )
 }
 

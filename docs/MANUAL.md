@@ -80,6 +80,11 @@ branch `Liam`) on 2026-10-05. The backend team may have newer code that was not 
 | `POST /api/movie` (multipart: `data` + `file`) | `uploadMovie` (`movieService.ts:50-60`), used by `UploadPage` | ✅ Available. Requires `id_author` (see below). |
 | `PATCH /api/movie/:id` | `updateMovie` (`movieService.ts:38-44`), used by `MyVideosPage` | ✅ Available. |
 | `DELETE /api/movie/:id` | `deleteMovie` (`movieService.ts:46-48`), used by `MyVideosPage` | ✅ Available. |
+| `GET /api/series/:id` → `{ serie }` | `getSeries` (`seriesService.ts:75-78`), used by the three series pages | ✅ Available. |
+| `GET /api/seasons/serie/:serieId` → array of seasons | `getSeasons` (`seriesService.ts:81-84`), used by `SeasonSelectPage` | ✅ Available. |
+| `GET /api/seasons/:id` → `{ season }` | `getSeason` (`seriesService.ts:86-89`), used by `EpisodeListPage`, `WatchSeriesPage` | ✅ Available. |
+| `GET /api/episodes/season/:seasonId` → array of episodes | `getEpisodes` (`seriesService.ts:92-95`), used by `EpisodeListPage` | ✅ Available. |
+| `GET /api/episodes/:id` → `{ episode }` | `getEpisode` (`seriesService.ts:97-100`), used by `WatchSeriesPage` | ✅ Available. |
 | Static files under `/movies` and `/series` | `videoUrl` (`movieService.ts:11-13`) builds video URLs from `path` | ✅ Available. |
 
 **Endpoints available but not used by the frontend yet**
@@ -87,7 +92,8 @@ branch `Liam`) on 2026-10-05. The backend team may have newer code that was not 
 | Endpoints | Notes |
 |---|---|
 | `GET /api/movie/:id/stream` | Streams the video in chunks. `WatchPage` plays the static file instead (`WatchPage.tsx:61`); both work. |
-| `/api/series`, `/api/seasons` (also `/api/seasons/serie/:serieId`), `/api/episodes` (also `/api/episodes/season/:seasonId` and `/api/episodes/:id/stream`) | The series pages still use `MOCK_SERIES` (3.7). Episode upload expects the file field `archivo`, not `file`. |
+| `GET /api/series`, `POST /api/series`, `POST /api/seasons`, `POST /api/episodes` | Written in `seriesService.ts` (`getAllSeries`, `createSeries`, `createSeason`, `uploadEpisode`) but not used by any page yet. Episode upload expects the file field `archivo`, not `file` (`seriesService.ts:119`). |
+| `PUT` / `PATCH` / `DELETE` on series, seasons and episodes, `GET /api/episodes/:id/stream` | Not used. `WatchSeriesPage` plays the static file, like `WatchPage`. |
 | `/api/reviews` (also `/api/reviews/viewer/:viewerId` and `/api/reviews/audiovisual/:type/:audiovisualId`) | Reviews (sketch 6) are not built in the frontend. |
 
 **Not available**
@@ -109,8 +115,11 @@ Details:
   form never fills.) Both return `{ token, user }`. Authenticated requests must send
   `Authorization: Bearer <token>`. When uploading content, the backend must take the uploader from
   the token, so the frontend never sends it.
-- **Field naming.** The movie data uses snake_case (`id_author`), while the auth contract assumes
-  camelCase (`firstName`). Whether the backend will use camelCase is not confirmed.
+- **Field naming.** The movie and series data use snake_case (`id_author`, `id_serie`,
+  `season_number`), while the auth contract assumes camelCase (`firstName`). Whether the backend
+  will use camelCase is not confirmed. For series, `seriesService.ts` converts the backend shapes
+  (`SeriesDTO`, `SeasonDTO`, `EpisodeDTO`) into camelCase types (`toSeries`, `toSeason`,
+  `toEpisode`, `seriesService.ts:14-41`), so the pages never see snake_case.
 
 ### 1.4 What the backend still needs (from the frontend's perspective)
 
@@ -132,12 +141,12 @@ Details:
 |---|---|
 | `src/pages/` | One component per route (one screen each). |
 | `src/components/` | Reusable pieces of UI: navbar, search bar, carousel section, request status, route guard. |
-| `src/services/` | Code that talks to the outside world (HTTP, localStorage). Today: auth and movies. |
+| `src/services/` | Code that talks to the outside world (HTTP, localStorage). Today: auth, movies and series. |
 | `src/context/` | App-wide state shared through React Context. Today: the session. |
 | `src/hooks/` | Custom hooks. Today: `useAuth`. |
 | `src/types/` | All TypeScript types for domain data and DTOs, in a single file `index.ts`. |
 | `src/test/` | Test setup (`setup.ts`). Test files live next to the code they test, as `*.test.tsx`. |
-| `src/mockup/` | Hardcoded fake data used while the backend is missing (`mockSeries.ts`, `mockAuthService.ts`). |
+| `src/mockup/` | Fake stand-ins used while the backend is missing. Today only `mockAuthService.ts`. |
 | `src/styles/` | Plain CSS for a few pages (`WatchPage.css`, `ReportPage.css`, ...). |
 | `public/` | Static files copied as-is (`vite.svg`). |
 | `docs/` | This manual and the domain diagram: `dnd_cineweb.drawio` (source of truth for names) and `dnd_cineweb.png` (visual reference). |
@@ -173,20 +182,21 @@ Details:
 | File | Role |
 |---|---|
 | `src/services/movieService.ts` | Every `/api/movie` call (`getMovies`, `getMovie`, `updateMovie`, `deleteMovie`, `uploadMovie`) plus `videoUrl` and `toMovie`. |
+| `src/services/seriesService.ts` | Every `/api/series`, `/api/seasons` and `/api/episodes` call. Converts the backend's snake_case DTOs into `Series`, `Season` and `Episode`. |
 | `src/components/RequestStatus.tsx` | Shows a spinner, a friendly error or an empty message, and its `children` only when there is data. |
 | `src/pages/LandingPage.tsx` | Home page. Fetches movies and shows them in two `Section` carousels. |
 | `src/pages/SearchPage.tsx` | Fetches movies and filters them by title using `?q=`. |
 | `src/pages/WatchPage.tsx` | Shows one movie and plays it. |
 | `src/pages/UploadPage.tsx` | Upload form with a progress bar. |
 | `src/pages/MyVideosPage.tsx` | List with edit and delete. |
-| `src/pages/SeasonSelectPage.tsx`, `EpisodeListPage.tsx`, `WatchSeriesPage.tsx` | Series screens, using `MOCK_SERIES`. |
+| `src/pages/SeasonSelectPage.tsx`, `EpisodeListPage.tsx`, `WatchSeriesPage.tsx` | Series screens: seasons of a series, episodes of a season, and the episode player. |
 | `src/pages/ReportPage.tsx` | Report form (reasons + "Other"). |
 | `src/pages/ComplaintPage.tsx` | "Received Complaints" list with hardcoded data. |
 | `src/pages/AppealPage.tsx` | Placeholder: only renders the word "appeal". |
 | `src/components/Section.tsx` | Horizontal carousel of movie cards. Props: `title`, `movies`. |
 | `src/components/SearchBar.tsx` | Search input that navigates to `/search?q=...`. Also links to `/complaint`. |
 | `src/components/LanguagePanel.tsx` | Collapsible panel of language toggles. Currently not used: its imports are commented out in `WatchPage.tsx:4` and `WatchSeriesPage.tsx:2`. |
-| `src/types/index.ts` | All types: `Movie`, `MovieDTO`, `Series`, `Season`, `Episode`, `Report`, `Complaint`, `User`, `LoginRequest`, ... |
+| `src/types/index.ts` | All types: `Movie`, `MovieDTO`, `Series`, `Season`, `Episode` and their DTOs, `Report`, `Complaint`, `User`, `LoginRequest`, ... |
 
 ### 2.3 How the pieces connect
 
@@ -205,6 +215,8 @@ Pages / components ──useAuth()──▶ AuthContext ◀── AuthProvider
 AuthProvider ──▶ authService (Http or Mock) ──▶ backend /auth or localStorage
 AuthProvider ──▶ session.ts ──▶ localStorage (cineweb_token, cineweb_user)
 Content pages ──▶ movieService.ts ──fetch / XMLHttpRequest──▶ backend /api/movie
+Series pages  ──▶ seriesService.ts ──fetch / XMLHttpRequest──▶ backend /api/series, /api/seasons, /api/episodes
+(both services use request(), readJson() and uploadWithProgress() from api.ts)
 ```
 
 ### 2.4 Configuration files
@@ -433,25 +445,34 @@ requires `id_author` today. Remove it once the backend reads the token.
 
 ⚠️ It lists every movie, because there is no "my movies" endpoint yet.
 
-### 3.7 Series: seasons, episodes, watching an episode 🧪 ⚠️
+### 3.7 Series: seasons, episodes, watching an episode ✅ ⚠️
 
-All three pages read `MOCK_SERIES` from `src/mockup/mockSeries.ts` (one series, two seasons,
-three episodes). There is no backend call.
+The three pages read from the backend through `seriesService.ts`. Each one follows the same pattern
+as `WatchPage`: a `useEffect` that depends on the route params, a `cancelled` flag that ignores
+answers for old params, and `RequestStatus` for loading and errors. When a page needs several
+things, it asks for them at the same time with `Promise.all`; if any request fails, the page shows
+that request's friendly error.
 
-- `SeasonSelectPage` (`/series/:id/seasons`): starts with the first season. Two `<select>` inputs
-  choose the active season and show its description. "View Episodes" navigates to that season's
-  episode list (`SeasonSelectPage.tsx:15-16`).
-- `EpisodeListPage` (`/series/:id/season/:seasonId/episodes`): finds the season by `seasonId`
-  (`EpisodeListPage.tsx:11`). If it does not exist, it shows an error with a link back to the
-  seasons (`EpisodeListPage.tsx:13-20`). Otherwise it lists the episodes with "Watch" links.
-- `WatchSeriesPage` (`/watch-series/:id/:seasonId/:episodeId`): reads `seasonId` and `episodeId`,
-  the same names as the route in `App.tsx:30`, and finds the season and episode by id
-  (`WatchSeriesPage.tsx:12-19`). If either is missing, it shows an error (`WatchSeriesPage.tsx:21-28`).
-  Otherwise it plays the episode and links back to seasons and episodes.
+**Types.** `Series`, `Season` and `Episode` (`types/index.ts`) are the shapes the pages use. Their
+names follow the domain diagram except where it is known to be wrong: `Series` uses `id` (the
+diagram says `idSerie`) and `Season` points to its series with `seriesId` (the diagram says
+`audiovisualId`). There are no `seasons` / `episodes` arrays: the diagram's arrays are
+relationships, and the backend serves them from separate endpoints.
 
-⚠️ The `:id` of the series is not checked, because there is only one mock series. The mock
-episodes have `path: "/"`, so no real video plays. Nothing links to the series pages from the
-landing page: they can only be reached by typing the URL.
+- `SeasonSelectPage` (`/series/:id/seasons`): loads the series and its seasons together
+  (`SeasonSelectPage.tsx:28`). The active season is the one picked in either `<select>`, or the
+  first one until the user picks (`SeasonSelectPage.tsx:45`). "View Episodes" navigates to that
+  season's episode list. With no seasons it shows "This series has no seasons yet."
+- `EpisodeListPage` (`/series/:id/season/:seasonId/episodes`): loads the series, the season and its
+  episodes (`EpisodeListPage.tsx:25`). Shows "This season has no episodes yet." when the list is
+  empty, and always a "See seasons" link back.
+- `WatchSeriesPage` (`/watch-series/:id/:seasonId/:episodeId`): loads the series, the season and the
+  episode (`WatchSeriesPage.tsx:29`), plays `videoUrl(episode.path)` (`WatchSeriesPage.tsx:54`), and
+  links back to the seasons and the episodes.
+
+⚠️ The pages do not check that the season belongs to the series in the URL, or that the episode
+belongs to the season: they trust the links. Nothing links to the series pages from the landing
+page yet.
 
 ### 3.8 Report a video 🧪
 
@@ -571,7 +592,6 @@ Trade-off: the file grows with every entity. Some types do not match the domain 
 
 **What is mock or hardcoded today**
 - Authentication (`mockAuthService.ts`), while `VITE_USE_MOCK_AUTH = true`.
-- Series, seasons and episodes (`src/mockup/mockSeries.ts`).
 - Received complaints (`ComplaintPage.tsx:13-34`).
 - Report submission (only `console.log`).
 - Uploader id (`id_author: 2` in `UploadPage.tsx:42`).
@@ -618,11 +638,11 @@ Requirements set by the course for regularity and approval. Status: ✅ Met · �
 |---|---|---|
 | Handle user events (click, input...) | `AuthPage.tsx` (`onSubmit`, `toggleMode`), `SearchBar.tsx:41-46` (`onChange`, `onKeyDown`, `onClick`), `UploadPage.tsx:68-107`, `MyVideosPage.tsx` (edit/delete buttons) | ✅ |
 | Handle errors in a user-friendly way | `AuthPage` + `authService.ts`; content pages through `movieService.ts` (`ApiError`) + `errorMessage()` (`api.ts:18-20`), shown by `RequestStatus` or alerts in `WatchPage`, `UploadPage`, `MyVideosPage` | ✅ |
-| React to state changes | `SearchPage.tsx:33` (effect on `[query]`), `WatchPage.tsx:30` (`[id]`), `AuthPage.tsx:19-22` (redirect when `user` changes), `MainNavbar` (guest vs user) | ✅ |
+| React to state changes | `SearchPage.tsx:33` (effect on `[query]`), `WatchPage.tsx:30` (`[id]`), the series pages (effects on their route params), `AuthPage.tsx:19-22` (redirect when `user` changes), `MainNavbar` (guest vs user) | ✅ |
 | Use input props | `Section` (`title`, `movies`), `MainNavbar` (`user`), `ProtectedRoute` (`allowedRoles`), `AuthProvider` (`children`), `RequestStatus`, `SearchBar` (`initialText`) | ✅ |
 | Use output props | `MainNavbar` `onLogout` (`MainNavbar.tsx:7`, `App.tsx:24`). It is the only one so far | ✅ |
-| At least one service | `src/services/authService.ts`, `src/services/movieService.ts` (+ `session.ts`, `api.ts`) | ✅ |
-| Model API data with interfaces/types | `src/types/index.ts` (`MovieDTO`, `MovieUpdate`, `MovieUploadData`, `User`, `LoginRequest`, `AuthResponse`, ...) | ✅ |
+| At least one service | `src/services/authService.ts`, `src/services/movieService.ts`, `src/services/seriesService.ts` (+ `session.ts`, `api.ts`) | ✅ |
+| Model API data with interfaces/types | `src/types/index.ts` (`MovieDTO`, `MovieUpdate`, `MovieUploadData`, `SeriesDTO`, `SeasonDTO`, `EpisodeDTO`, `User`, `LoginRequest`, `AuthResponse`, ...) | ✅ |
 | Apply an OOP design pattern | Strategy: `AuthService` interface with `HttpAuthService` and `MockAuthService` classes (`authService.ts`, `mockAuthService.ts`) | ✅ |
 | Dependencies registered in `package.json` | `package.json` lists React, React Router, Tailwind, DaisyUI, Vite, TypeScript, ESLint. A stray `package-lock.json` exists next to `pnpm-lock.yaml` | ✅ |
 
@@ -697,8 +717,7 @@ where the matching child renders. `ProtectedRoute` uses it.
 **localStorage** — Key-value storage in the browser that survives reloads. Only the same site can
 read it, but any script running on that site can.
 
-**Mock** — A fake stand-in for something not available yet. Here: `MockAuthService` and
-`MOCK_SERIES`.
+**Mock** — A fake stand-in for something not available yet. Here: `MockAuthService`.
 
 **Mobile-first** — Styles without a prefix apply to phones, and `sm:`, `md:`, `lg:` add rules for
 bigger screens.

@@ -34,26 +34,82 @@ export interface MovieUploadData {
 
 // SERIES
 
+// Shapes the pages use. Names follow the diagram, except where it is known to be wrong:
+// Series uses "id" (not "idSerie") and Season points to its series with "seriesId" (not "audiovisualId").
+// Seasons and episodes are fetched separately, so there are no "seasons" / "episodes" arrays here.
+
+export interface Series {
+  id: number
+  title: string
+  category: string
+  description: string
+}
+
+export interface Season {
+  id: number
+  seriesId: number
+  seasonNumber: number
+  description: string
+}
+
 export interface Episode {
   id: number
+  seasonId: number
   number: number
   title: string
   description: string
   path: string
 }
 
-export interface Season {
+// shapes coming from the backend (snake_case, converted by seriesService)
+export interface SeriesDTO {
   id: number
-  number: number
-  description: string
-  episodes: Episode[]
-}
-
-export interface Series {
-  id: number
+  id_author: number
   title: string
   category: string
-  seasons: Season[]
+  description: string
+  state: boolean | string
+}
+
+export interface SeasonDTO {
+  id: number
+  id_serie: number
+  season_number: number
+  description: string
+}
+
+export interface EpisodeDTO {
+  id: number
+  id_season: number
+  episode_number: number
+  title: string
+  description: string
+  path: string
+  views: number
+  state: string
+  id_author: number
+}
+
+// JSON bodies sent to create series content (the backend requires id_author for now)
+export interface SeriesUploadData {
+  id_author: number
+  title: string
+  category: string
+  description: string
+}
+
+export interface SeasonUploadData {
+  id_serie: number
+  season_number: number
+  description: string
+}
+
+export interface EpisodeUploadData {
+  id_season: number
+  episode_number: number
+  title: string
+  description: string
+  id_author: number
 }
 
 
