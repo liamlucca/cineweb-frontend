@@ -67,14 +67,16 @@ The base URL comes from `VITE_API_URL` in `.env` (`src/services/api.ts:3`, which
 fallback.
 
 The "Backend status" column was checked by reading the backend's local copy (commit `d234e0a`,
-branch `Liam`) on 2026-10-05. The backend team may have newer code that was not available locally.
+branch `Liam`) on 2026-10-05. The series endpoints and the new user endpoints were checked again
+on 2026-10-08 (commit `9d30d59`). The backend team may have newer code that was not available
+locally.
 
 **Endpoints the frontend uses**
 
 | Endpoint | Used by | Backend status |
 |---|---|---|
-| `POST /auth/login` → `{ token, user }` | `src/services/authService.ts:26` | ⏳ Does not exist. Agreed with the backend team. |
-| `POST /auth/register` → `{ token, user }` | `src/services/authService.ts:32` | ⏳ Does not exist. Agreed with the backend team. |
+| `POST /auth/login` → `{ token, user }` | `src/services/authService.ts:26` | ⚠️ Does not exist at this URL. The backend now has `POST /api/users/login`, with a different shape (see below). |
+| `POST /auth/register` → `{ token, user }` | `src/services/authService.ts:32` | ⚠️ Does not exist at this URL. The backend now has `POST /api/users/register`, with a different shape (see below). |
 | `GET /api/movie` → array of movies | `getMovies` (`movieService.ts:25-29`), used by `LandingPage`, `SearchPage`, `MyVideosPage` | ✅ Available. |
 | `GET /api/movie/:id` → `{ movie }` | `getMovie` (`movieService.ts:31-36`), used by `WatchPage` | ✅ Available. |
 | `POST /api/movie` (multipart: `data` + `file`) | `uploadMovie` (`movieService.ts:50-60`), used by `UploadPage` | ✅ Available. Requires `id_author` (see below). |
@@ -103,7 +105,7 @@ branch `Liam`) on 2026-10-05. The backend team may have newer code that was not 
 
 | Feature | Notes |
 |---|---|
-| Authentication (`/auth/...`) | No routes. The frontend uses `MockAuthService` (4.1). |
+| Authentication (`/auth/...`) | Not at `/auth`. Since commit `9d30d59` the backend has `/api/users` (see below), but the frontend still uses `MockAuthService` (4.1). |
 | Appeals, complaints, report types | The backend has routers for them, each with a single `GET /`, but they are not registered in `src/index.ts`, so no URL answers. |
 
 Details:
@@ -118,6 +120,17 @@ Details:
   the episode title, and `data` must be sent before the file for that to work
   (`seriesService.ts:116-117`). Two episodes with the same title (for example "Pilot" in two
   series) get the same `path`, so the second upload replaces the first one's video.
+- **New backend user endpoints (commit `9d30d59`), not used by the frontend yet.**
+  `POST /api/users/register`, `POST /api/users/login`, `POST /api/users/logout`,
+  `GET` / `PATCH /api/users/me`, plus `/api/viewers/me`, `/api/administrators/...` (users, appeals),
+  `/api/reports` and `/api/appeals`. Differences from what the frontend expects:
+  - Login answers `{ token, token_type, expires_in, user }`, so the frontend's `{ token, user }`
+    check would still pass, but register answers `{ data: user }` with no token.
+  - The user uses snake_case: `id_user`, `user_name`, `first_name`, `last_name`, `email`, `role`,
+    `active`. The frontend's `User` expects `id`, `username`, `firstName`, `lastName`.
+  - The token is a random string that expires after a set time, not a JWT.
+  - Movie, series, season and episode routes do not check the token yet, so uploads still need
+    `id_author` and anyone can still change anyone's content.
 - **Agreed auth contract.** `POST /auth/login` receives `{ email, password }`.
   `POST /auth/register` receives `{ username, firstName, lastName, email, password }` and
   always creates a viewer. (`RegisterRequest` in the code still has an optional `phone`, which the
@@ -134,8 +147,9 @@ Details:
 
 1. Register the appeal, complaint and report type routers in `src/index.ts`, and add the
    endpoints the moderation screens need (report a video, appeal, accept / reject).
-2. Implement `POST /auth/login` and `POST /auth/register` with the agreed shape
-   (see 1.3), and a users table.
+2. Authentication now exists under `/api/users` (1.3). Still to agree: the URL and response shapes
+   (camelCase or snake_case, a token on register), and checking the token on the movie, series,
+   season and episode routes so the uploader comes from the token.
 3. Agree on error status codes. The frontend already maps 401 (wrong login), 400 (invalid data)
    and 409 (email or username in use) to messages (`authService.ts:27-36`).
 4. Optional but useful: an endpoint such as `GET /auth/me` to check a stored token (see 4.3).
