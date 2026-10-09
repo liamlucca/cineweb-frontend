@@ -78,6 +78,8 @@ locally.
 | `POST /api/users/login` with `{ login, password }` → `{ token, token_type, expires_in, user }` | `HttpAuthService.login` (`authService.ts:52-62`) | ✅ Available (commit `9d30d59`). Checked against the running backend on 2026-10-09 (see 3.1). |
 | `POST /api/users/register` with `{ user_name, first_name, last_name, email, password }` → `{ data: user }` | `HttpAuthService.register` (`authService.ts:64-78`) | ✅ Available (commit `9d30d59`). Checked against the running backend on 2026-10-09 (see 3.1). |
 | `POST /api/reports` (with the token, viewers only) with `{ targetType, targetId, reason }` → 201 | `reportContent` (`reportService.ts`), used by `ReportPage` | ✅ Available. 409 when the user already reported it, owns it, or it is not active. Not checked live (3.8). |
+| `GET /api/reviews/audiovisual/:type/:id` → `{ data: Review[] }` | `getReviews` (`reviewService.ts`), used by `ReviewButtons` | ✅ Available. Checked live on 2026-10-09. |
+| `POST /api/reviews` with `{ viewerId, rating, audiovisualId, audiovisualType }` → `{ data }`; `PATCH /api/reviews/:id` with `{ rating }`; `DELETE /api/reviews/:id` → 204 | `createReview`, `changeReview`, `deleteReview` (`reviewService.ts`), used by `ReviewButtons` | ✅ Available. Checked live on 2026-10-09 (create, change, list, duplicate → 409, delete). These routes do not check the token, and `viewerId` comes from the body (1.4). |
 | `POST /api/users/logout` (with the token) → 204 | `HttpAuthService.logout` (`authService.ts:80-88`), called by `AuthProvider` on "Log Out" | ✅ Available (commit `9d30d59`). Checked against the running backend on 2026-10-09 (see 3.1). |
 | `GET /api/users/me` (with the token) → `{ data: user }`, or 401 if the token is not valid | `HttpAuthService.getCurrentUser` (`authService.ts:90-107`), called by `AuthProvider` when the app starts | ✅ Available (commit `9d30d59`). Checked against the running backend on 2026-10-09 (see 3.1). |
 | `GET /api/movie` → array of movies | `getMovies` (`movieService.ts:24-28`), used by `useCatalog` (landing and search) and `MyVideosPage` | ✅ Available. |
@@ -102,7 +104,7 @@ locally.
 |---|---|
 | `GET /api/movie/:id/stream` | Streams the video in chunks. `WatchPage` plays the static file instead (`WatchPage.tsx:61`); both work. |
 | `PUT` / `PATCH` / `DELETE` on series, seasons and episodes, `GET /api/episodes/:id/stream` | Not used. `WatchSeriesPage` plays the static file, like `WatchPage`. |
-| `/api/reviews` (also `/api/reviews/viewer/:viewerId` and `/api/reviews/audiovisual/:type/:audiovisualId`) | Reviews (sketch 6) are not built in the frontend. |
+| `GET /api/reviews`, `GET /api/reviews/viewer/:viewerId`, `GET /api/reviews/:id` | Not used: `ReviewButtons` only needs the reviews of one movie or episode. |
 
 **Not available**
 
@@ -233,6 +235,8 @@ Details:
 | `src/pages/MyVideosPage.tsx` | List with edit and delete. |
 | `src/pages/SeasonSelectPage.tsx`, `EpisodeListPage.tsx`, `WatchSeriesPage.tsx` | Series screens: seasons of a series, episodes of a season, and the episode player. |
 | `src/pages/ReportPage.tsx` | Report a movie or a series (`/report/:type/:id`): reasons + "Other", confirmation, sends the report. |
+| `src/components/ReviewButtons.tsx` | Like / dislike buttons with counts for one movie or episode. Props: `type`, `id`. |
+| `src/services/reviewService.ts` | `getReviews`, `createReview`, `changeReview`, `deleteReview` (`/api/reviews`). |
 | `src/services/reportService.ts` | `reportContent` (`POST /api/reports`) and `isReportTargetType`. |
 | `src/pages/ComplaintPage.tsx` | "Received Complaints" list with hardcoded data. |
 | `src/pages/AppealPage.tsx` | Placeholder: only renders the word "appeal". |
@@ -505,15 +509,17 @@ The filtering functions have unit tests (`catalog.test.ts`).
 
 ### 3.4 Watching a movie ✅ ⚠️
 
-1. The route `/watch/:id` gives `WatchPage` the `id` through `useParams` (`WatchPage.tsx:13`).
+1. The route `/watch/:id` gives `WatchPage` the `id` through `useParams` (`WatchPage.tsx:14`).
 2. A `useEffect` on `[id]` calls `getMovie(id)`. It handles **loading**, **error** and success,
-   and ignores answers for an old `id` (`WatchPage.tsx:20-38`). It shows a spinner or a friendly
-   error (`WatchPage.tsx:41-50`).
-3. The video plays from the backend's static folder, `videoUrl(movie.path)` (`WatchPage.tsx:63`).
+   and ignores answers for an old `id` (`WatchPage.tsx:21-39`). It shows a spinner or a friendly
+   error (`WatchPage.tsx:42-51`).
+3. The video plays from the backend's static folder, `videoUrl(movie.path)` (`WatchPage.tsx:64`).
    The backend also offers `/api/movie/:id/stream` (1.3), which is not used.
 4. If the description is longer than 100 characters, a "See more / See less" button appears.
-   `showMoreBtn` is computed from the data, not kept in state (`WatchPage.tsx:53`).
-5. "Report" links to `/report/movie/:id` (`WatchPage.tsx:68`). It is hidden when the logged-in
+   `showMoreBtn` is computed from the data, not kept in state (`WatchPage.tsx:54`).
+5. `ReviewButtons` shows the likes and dislikes and lets viewers vote (`WatchPage.tsx:77`, see
+   3.11).
+6. "Report" links to `/report/movie/:id` (`WatchPage.tsx:69`). It is hidden when the logged-in
    user uploaded the movie, because nobody can report their own content.
 
 ⚠️ "Add to Watch later" (sketch 3) is ⏳ pending: the backend has no endpoint for it.
@@ -632,7 +638,7 @@ Not tested against a running backend yet.
 
 `ReportPage` (`/report/:type/:id`, viewers only) reports a movie (`/report/movie/3`) or a series
 (`/report/series/1`). Episodes are reported through their series: the "Report series" button of
-`WatchSeriesPage` links to the series (`WatchSeriesPage.tsx:65`). Both "Report" buttons are hidden
+`WatchSeriesPage` links to the series (`WatchSeriesPage.tsx:66`). Both "Report" buttons are hidden
 for the content's own uploader.
 
 1. The `type` in the URL is checked with `isReportTargetType`; anything else shows "We couldn't
@@ -674,6 +680,37 @@ When they are built, they should go in a new route group wrapped in
 `<ProtectedRoute allowedRoles={['administrator']}>`.
 
 ---
+
+### 3.11 Reviews: like / dislike ✅ ⚠️
+
+`ReviewButtons` (`ReviewButtons.tsx`) is shown under the title in `WatchPage` (`type="movie"`) and
+for each episode in `WatchSeriesPage` (`type="episode"`, `WatchSeriesPage.tsx:79`). The backend has
+reviews for movies and episodes only, not for whole series.
+
+1. A `useEffect` on `[type, id]` loads the reviews with `getReviews` (`GET
+   /api/reviews/audiovisual/:type/:id`) and keeps them in state. Likes and dislikes are counted
+   from that list; nothing is stored twice.
+2. `myReview` is the review whose `viewerId` is the logged-in user's `id`
+   (`ReviewButtons.tsx:44`). The button of that vote is highlighted and has `aria-pressed="true"`.
+3. Only viewers can vote (`canVote`, `ReviewButtons.tsx:46`). Guests see the counts and a "Log in
+   to rate" link; administrators only see the counts.
+4. `vote(rating)` (`ReviewButtons.tsx:48`) decides what to send:
+
+   | Situation | Request | Result |
+   |---|---|---|
+   | No vote yet | `POST /api/reviews` with `rating` | New vote |
+   | Clicking the same vote again | `DELETE /api/reviews/:id` | Vote withdrawn (sketch 6) |
+   | Clicking the other vote | `PATCH /api/reviews/:id` with the new `rating` | Like ↔ dislike |
+
+   After each answer it updates the list locally, so the counts change without reloading.
+5. Errors are shown under the buttons; a 409 ("Viewer already reviewed this audiovisual") shows the
+   backend's message.
+
+`ReviewButtons.test.tsx` checks the counts, voting, withdrawing, changing and the guest view.
+
+⚠️ The backend takes `viewerId` from the request body and does not check the token on
+`/api/reviews`, so the frontend sends the user's `id` (marked with a TODO) and anyone could vote,
+change or delete reviews in someone else's name by hand (1.4).
 
 ## 4. Design decisions and trade-offs
 
@@ -831,7 +868,7 @@ Requirements set by the course for regularity and approval. Status: ✅ Met · �
 |---|---|---|
 | Handle user events (click, input...) | `AuthPage.tsx` (`onSubmit`, `toggleMode`), `SearchBar.tsx` (`onSubmit`, `onChange`), `SearchPage.tsx` filters (`onChange`), `UploadPage.tsx` (`onSubmit`, `onChange`), `MyVideosPage.tsx` (edit/delete buttons), the series upload forms (`onSubmit`, `onChange`) | ✅ |
 | Handle errors in a user-friendly way | `AuthPage` + `authService.ts`; content pages through `movieService.ts` (`ApiError`) + `errorMessage()` (`api.ts:28-30`), shown by `RequestStatus` or alerts in `WatchPage`, `UploadPage`, `MyVideosPage` | ✅ |
-| React to state changes | `SearchPage.tsx` (re-filters when the URL changes), `WatchPage.tsx:30` (`[id]`), the series pages (effects on their route params), `AuthPage.tsx:19-22` (redirect when `user` changes), `MainNavbar` (guest vs user) | ✅ |
+| React to state changes | `SearchPage.tsx` (re-filters when the URL changes), `WatchPage.tsx:21` (`[id]`), the series pages (effects on their route params), `AuthPage.tsx:19-22` (redirect when `user` changes), `MainNavbar` (guest vs user) | ✅ |
 | Use input props | `Section` (`title`, `items`), `MainNavbar` (`user`), `ProtectedRoute` (`allowedRoles`), `AuthProvider` (`children`), `RequestStatus`, `SearchBar` (`initialText`) | ✅ |
 | Use output props | `MainNavbar` `onLogout` (`MainNavbar.tsx:7`, `App.tsx:25`), `NewSeriesForm` and `NewSeasonForm` `onCreated` (`UploadSeriesPage.tsx:44`, `46`) | ✅ |
 | At least one service | `src/services/authService.ts`, `src/services/movieService.ts`, `src/services/seriesService.ts` (+ `session.ts`, `api.ts`) | ✅ |

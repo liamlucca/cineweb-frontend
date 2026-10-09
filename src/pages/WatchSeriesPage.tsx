@@ -7,6 +7,7 @@ import { videoUrl } from "../services/movieService.ts"
 import { errorMessage } from "../services/api.ts"
 import RequestStatus from "../components/RequestStatus.tsx"
 import useAuth from "../hooks/useAuth.ts"
+import ReviewButtons from "../components/ReviewButtons.tsx"
 import "../styles/WatchPage.css"
 
 //const LANGUAGES = ["Spanish (Latin America)", "Spanish (Spain)", "English", "French"]
@@ -72,6 +73,12 @@ function WatchSeriesPage() {
           <p className="watch-category">
             Season {season?.seasonNumber} · Episode {episode?.number}: {episode?.title}
           </p>
+          {/* episodes are rated one by one (the backend has no reviews for whole series) */}
+          {episode && (
+            <div className="my-3">
+              <ReviewButtons type="episode" id={episode.id} />
+            </div>
+          )}
 
           <p className="watch-description">
             {episode?.description}

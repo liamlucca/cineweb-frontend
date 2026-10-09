@@ -128,6 +128,23 @@ export interface EpisodeUploadData {
 }
 
 
+/** REVIEWS (like / dislike) */
+
+// the backend only accepts reviews of movies and episodes (not whole series)
+export type ReviewTargetType = 'movie' | 'episode'
+
+// the backend already uses camelCase for reviews
+export interface Review {
+  id: number
+  viewerId: number
+  // true = like, false = dislike
+  rating: boolean
+  audiovisualId: number
+  audiovisualType: ReviewTargetType
+}
+
+export type ReviewRequest = Omit<Review, 'id'>
+
 /** REPORTS */
 
 /* Array with the possible Reasons for a Report */
