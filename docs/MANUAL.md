@@ -75,8 +75,8 @@ locally.
 
 | Endpoint | Used by | Backend status |
 |---|---|---|
-| `POST /auth/login` → `{ token, user }` | `src/services/authService.ts:26` | ⚠️ Does not exist at this URL. The backend now has `POST /api/users/login`, with a different shape (see below). |
-| `POST /auth/register` → `{ token, user }` | `src/services/authService.ts:32` | ⚠️ Does not exist at this URL. The backend now has `POST /api/users/register`, with a different shape (see below). |
+| `POST /api/users/login` with `{ login, password }` → `{ token, token_type, expires_in, user }` | `HttpAuthService.login` (`authService.ts:48-58`) | ✅ Available (commit `9d30d59`). Not run against a live backend yet. |
+| `POST /api/users/register` with `{ user_name, first_name, last_name, email, password }` → `{ data: user }` | `HttpAuthService.register` (`authService.ts:60-74`) | ✅ Available (commit `9d30d59`). Not run against a live backend yet. |
 | `GET /api/movie` → array of movies | `getMovies` (`movieService.ts:25-29`), used by `LandingPage`, `SearchPage`, `MyVideosPage` | ✅ Available. |
 | `GET /api/movie/:id` → `{ movie }` | `getMovie` (`movieService.ts:31-36`), used by `WatchPage` | ✅ Available. |
 | `POST /api/movie` (multipart: `data` + `file`) | `uploadMovie` (`movieService.ts:50-60`), used by `UploadPage` | ✅ Available. Requires `id_author` (see below). |
@@ -105,7 +105,6 @@ locally.
 
 | Feature | Notes |
 |---|---|
-| Authentication (`/auth/...`) | Not at `/auth`. Since commit `9d30d59` the backend has `/api/users` (see below), but the frontend still uses `MockAuthService` (4.1). |
 | Appeals, complaints, report types | The backend has routers for them, each with a single `GET /`, but they are not registered in `src/index.ts`, so no URL answers. |
 
 Details:
@@ -120,26 +119,28 @@ Details:
   the episode title, and `data` must be sent before the file for that to work
   (`seriesService.ts:116-117`). Two episodes with the same title (for example "Pilot" in two
   series) get the same `path`, so the second upload replaces the first one's video.
-- **New backend user endpoints (commit `9d30d59`), not used by the frontend yet.**
-  `POST /api/users/register`, `POST /api/users/login`, `POST /api/users/logout`,
-  `GET` / `PATCH /api/users/me`, plus `/api/viewers/me`, `/api/administrators/...` (users, appeals),
-  `/api/reports` and `/api/appeals`. Differences from what the frontend expects:
-  - Login answers `{ token, token_type, expires_in, user }`, so the frontend's `{ token, user }`
-    check would still pass, but register answers `{ data: user }` with no token.
-  - The user uses snake_case: `id_user`, `user_name`, `first_name`, `last_name`, `email`, `role`,
-    `active`. The frontend's `User` expects `id`, `username`, `firstName`, `lastName`.
-  - The token is a random string that expires after a set time, not a JWT.
+- **User endpoints (commit `9d30d59`).** The backend built authentication under `/api/users`
+  instead of the `/auth` URLs first agreed. The frontend adapts to it in `HttpAuthService`
+  (`authService.ts:47-98`, see 3.1 and 4.1):
+  - Login receives `{ login, password }`, where `login` is the email **or** the username.
+  - Sign-up answers `{ data: user }` with no token, so the frontend logs in right after it
+    (`authService.ts:73`).
+  - The user comes in snake_case (`UserDTO`: `id_user`, `user_name`, `first_name`, `last_name`,
+    `email`, `role`, `active`). `toUser` (`authService.ts:30-41`) converts it into the app's `User`.
+    The backend has no phone, so `phone` is always `null`.
+  - The token is a random string the backend stores in its sessions table and that expires after
+    7 days. It is not a JWT. The frontend only stores it and sends it, so this does not change it.
+  - Authenticated requests send `Authorization: Bearer <token>`.
+  - Other new endpoints not used by the frontend yet: `POST /api/users/logout`,
+    `GET` / `PATCH /api/users/me`, `/api/viewers/me`, `/api/administrators/...` (users, appeals),
+    `/api/reports` and `/api/appeals`.
   - Movie, series, season and episode routes do not check the token yet, so uploads still need
-    `id_author` and anyone can still change anyone's content.
-- **Agreed auth contract.** `POST /auth/login` receives `{ email, password }`.
-  `POST /auth/register` receives `{ username, firstName, lastName, email, password }` and
-  always creates a viewer. (`RegisterRequest` in the code still has an optional `phone`, which the
-  form never fills.) Both return `{ token, user }`. Authenticated requests must send
-  `Authorization: Bearer <token>`. When uploading content, the backend must take the uploader from
-  the token, so the frontend never sends it.
-- **Field naming.** The movie and series data use snake_case (`id_author`, `id_serie`,
-  `season_number`), while the auth contract assumes camelCase (`firstName`). Whether the backend
-  will use camelCase is not confirmed. For series, `seriesService.ts` converts the backend shapes
+    `id_author` and anyone can still change anyone's content. The agreed goal is still that the
+    backend takes the uploader from the token and the frontend never sends it.
+- **Field naming.** The backend uses snake_case for movies, series and users (`id_author`,
+  `id_serie`, `user_name`), but camelCase for reports and appeals (`targetType`, `reportId`). The
+  frontend keeps camelCase types and converts in the services: for users, `toUser` (above). For
+  series, `seriesService.ts` converts the backend shapes
   (`SeriesDTO`, `SeasonDTO`, `EpisodeDTO`) into camelCase types (`toSeries`, `toSeason`,
   `toEpisode`, `seriesService.ts:14-41`), so the pages never see snake_case.
 
@@ -147,9 +148,10 @@ Details:
 
 1. Register the appeal, complaint and report type routers in `src/index.ts`, and add the
    endpoints the moderation screens need (report a video, appeal, accept / reject).
-2. Authentication now exists under `/api/users` (1.3). Still to agree: the URL and response shapes
-   (camelCase or snake_case, a token on register), and checking the token on the movie, series,
-   season and episode routes so the uploader comes from the token.
+2. Authentication exists under `/api/users` and the frontend adapts to it (1.3). Still needed:
+   checking the token on the movie, series, season and episode routes, so the uploader comes from
+   the token instead of `id_author`. Optional: return a token on sign-up, which would save the
+   extra login request, and use one naming style (snake_case or camelCase) everywhere.
 3. Agree on error status codes. The frontend already maps 401 (wrong login), 400 (invalid data)
    and 409 (email or username in use) to messages (`authService.ts:27-36`).
 4. Optional but useful: an endpoint such as `GET /auth/me` to check a stored token (see 4.3).
@@ -269,15 +271,17 @@ Series pages  ──▶ seriesService.ts ──fetch / XMLHttpRequest──▶ b
 ### 3.1 User system ✅ 🧪
 
 Works end to end in the browser using the **mock** backend (`VITE_USE_MOCK_AUTH = true`).
-The real HTTP version is written but has never run against a real backend, because the
-endpoints do not exist yet.
+The real HTTP version (`HttpAuthService`) talks to the backend's `/api/users` endpoints. It is
+covered by unit tests with a fake `fetch` (`authService.test.ts`), but it has not been run against
+a live backend yet.
 
-Mock accounts (`src/mockup/mockAuthService.ts:21-46`):
+Mock accounts (`src/mockup/mockAuthService.ts:21-46`). You can log in with the email or the
+username:
 
-| Email | Password | Role |
-|---|---|---|
-| `admin@cineweb.com` | `admin123` | administrator |
-| `viewer@cineweb.com` | `viewer123` | viewer |
+| Email | Username | Password | Role |
+|---|---|---|---|
+| `admin@cineweb.com` | `admin` | `admin123` | administrator |
+| `viewer@cineweb.com` | `viewer` | `viewer123` | viewer |
 
 #### Logging in: from the form to the protected page
 
@@ -295,15 +299,19 @@ Example: a guest clicks "Upload Video", which leads to `/upload`.
    - `new FormData(event.currentTarget)` reads the input values by their `name`.
    - It sets `submitting` to `true`, which disables the button and shows a spinner, and clears
      old errors.
-   - It calls `login({ email, password })` from the context (`AuthPage.tsx:42`).
+   - It calls `login({ login, password })` from the context (`AuthPage.tsx:42`). The login input
+     is named `login` because it accepts the email or the username (`AuthPage.tsx:81`).
 4. **The context delegates.** `login` in `AuthProvider.tsx:26` calls `authService.login(request)`.
    `authService` is either `MockAuthService` or `HttpAuthService`, chosen once at
-   `authService.ts:66` from `VITE_USE_MOCK_AUTH`.
+   `authService.ts:101` from `VITE_USE_MOCK_AUTH`.
 5. **The service answers.**
-   - Mock (`mockAuthService.ts:74-81`): waits 500 ms, finds the account by email (trimmed and
-     lowercased), compares the password, and returns `{ token: "mock-token-<id>", user }`.
-   - Real (`authService.ts:26-30`, `39-62`): `POST {API_URL}/auth/login` with a JSON body. It
-     checks that the response really is `{ token, user }` with `isAuthResponse` before trusting it.
+   - Mock (`mockAuthService.ts:74-84`): waits 500 ms, finds the account by email or username
+     (trimmed, ignoring case), compares the password, and returns
+     `{ token: "mock-token-<id>", user }`.
+   - Real (`authService.ts:48-58`): `POST {API_URL}/api/users/login` with `{ login, password }`.
+     It checks that the answer has a string `token` and a user with the backend's shape
+     (`isUserDTO`, `authService.ts:20-27`) before trusting it, and converts that user with
+     `toUser`.
 6. **The session starts.** `startSession` (`AuthProvider.tsx:19-22`) calls `saveSession`, which
    writes `cineweb_token` and `cineweb_user` to localStorage (`session.ts:20-23`), and then
    `setUser(user)`.
@@ -326,9 +334,15 @@ From there it follows the same path as login (steps 4–8).
 - Mock (`mockAuthService.ts:84-104`): rejects the request if the email or username is taken, creates
   a user with the next free `id` and always `role: 'viewer'`, and saves the account under
   `cineweb_mock_accounts`.
-- Real: `POST /auth/register` (`authService.ts:32-37`). The contract says public sign-up creates
-  viewers only, so `RegisterRequest` has no `role` field (`types/index.ts:111-119`).
-- The phone field exists in `RegisterRequest` as optional, but the form does not ask for it.
+- Real (`authService.ts:60-74`): `POST /api/users/register` with the fields renamed to snake_case
+  (`user_name`, `first_name`, `last_name`). The backend answers without a token, so the service
+  then calls its own `login` with the new email and password and returns that session. Public
+  sign-up creates viewers only, so `RegisterRequest` has no `role` field
+  (`types/index.ts:196-203`).
+- The backend requires a username of 3 to 50 characters and a password of at least 8. The form
+  asks for the same with `minLength` and shows "At least 8 characters." (`AuthPage.tsx:91`).
+- The phone field exists in `RegisterRequest` as optional, but the form does not ask for it and the
+  backend does not store it.
 
 #### How the session is saved and restored
 
@@ -368,18 +382,19 @@ which `App` connects to `logout` from the context (`App.tsx:25`), and then navig
 
 | Failure | Where it is handled | What the user sees |
 |---|---|---|
-| Wrong email or password | Mock: `mockAuthService.ts:78-80`. Real: status 401 → `authService.ts:28` | "Incorrect email or password." |
-| Email or username already used | Mock: `mockAuthService.ts:90-91`. Real: status 409 | "That email or username is already in use." |
-| Invalid data (real backend) | Status 400 → `authService.ts:34` | "Please check the information you entered." |
-| Server unreachable / network down | `fetch` throws → `authService.ts:51-53` | "We couldn't reach the server. Please try again later." |
-| Any other HTTP error | `authService.ts:55-57` | "Something went wrong. Please try again." |
-| Response is not `{ token, user }` | `isAuthResponse` → `authService.ts:59-60` | "Something went wrong. Please try again." |
+| Wrong credentials, or an account deactivated by an administrator | Mock: `mockAuthService.ts:82`. Real: status 401 → `authService.ts:51` | "Incorrect email, username or password." |
+| Email or username already used | Mock: `mockAuthService.ts:94`. Real: status 409 → `authService.ts:69` | "That email or username is already in use." |
+| Invalid sign-up data (real backend) | Status 400 → `authService.ts:68` | "Please check your details: the username needs 3 to 50 characters and the password at least 8." |
+| Empty login fields (real backend) | Status 400 → `authService.ts:50` | "Please enter your email or username and your password." |
+| Server unreachable / network down | `fetch` throws → `authService.ts:89` | "We couldn't reach the server. Please try again later." |
+| Any other HTTP error | `authService.ts:93` | "Something went wrong. Please try again." |
+| Login answer without a token or a valid user | `authService.ts:56` | "Something went wrong. Please try again." |
 | Unexpected error (a bug, not an `ApiError`) | `AuthPage.tsx:45` | "Something went wrong. Please try again." |
 | Corrupted session in localStorage | `session.ts:36-43` | Nothing visible: they are treated as logged out. |
 | `useAuth()` used outside `AuthProvider` | `useAuth.ts:7` | Developer error, thrown on purpose to catch the bug early. |
-| Empty fields, invalid email format | HTML `required` and `type="email"` in `AuthPage.tsx` | The browser's own validation message. |
+| Empty fields, invalid email format, short password or username | HTML `required`, `type="email"` and `minLength` in `AuthPage.tsx` | The browser's own validation message. |
 
-The error appears in a DaisyUI `alert` with `role="alert"` (`AuthPage.tsx:89-93`), and
+The error appears in a DaisyUI `alert` with `role="alert"` (`AuthPage.tsx:97`), and
 `submitting` goes back to `false` so they can try again (`AuthPage.tsx:46`).
 
 How the messages travel: services throw `ApiError` (`api.ts:10-15`), an `Error` whose message is
@@ -388,7 +403,9 @@ gets the generic message, so technical details never reach the user.
 
 #### Switching from the mock to the real backend
 
-1. The backend implements `/auth/login` and `/auth/register` with the agreed shape.
+1. Start the backend with the updated `init.sql` (it creates the `users` and `user_sessions`
+   tables). Register an account from the app; an administrator has to be promoted by hand in SQL,
+   as the backend README explains.
 2. In `.env`, set `VITE_USE_MOCK_AUTH = false` (or remove it) and restart `pnpm dev`, because Vite
    reads `.env` only at startup.
 3. Nothing else changes: the rest of the app depends on the `AuthService` interface, not on
@@ -591,13 +608,19 @@ When they are built, they should go in a new route group wrapped in
 **What:** `AuthService` is an interface with two implementations, `HttpAuthService` and
 `MockAuthService`. A single line chooses one from `.env` (`authService.ts:66-68`).
 
-**Why:** the backend has no auth yet, and frontend work should not be blocked. The rest of the app
+**Why:** the backend had no auth when this was built, and frontend work should not be blocked. The rest of the app
 (context, pages) only knows the interface, so switching to the real backend changes one variable,
 not the components. It is also the OOP design pattern that the course requires.
 
 **Trade-offs:**
 - The mock is not the backend. It can drift from what the backend really does (status codes, field
-  names, validation rules). `HttpAuthService` has **never run against a real server**.
+  names, validation rules). `HttpAuthService` is tested with a fake `fetch`, but has **not run
+  against a live server** yet.
+
+**Adapter.** `HttpAuthService` is also an Adapter: the backend's user API has its own URLs and
+snake_case fields, and the class translates both ways (`toUser`, the snake_case sign-up body), so
+`AuthProvider`, the pages and the `User` type do not depend on how the backend names things. If
+the backend changes its shape, only `authService.ts` changes.
 - The mock stores passwords in plain text in localStorage. It is only acceptable because it is fake
   data for development.
 - If someone forgets to set `VITE_USE_MOCK_AUTH = false` in production, users would log in against
@@ -682,10 +705,12 @@ Trade-off: the file grows with every entity. Some types do not match the domain 
 - Navbar avatar: a fixed DaisyUI sample image (`MainNavbar.tsx:49-51`).
 
 **What is not tested**
-- Unit tests cover only `ProtectedRoute` and `AuthPage` (5.2). There is no end-to-end test yet.
+- Unit tests cover `ProtectedRoute`, `AuthPage` and `HttpAuthService` (5.2). There is no
+  end-to-end test yet.
 - The user system was checked with `tsc -b` and `pnpm build`, both passing. It was **not**
   tested by clicking through the browser before this manual was written.
-- `HttpAuthService` has never talked to a real backend.
+- `HttpAuthService` is covered by unit tests with a fake `fetch` (`authService.test.ts`), but has
+  never talked to a live backend.
 - The movie pages were not tested against the backend. The local backend copy now exposes the
   movie endpoints (1.3), so they can be tested by running it.
 - The series pages, the series upload page and the series block of "My Videos" were checked with
@@ -741,14 +766,14 @@ Requirements set by the course for regularity and approval. Status: ✅ Met · �
 | Use output props | `MainNavbar` `onLogout` (`MainNavbar.tsx:7`, `App.tsx:25`), `NewSeriesForm` and `NewSeasonForm` `onCreated` (`UploadSeriesPage.tsx:44`, `46`) | ✅ |
 | At least one service | `src/services/authService.ts`, `src/services/movieService.ts`, `src/services/seriesService.ts` (+ `session.ts`, `api.ts`) | ✅ |
 | Model API data with interfaces/types | `src/types/index.ts` (`MovieDTO`, `MovieUpdate`, `MovieUploadData`, `SeriesDTO`, `SeasonDTO`, `EpisodeDTO`, `User`, `LoginRequest`, `AuthResponse`, ...) | ✅ |
-| Apply an OOP design pattern | Strategy: `AuthService` interface with `HttpAuthService` and `MockAuthService` classes (`authService.ts`, `mockAuthService.ts`) | ✅ |
+| Apply an OOP design pattern | Strategy: `AuthService` interface with `HttpAuthService` and `MockAuthService` classes (`authService.ts`, `mockAuthService.ts`). Adapter: `HttpAuthService` translates the backend's user API into the app's types (4.1) | ✅ |
 | Dependencies registered in `package.json` | `package.json` lists React, React Router, Tailwind, DaisyUI, Vite, TypeScript, ESLint. A stray `package-lock.json` exists next to `pnpm-lock.yaml` | ✅ |
 
 ### 5.2 Approval
 
 | Requirement | Where in the code | Status |
 |---|---|---|
-| At least one component unit test | Vitest + Testing Library, run with `pnpm test`. `ProtectedRoute.test.tsx` (guest → `/login`, wrong role → `/`, allowed role sees the page) and `AuthPage.test.tsx` (sends the login request, friendly and generic error messages, switch to sign up). Both give the component a fake `AuthContext` value, so they do not use the mock service or localStorage | ✅ |
+| At least one component unit test | Vitest + Testing Library, run with `pnpm test`. `ProtectedRoute.test.tsx` (guest → `/login`, wrong role → `/`, allowed role sees the page) and `AuthPage.test.tsx` (sends the login request, friendly and generic error messages, switch to sign up). Both give the component a fake `AuthContext` value, so they do not use the mock service or localStorage. `authService.test.ts` tests `HttpAuthService` with a fake `fetch`: URLs, snake_case bodies, the conversion to `User`, the login after sign-up and the friendly errors | ✅ |
 | At least one end-to-end test | None | ❌ |
 | Login, with access protected by the backend's user levels via `ProtectedRoute` | Frontend side done: `ProtectedRoute.tsx`, `AuthPage.tsx`, `AuthProvider.tsx`, roles `administrator` / `viewer` in `types/index.ts:92`. But the user levels come from the **mock**, because the backend has no auth, and no admin routes exist yet | 🟡 |
 | Environments defined with `.env` | `.env` (git-ignored), `.env.example`, `VITE_API_URL`, `VITE_USE_MOCK_AUTH`, typed in `vite-env.d.ts`. There is one environment, with no separate development/production files | ✅ |
@@ -758,7 +783,7 @@ Requirements set by the course for regularity and approval. Status: ✅ Met · �
 ## 6. Glossary
 
 **API / endpoint** — The set of URLs a server answers. An endpoint is one of them, such as
-`POST /auth/login`.
+`POST /api/users/login`.
 
 **Async / await, Promise** — A Promise is a value that will be ready later, like a server
 response. `await` pauses an `async` function until the Promise is ready. `.then()` does the same
@@ -852,7 +877,7 @@ the code using them does not care which one it gets. Here: `HttpAuthService` and
 `text-xl`).
 
 **Type guard** — A function that checks at runtime that a value has a type and tells TypeScript
-so (`value is User`). Examples: `isUser`, `isAuthResponse`. Needed because data from the network
+so (`value is User`). Examples: `isUser`, `isUserDTO`. Needed because data from the network
 or storage could be anything.
 
 **`useEffect`** — Runs code after rendering, such as fetching data. The dependency array decides

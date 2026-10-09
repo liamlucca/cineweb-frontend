@@ -173,10 +173,22 @@ export interface User {
   role: UserRole
 }
 
-/** AUTH - request/response DTOs (contract not confirmed with the backend yet) */
+// user as the backend sends it (snake_case, converted to User by authService)
+export interface UserDTO {
+  id_user: number
+  user_name: string
+  first_name: string
+  last_name: string
+  email: string
+  role: UserRole
+  active: boolean
+}
+
+/** AUTH - request/response DTOs */
 
 export interface LoginRequest {
-  email: string
+  // email or username: the backend accepts either one
+  login: string
   password: string
 }
 

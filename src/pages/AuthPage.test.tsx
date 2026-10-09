@@ -23,28 +23,28 @@ function renderAuthPage(login: AuthContextValue['login']) {
 
 async function fillAndSubmitLogin() {
   const user = userEvent.setup();
-  await user.type(screen.getByPlaceholderText('Email...'), 'viewer@cineweb.com');
+  await user.type(screen.getByPlaceholderText('Email or username...'), 'viewer@cineweb.com');
   await user.type(screen.getByPlaceholderText('Password...'), 'wrong-password');
   await user.click(screen.getByRole('button', { name: 'Log In' }));
 }
 
 describe('AuthPage', () => {
-  it('sends the typed email and password to login', async () => {
+  it('sends the typed email or username and password to login', async () => {
     const login = vi.fn().mockResolvedValue(undefined);
     renderAuthPage(login);
 
     await fillAndSubmitLogin();
 
-    expect(login).toHaveBeenCalledWith({ email: 'viewer@cineweb.com', password: 'wrong-password' });
+    expect(login).toHaveBeenCalledWith({ login: 'viewer@cineweb.com', password: 'wrong-password' });
   });
 
   it('shows the friendly message of a failed login', async () => {
-    const login = vi.fn().mockRejectedValue(new ApiError('Incorrect email or password.'));
+    const login = vi.fn().mockRejectedValue(new ApiError('Incorrect email, username or password.'));
     renderAuthPage(login);
 
     await fillAndSubmitLogin();
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('Incorrect email or password.');
+    expect(await screen.findByRole('alert')).toHaveTextContent('Incorrect email, username or password.');
     expect(screen.getByRole('button', { name: 'Log In' })).toBeEnabled();
   });
 

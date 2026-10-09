@@ -39,7 +39,7 @@ function AuthPage() {
           password: String(data.get('password') ?? ''),
         });
       } else {
-        await login({ email: field('email'), password: String(data.get('password') ?? '') });
+        await login({ login: field('login'), password: String(data.get('password') ?? '') });
       }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Something went wrong. Please try again.');
@@ -71,10 +71,14 @@ function AuthPage() {
             </>
           )}
 
-          <input name="email" type="email" className="input input-bordered w-full" placeholder="Email..." autoComplete="email" required />
-
-          {isRegister && (
-            <input name="username" className="input input-bordered w-full" placeholder="Username..." autoComplete="username" required />
+          {/* log in accepts the email or the username; sign up asks for both */}
+          {isRegister ? (
+            <>
+              <input name="email" type="email" className="input input-bordered w-full" placeholder="Email..." autoComplete="email" required />
+              <input name="username" className="input input-bordered w-full" placeholder="Username..." autoComplete="username" minLength={3} maxLength={50} required />
+            </>
+          ) : (
+            <input name="login" className="input input-bordered w-full" placeholder="Email or username..." autoComplete="username" required />
           )}
 
           <input
@@ -83,8 +87,11 @@ function AuthPage() {
             className="input input-bordered w-full"
             placeholder="Password..."
             autoComplete={isRegister ? 'new-password' : 'current-password'}
+            // the backend rejects sign-up passwords shorter than 8 characters
+            minLength={isRegister ? 8 : undefined}
             required
           />
+          {isRegister && <p className="text-xs opacity-70">At least 8 characters.</p>}
 
           {error && (
             <div role="alert" className="alert alert-error text-sm">

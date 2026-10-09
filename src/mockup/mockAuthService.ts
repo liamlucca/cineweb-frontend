@@ -5,9 +5,9 @@ import type { AuthService } from '../services/authService.ts';
 import { ApiError } from '../services/api.ts';
 
 /*
- * Development-only stand-in for the backend's /auth endpoints, which don't exist yet.
+ * Development-only stand-in for the backend's /api/users endpoints, for working without the backend.
  * Accounts live in localStorage with plain-text passwords: never use real credentials here.
- * Delete this file (and the switch in authService.ts) once the backend is ready.
+ * It can be deleted (with the switch in authService.ts) once nobody needs to work offline.
  */
 
 interface MockAccount {
@@ -71,12 +71,15 @@ function toResponse(user: User): AuthResponse {
 }
 
 export default class MockAuthService implements AuthService {
-  async login({ email, password }: LoginRequest): Promise<AuthResponse> {
+  async login({ login, password }: LoginRequest): Promise<AuthResponse> {
     await delay();
-    const normalizedEmail = email.trim().toLowerCase();
-    const account = loadAccounts().find((a) => a.user.email === normalizedEmail);
+    // like the backend, accept the email or the username
+    const value = login.trim().toLowerCase();
+    const account = loadAccounts().find(
+      (a) => a.user.email === value || a.user.username.toLowerCase() === value,
+    );
     if (!account || account.password !== password) {
-      throw new ApiError('Incorrect email or password.');
+      throw new ApiError('Incorrect email, username or password.');
     }
     return toResponse(account.user);
   }
