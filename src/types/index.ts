@@ -170,6 +170,19 @@ export interface ReportRequest {
   // one free-text reason (max 1000 characters); the form sends the chosen label or "Other: <text>"
   reason: string
 }
+// A moderation case opens when content gets 3 reports; it is what an appeal is about
+export type ModerationCaseStatus = 'pending' | 'appealed' | 'upheld' | 'dismissed'
+
+export interface ModerationCase {
+  id: number
+  targetType: ReportTargetType
+  targetId: number
+  status: ModerationCaseStatus
+  reportCount: number
+  // reason of each individual report
+  reasons: string[]
+}
+
 /** APPEALS */
 
 export type AppealDecision = 'approved' | 'rejected'
@@ -217,6 +230,11 @@ export interface UserDTO {
   last_name: string
   email: string
   role: UserRole
+  active: boolean
+}
+
+// a user as administrators see it: it can be deactivated
+export interface Account extends User {
   active: boolean
 }
 

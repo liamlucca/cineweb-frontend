@@ -11,6 +11,7 @@ import SeasonSelectPage from './pages/SeasonSelectPage.tsx'
 import EpisodeListPage from './pages/EpisodeListPage.tsx'
 import ReportPage from './pages/ReportPage.tsx'
 import ProfilePage from './pages/ProfilePage.tsx'
+import AdminPage from './pages/AdminPage.tsx'
 import AppealPage from './pages/AppealPage.tsx'
 import MyVideosPage from './pages/MyVideosPage.tsx'
 import ProtectedRoute from './components/ProtectedRoute.tsx'
@@ -39,6 +40,11 @@ function App() {
           <Route path="/my-videos" element={<MyVideosPage />} />
           <Route path="/report/:type/:id" element={<ReportPage />} />
           <Route path="/appeal/:reportId" element={<AppealPage/>} />
+        </Route>
+
+        {/* administrator-only screens (sketches A and B) */}
+        <Route element={<ProtectedRoute allowedRoles={['administrator']} />}>
+          <Route path="/admin" element={<AdminPage />} />
         </Route>
 
         {/* any logged-in user */}

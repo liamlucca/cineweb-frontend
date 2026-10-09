@@ -83,6 +83,11 @@ locally.
 | `GET /api/viewers/me` (viewers only) → `{ data: viewer }` with `reportsReceivedCount`, `appeals`, `uploadedAudiovisuals`, `reviews` | `getViewerProfile` (`viewerService.ts`), used by `ProfilePage` | ✅ Available. Checked live on 2026-10-09. |
 | `PATCH /api/users/me` with the changed fields in snake_case → `{ data: user }` | `HttpAuthService.updateProfile` (`authService.ts:111`), used by `ProfilePage` through `AuthContext` | ✅ Available. Checked live on 2026-10-09. 409 when the email or username is taken. |
 | `POST /api/appeals` (viewers only) with `{ reportId, description }` → 201 | `createAppeal` (`appealService.ts`), used by `AppealPage` | ✅ Available. 404 for an unknown case (checked live); 409 when the user does not own the content or already appealed. |
+| `GET /api/administrators/appeals` → `{ data: Appeal[] }` (pending only) | `getPendingAppeals` (`adminService.ts`), used by `AdminPage` | ✅ Available. Administrators only (a viewer gets 403, checked live). |
+| `GET /api/reports/:id` → `{ data: case, reportCount, reports }` | `getModerationCase` (`adminService.ts`), used by `AppealReviewCard` | ✅ Available. Administrators only. `:id` is the moderation case id. |
+| `PATCH /api/administrators/appeals/:id` with `{ decision: "approved" \| "rejected" }` → `{ data, upheldReportCount, contentSuspended }` | `resolveAppeal` (`adminService.ts`), used by `AppealReviewCard` | ✅ Available. Administrators only. |
+| `GET /api/administrators/users` → `{ data: users with active }`; `PATCH /api/administrators/users/:id/active` with `{ active }` | `getAccounts`, `setAccountActive` (`adminService.ts`), used by `AdminPage` / `AccountsTable` | ✅ Available. Administrators only. |
+| `POST /api/administrators` with the sign-up fields in snake_case → `{ data }` | `createAdministrator` (`adminService.ts`), used by `NewAdministratorForm` | ✅ Available. Administrators only. |
 | `POST /api/users/logout` (with the token) → 204 | `HttpAuthService.logout` (`authService.ts:80-88`), called by `AuthProvider` on "Log Out" | ✅ Available (commit `9d30d59`). Checked against the running backend on 2026-10-09 (see 3.1). |
 | `GET /api/users/me` (with the token) → `{ data: user }`, or 401 if the token is not valid | `HttpAuthService.getCurrentUser` (`authService.ts:90-107`), called by `AuthProvider` when the app starts | ✅ Available (commit `9d30d59`). Checked against the running backend on 2026-10-09 (see 3.1). |
 | `GET /api/movie` → array of movies | `getMovies` (`movieService.ts:24-28`), used by `useCatalog` (landing and search) and `MyVideosPage` | ✅ Available. |
@@ -143,8 +148,9 @@ Details:
   - The token is a random string the backend stores in its sessions table and that expires after
     7 days. It is not a JWT. The frontend only stores it and sends it, so this does not change it.
   - Authenticated requests send `Authorization: Bearer <token>`.
-  - Other new endpoints not used by the frontend yet: `/api/administrators/...` (users, appeals)
-    and `GET /api/reports/:id`.
+  - Endpoints not used by the frontend: `GET /api/administrators` (list administrators) and
+    `PATCH /api/administrators/:id/active` (`PATCH /api/administrators/users/:id/active` covers
+    every account).
   - Movie, series, season and episode routes do not check the token yet, so uploads still need
     `id_author` and anyone can still change anyone's content. The agreed goal is still that the
     backend takes the uploader from the token and the frontend never sends it.
@@ -175,6 +181,9 @@ Details:
    `GET /api/viewers/me/reports`, with the case id, the content and its status).
    `GET /api/viewers/me` only gives `reportsReceivedCount`, and an appeal needs the case id
    (`reportId`), so today a viewer cannot reach the appeal form from the app (3.9).
+7. An endpoint for reviewed appeals (for example `GET /api/administrators/appeals?status=reviewed`)
+   and a way to change a verdict, for the appeal history screen (sketch C). Today only pending
+   appeals can be listed, and a resolved appeal cannot be changed.
 
 ---
 
@@ -244,6 +253,11 @@ Details:
 | `src/components/ReviewButtons.tsx` | Like / dislike buttons with counts for one movie or episode. Props: `type`, `id`. |
 | `src/services/reviewService.ts` | `getReviews`, `createReview`, `changeReview`, `deleteReview` (`/api/reviews`). |
 | `src/services/reportService.ts` | `reportContent` (`POST /api/reports`) and `isReportTargetType`. |
+| `src/pages/AdminPage.tsx` | `/admin` (administrators only): tabs for pending appeals, users and a new administrator. |
+| `src/components/AppealReviewCard.tsx` | One pending appeal: shows the reported case and its reasons, accepts or rejects. Output prop `onResolved`. |
+| `src/components/AccountsTable.tsx` | Table of accounts with activate / deactivate. Output prop `onChanged`. |
+| `src/components/NewAdministratorForm.tsx` | Form to create an administrator. Output prop `onCreated`. |
+| `src/services/adminService.ts` | Every administrator call: appeals, moderation cases, accounts, new administrators. |
 | `src/pages/ProfilePage.tsx` | `/profile`: edit your account; viewers also see their activity and their appeals. |
 | `src/pages/AppealPage.tsx` | `/appeal/:reportId`: appeal a moderation case against your content. |
 | `src/services/viewerService.ts` | `getViewerProfile` (`GET /api/viewers/me`). |
@@ -267,6 +281,8 @@ index.html
                     └── UploadPage, UploadSeriesPage, MyVideosPage, ReportPage, AppealPage
                 <ProtectedRoute> (any logged-in user)
                     └── ProfilePage
+                <ProtectedRoute allowedRoles={['administrator']}>
+                    └── AdminPage
 
 Pages / components ──useAuth()──▶ AuthContext ◀── AuthProvider
 AuthProvider ──▶ authService (Http or Mock) ──▶ backend /auth or localStorage
@@ -411,8 +427,10 @@ wraps child routes (`App.tsx:36-42`). For each visit it decides one of three out
 | User with an allowed role (or no `allowedRoles` given) | Render the child page through `<Outlet />` | `ProtectedRoute.tsx:24` |
 
 Groups today (`App.tsx`): `allowedRoles={['viewer']}` for `/upload`, `/upload-series`, `/my-videos`,
-`/report/:type/:id` and `/appeal/:reportId`, and a group with no `allowedRoles` (any logged-in user)
-for `/profile` (`App.tsx:45`).
+`/report/:type/:id` and `/appeal/:reportId`; `allowedRoles={['administrator']}` for `/admin`
+(`App.tsx:46-48`); and a group with no `allowedRoles` (any logged-in user) for `/profile`
+(`App.tsx:51`). A viewer who opens `/admin` is sent to `/`, and so is an administrator who opens
+a viewer screen.
 
 #### Logging out
 
@@ -711,13 +729,40 @@ number in the URL.
 
 The old `ComplaintPage` (hardcoded "Received Complaints") and its CSS were removed.
 
-### 3.10 Administrator screens ⏳
+### 3.10 Administrator screens ✅ ⚠️
 
-None of them exist yet: admin landing page, pending appeals and appeal history (sketches A, B, C).
-When they are built, they should go in a new route group wrapped in
-`<ProtectedRoute allowedRoles={['administrator']}>`.
+`AdminPage` (`/admin`, administrators only, "Administration" in the avatar menu,
+`MainNavbar.tsx:58`) is the administrator landing page (sketch A). On mount it loads the pending
+appeals and the accounts at the same time (`AdminPage.tsx:34-44`). It has three tabs:
 
----
+**Pending appeals (sketch B).** One `AppealReviewCard` per appeal, with its description and case
+number.
+
+1. "See the reports" (`showCase`, `AppealReviewCard.tsx:27`) loads `GET /api/reports/:caseId`: the
+   reported movie or series (with a link), its status, the number of reports and the reason of each
+   report, grouped and counted by `countReasons` (`AppealReviewCard.tsx:14`).
+2. "Accept appeal" / "Reject appeal" ask for confirmation and send
+   `PATCH /api/administrators/appeals/:id` with `decision` (`decide`, `AppealReviewCard.tsx:38`).
+   Accepting keeps the content online; rejecting makes the backend suspend it.
+3. The card calls its output prop `onResolved` (`AppealReviewCard.tsx:48`), and `handleResolved`
+   (`AdminPage.tsx:46`) removes the appeal from the list and shows the result above it.
+
+**Users.** `AccountsTable` lists every viewer and administrator with an "Active" / "Inactive"
+badge and a button to deactivate or activate the account (`toggle`, `AccountsTable.tsx:19`).
+A deactivated account cannot log in and its sessions stop working at once. The administrator's
+own row has no button, because the backend does not allow deactivating yourself
+(`AccountsTable.tsx:62`). On phones the table scrolls sideways and hides the email column.
+
+**New administrator.** `NewAdministratorForm` creates an administrator with `POST
+/api/administrators`. Like the login form, its inputs are uncontrolled, so the password is never
+kept in React state. The new account is added to the users table through `onCreated`.
+
+`AppealReviewCard.test.tsx` checks the reasons count, the reject request with `onResolved`, and that
+cancelling the confirmation sends nothing.
+
+⚠️ **Appeal history (sketch C) is not built:** the backend can only list pending appeals and cannot
+change a verdict (1.4, point 7). Checked live only that a viewer gets 403 on these endpoints: there
+was no administrator account to try the screens with.
 
 ### 3.11 Reviews: like / dislike ✅ ⚠️
 
@@ -908,7 +953,7 @@ Requirements set by the course for regularity and approval. Status: ✅ Met · �
 | Handle errors in a user-friendly way | `AuthPage` + `authService.ts`; content pages through `movieService.ts` (`ApiError`) + `errorMessage()` (`api.ts:28-30`), shown by `RequestStatus` or alerts in `WatchPage`, `UploadPage`, `MyVideosPage` | ✅ |
 | React to state changes | `SearchPage.tsx` (re-filters when the URL changes), `WatchPage.tsx:21` (`[id]`), the series pages (effects on their route params), `AuthPage.tsx:19-22` (redirect when `user` changes), `MainNavbar` (guest vs user) | ✅ |
 | Use input props | `Section` (`title`, `items`), `MainNavbar` (`user`), `ProtectedRoute` (`allowedRoles`), `AuthProvider` (`children`), `RequestStatus`, `SearchBar` (`initialText`) | ✅ |
-| Use output props | `MainNavbar` `onLogout` (`MainNavbar.tsx:7`, `App.tsx:25`), `NewSeriesForm` and `NewSeasonForm` `onCreated` (`UploadSeriesPage.tsx:44`, `46`) | ✅ |
+| Use output props | `MainNavbar` `onLogout` (`MainNavbar.tsx:7`, `App.tsx:25`), `NewSeriesForm` and `NewSeasonForm` `onCreated` (`UploadSeriesPage.tsx:44`, `46`) ; `AppealReviewCard` `onResolved`, `AccountsTable` `onChanged`, `NewAdministratorForm` `onCreated` (`AdminPage.tsx`) | ✅ |
 | At least one service | `src/services/authService.ts`, `src/services/movieService.ts`, `src/services/seriesService.ts` (+ `session.ts`, `api.ts`) | ✅ |
 | Model API data with interfaces/types | `src/types/index.ts` (`MovieDTO`, `MovieUpdate`, `MovieUploadData`, `SeriesDTO`, `SeasonDTO`, `EpisodeDTO`, `User`, `LoginRequest`, `AuthResponse`, ...) | ✅ |
 | Apply an OOP design pattern | Strategy: `AuthService` interface with `HttpAuthService` and `MockAuthService` classes (`authService.ts`, `mockAuthService.ts`). Adapter: `HttpAuthService` translates the backend's user API into the app's types (4.1) | ✅ |
@@ -920,7 +965,7 @@ Requirements set by the course for regularity and approval. Status: ✅ Met · �
 |---|---|---|
 | At least one component unit test | Vitest + Testing Library, run with `pnpm test`. `ProtectedRoute.test.tsx` (guest → `/login`, wrong role → `/`, allowed role sees the page) and `AuthPage.test.tsx` (sends the login request, friendly and generic error messages, switch to sign up). Both give the component a fake `AuthContext` value, so they do not use the mock service or localStorage. `authService.test.ts` tests `HttpAuthService` with a fake `fetch`: URLs, snake_case bodies, the conversion to `User`, the login after sign-up, the friendly errors, the logout request and `/api/users/me`. `AuthProvider.test.tsx` checks the session check on startup with a fake `authService`: invalid token → logged out, valid token → fresh user data, server down → session kept | ✅ |
 | At least one end-to-end test | None | ❌ |
-| Login, with access protected by the backend's user levels via `ProtectedRoute` | Frontend side done: `ProtectedRoute.tsx`, `AuthPage.tsx`, `AuthProvider.tsx`, roles `administrator` / `viewer` in `types/index.ts:92`. But the user levels come from the **mock**, because the backend has no auth, and no admin routes exist yet | 🟡 |
+| Login, with access protected by the backend's user levels via `ProtectedRoute` | Frontend side done: `ProtectedRoute.tsx`, `AuthPage.tsx`, `AuthProvider.tsx`, roles `administrator` / `viewer` in `types/index.ts`. Viewer screens use `allowedRoles={['viewer']}` and the administration page `allowedRoles={['administrator']}` (`App.tsx`). With `VITE_USE_MOCK_AUTH = false` the roles come from the backend's `/api/users/login`, and the backend also enforces them on its administrator and report endpoints | ✅ |
 | Environments defined with `.env` | `.env` (git-ignored), `.env.example`, `VITE_API_URL`, `VITE_USE_MOCK_AUTH`, typed in `vite-env.d.ts`. There is one environment, with no separate development/production files | ✅ |
 
 ---
