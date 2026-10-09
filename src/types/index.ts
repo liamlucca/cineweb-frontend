@@ -143,13 +143,15 @@ export const REPORT_REASONS = [
 /* Defines the report reason type */
 export type ReportReason = typeof REPORT_REASONS[number]
 
-/** would it be necessary to store the user id to avoid reporting more than once? */
-export interface Report {
-  count: number
-  reason: ReportReason
-  other_reason: string
+// what can be reported (episodes are reported through their series)
+export type ReportTargetType = 'movie' | 'series'
 
-  user_ids: number[]
+// body of POST /api/reports: the backend takes the reporter from the token
+export interface ReportRequest {
+  targetType: ReportTargetType
+  targetId: number
+  // one free-text reason (max 1000 characters); the form sends the chosen label or "Other: <text>"
+  reason: string
 }
  /** COMPLAINTS */
 

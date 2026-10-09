@@ -37,7 +37,7 @@ function App() {
           <Route path="/upload" element={<UploadPage />} />
           <Route path="/upload-series" element={<UploadSeriesPage />} />
           <Route path="/my-videos" element={<MyVideosPage />} />
-          <Route path="/report" element={<ReportPage />} />
+          <Route path="/report/:type/:id" element={<ReportPage />} />
           <Route path="/complaint" element={<ComplaintPage/>} />
           <Route path="/appeal" element={<AppealPage/>} />
         </Route>

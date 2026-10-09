@@ -6,6 +6,7 @@ import { getEpisode, getSeason, getSeries } from "../services/seriesService.ts"
 import { videoUrl } from "../services/movieService.ts"
 import { errorMessage } from "../services/api.ts"
 import RequestStatus from "../components/RequestStatus.tsx"
+import useAuth from "../hooks/useAuth.ts"
 import "../styles/WatchPage.css"
 
 //const LANGUAGES = ["Spanish (Latin America)", "Spanish (Spain)", "English", "French"]
@@ -14,6 +15,7 @@ import "../styles/WatchPage.css"
 function WatchSeriesPage() {
   // names must match the route in App.tsx: /watch-series/:id/:seasonId/:episodeId
   const { id = '', seasonId = '', episodeId = '' } = useParams()
+  const { user } = useAuth()
 
   const [series, setSeries] = useState<Series | null>(null)
   const [season, setSeason] = useState<Season | null>(null)
@@ -58,7 +60,10 @@ function WatchSeriesPage() {
             <div className="watch-progress-fill" />
           </div>
 
-          <Link to="/report" className="watch-report-btn">Report</Link>
+          {/* episodes are reported through their series; nobody can report their own series */}
+          {series && series.uploaderId !== user?.id && (
+            <Link to={`/report/series/${series.id}`} className="watch-report-btn">Report series</Link>
+          )}
         </div>
 
         <div className="watch-right">

@@ -77,6 +77,7 @@ locally.
 |---|---|---|
 | `POST /api/users/login` with `{ login, password }` → `{ token, token_type, expires_in, user }` | `HttpAuthService.login` (`authService.ts:52-62`) | ✅ Available (commit `9d30d59`). Checked against the running backend on 2026-10-09 (see 3.1). |
 | `POST /api/users/register` with `{ user_name, first_name, last_name, email, password }` → `{ data: user }` | `HttpAuthService.register` (`authService.ts:64-78`) | ✅ Available (commit `9d30d59`). Checked against the running backend on 2026-10-09 (see 3.1). |
+| `POST /api/reports` (with the token, viewers only) with `{ targetType, targetId, reason }` → 201 | `reportContent` (`reportService.ts`), used by `ReportPage` | ✅ Available. 409 when the user already reported it, owns it, or it is not active. Not checked live (3.8). |
 | `POST /api/users/logout` (with the token) → 204 | `HttpAuthService.logout` (`authService.ts:80-88`), called by `AuthProvider` on "Log Out" | ✅ Available (commit `9d30d59`). Checked against the running backend on 2026-10-09 (see 3.1). |
 | `GET /api/users/me` (with the token) → `{ data: user }`, or 401 if the token is not valid | `HttpAuthService.getCurrentUser` (`authService.ts:90-107`), called by `AuthProvider` when the app starts | ✅ Available (commit `9d30d59`). Checked against the running backend on 2026-10-09 (see 3.1). |
 | `GET /api/movie` → array of movies | `getMovies` (`movieService.ts:24-28`), used by `useCatalog` (landing and search) and `MyVideosPage` | ✅ Available. |
@@ -138,7 +139,7 @@ Details:
     7 days. It is not a JWT. The frontend only stores it and sends it, so this does not change it.
   - Authenticated requests send `Authorization: Bearer <token>`.
   - Other new endpoints not used by the frontend yet: `PATCH /api/users/me` (edit the profile),
-    `/api/viewers/me`, `/api/administrators/...` (users, appeals), `/api/reports` and
+    `/api/viewers/me`, `/api/administrators/...` (users, appeals), `GET /api/reports/:id` and
     `/api/appeals`.
   - Movie, series, season and episode routes do not check the token yet, so uploads still need
     `id_author` and anyone can still change anyone's content. The agreed goal is still that the
@@ -184,7 +185,7 @@ Details:
 | `src/types/` | All TypeScript types for domain data and DTOs, in a single file `index.ts`. |
 | `src/test/` | Test setup (`setup.ts`). Test files live next to the code they test, as `*.test.tsx`. |
 | `src/mockup/` | Fake stand-ins used while the backend is missing. Today only `mockAuthService.ts`. |
-| `src/styles/` | Plain CSS for a few pages (`WatchPage.css`, `ReportPage.css`, ...). |
+| `src/styles/` | Plain CSS for a few older pages (`WatchPage.css`, `SeasonSelectPage.css`, `ComplaintPage.css`). |
 | `public/` | Static files copied as-is (`vite.svg`). |
 | `docs/` | This manual, the domain diagram (`dnd_cineweb.drawio`, source of truth for names, and `dnd_cineweb.png`, visual reference) and the screen sketches (`frontend sketch by Cande.drawio.pdf`, 19 pages, in Spanish). |
 
@@ -231,7 +232,8 @@ Details:
 | `src/components/NewSeriesForm.tsx`, `NewSeasonForm.tsx`, `NewEpisodeForm.tsx` | The three forms of `UploadSeriesPage`: create a series, add a season, upload an episode. |
 | `src/pages/MyVideosPage.tsx` | List with edit and delete. |
 | `src/pages/SeasonSelectPage.tsx`, `EpisodeListPage.tsx`, `WatchSeriesPage.tsx` | Series screens: seasons of a series, episodes of a season, and the episode player. |
-| `src/pages/ReportPage.tsx` | Report form (reasons + "Other"). |
+| `src/pages/ReportPage.tsx` | Report a movie or a series (`/report/:type/:id`): reasons + "Other", confirmation, sends the report. |
+| `src/services/reportService.ts` | `reportContent` (`POST /api/reports`) and `isReportTargetType`. |
 | `src/pages/ComplaintPage.tsx` | "Received Complaints" list with hardcoded data. |
 | `src/pages/AppealPage.tsx` | Placeholder: only renders the word "appeal". |
 | `src/components/Section.tsx` | Horizontal carousel of `CatalogItem` cards, each with a "Movie" or "Series" badge. Props: `title`, `items`. |
@@ -394,7 +396,7 @@ wraps child routes (`App.tsx:36-43`). For each visit it decides one of three out
 | User, but role not in `allowedRoles` | Redirect to `/` | `ProtectedRoute.tsx:20-22` |
 | User with an allowed role (or no `allowedRoles` given) | Render the child page through `<Outlet />` | `ProtectedRoute.tsx:24` |
 
-Today only one group exists: `allowedRoles={['viewer']}` for `/upload`, `/my-videos`, `/report`,
+Today only one group exists: `allowedRoles={['viewer']}` for `/upload`, `/my-videos`, `/report/:type/:id`,
 `/complaint` and `/appeal`. No administrator screens exist yet, so an administrator who logs in can
 only see the public pages.
 
@@ -437,7 +439,9 @@ The error appears in a DaisyUI `alert` with `role="alert"` (`AuthPage.tsx:97`), 
 How the messages travel: services throw `ApiError` (`api.ts:20-25`), an `Error` whose message is
 already friendly. For content requests, `statusMessage` (`api.ts:12-17`) turns 400, 401 and 403
 into "Please check the information you entered.", "Your session has expired. Please log in
-again." and "You do not have permission to do that.". The page shows `err.message` only when the error is an `ApiError`. Anything else
+again." and "You do not have permission to do that.". A 409 (conflict) shows the backend's own
+`message` (`api.ts:52-56`), because those are already readable sentences such as "You have already
+reported this content". The page shows `err.message` only when the error is an `ApiError`. Anything else
 gets the generic message, so technical details never reach the user.
 
 #### Switching from the mock to the real backend
@@ -501,18 +505,18 @@ The filtering functions have unit tests (`catalog.test.ts`).
 
 ### 3.4 Watching a movie ✅ ⚠️
 
-1. The route `/watch/:id` gives `WatchPage` the `id` through `useParams` (`WatchPage.tsx:12`).
+1. The route `/watch/:id` gives `WatchPage` the `id` through `useParams` (`WatchPage.tsx:13`).
 2. A `useEffect` on `[id]` calls `getMovie(id)`. It handles **loading**, **error** and success,
-   and ignores answers for an old `id` (`WatchPage.tsx:18-36`). It shows a spinner or a friendly
-   error (`WatchPage.tsx:39-48`).
-3. The video plays from the backend's static folder, `videoUrl(movie.path)` (`WatchPage.tsx:61`).
+   and ignores answers for an old `id` (`WatchPage.tsx:20-38`). It shows a spinner or a friendly
+   error (`WatchPage.tsx:41-50`).
+3. The video plays from the backend's static folder, `videoUrl(movie.path)` (`WatchPage.tsx:63`).
    The backend also offers `/api/movie/:id/stream` (1.3), which is not used.
 4. If the description is longer than 100 characters, a "See more / See less" button appears.
-   `showMoreBtn` is computed from the data, not kept in state (`WatchPage.tsx:51`).
-5. "Report" links to `/report` (`WatchPage.tsx:64`).
+   `showMoreBtn` is computed from the data, not kept in state (`WatchPage.tsx:53`).
+5. "Report" links to `/report/movie/:id` (`WatchPage.tsx:68`). It is hidden when the logged-in
+   user uploaded the movie, because nobody can report their own content.
 
-⚠️ "Add to Watch later" (sketch 3) is ⏳ pending. The report page does not know which video it is
-reporting yet (3.8).
+⚠️ "Add to Watch later" (sketch 3) is ⏳ pending: the backend has no endpoint for it.
 
 ### 3.5 Uploading a movie ✅ ⚠️
 
@@ -624,16 +628,36 @@ state.
 match any user in the backend. Episodes with the same title overwrite each other's video (1.3).
 Not tested against a running backend yet.
 
-### 3.8 Report a video 🧪
+### 3.8 Report a video ✅
 
-`ReportPage` (`/report`, viewers only) shows a radio button for each reason in `REPORT_REASONS`
-(`types/index.ts`) and a text area when "Other" is selected (`ReportPage.tsx:60-70`). "Save" stays
-disabled until a reason is chosen, and "Other" also needs text (`ReportPage.tsx:19-20`). It opens
-a confirmation box where "Cancel" only closes the box (`ReportPage.tsx:105`).
+`ReportPage` (`/report/:type/:id`, viewers only) reports a movie (`/report/movie/3`) or a series
+(`/report/series/1`). Episodes are reported through their series: the "Report series" button of
+`WatchSeriesPage` links to the series (`WatchSeriesPage.tsx:65`). Both "Report" buttons are hidden
+for the content's own uploader.
 
-🧪 Confirming does **not** send anything: `confirmSaveReport` only does `console.log` of the
-selection (`ReportPage.tsx:27-34`), because no report endpoint exists yet. The "Report" buttons on
-`WatchPage` and `WatchSeriesPage` link here, but the page does not receive which video is reported.
+1. The `type` in the URL is checked with `isReportTargetType`; anything else shows "We couldn't
+   find that video.". A `useEffect` loads the title with `getMovie` or `getSeries`
+   (`ReportPage.tsx:36-56`), so the page says what is being reported.
+2. A radio button for each reason in `REPORT_REASONS` (`ReportPage.tsx:111`) and, for "Other", a
+   required text area. "Report" stays disabled until a reason is chosen, and "Other" also needs
+   text (`canSave`, `ReportPage.tsx:58-59`).
+3. Submitting the form only opens a DaisyUI confirmation modal (`ReportPage.tsx:62-65`, `152`).
+   "Cancel" closes it and keeps the choices.
+4. "Send report" runs `confirmReport` (`ReportPage.tsx:67-85`), which calls `reportContent`
+   (`reportService.ts`): `POST /api/reports` with `{ targetType, targetId, reason }` and the token.
+   The backend takes the reporter from the token.
+5. **Reason.** The backend accepts one free-text `reason` (max 1000 characters). The page sends the
+   chosen label, or `Other: <text>` (`ReportPage.tsx:76-78`). Whether reports should use fixed
+   reason codes is still an open decision in `CLAUDE.md`.
+6. On success it shows "Thanks for your report" and a link back (`ReportPage.tsx:99`). On failure it
+   shows the error; a 409 shows the backend's reason ("You have already reported this content",
+   "You cannot report your own content", "Content is not active").
+
+`ReportPage.test.tsx` checks the title, the request with an "Other" reason, the backend's 409
+message and an invalid type in the URL, with fake services.
+
+Not checked against the running backend: a real report counts toward the 3 reports that open a
+moderation case on that content, so it was not sent on a shared database.
 
 ### 3.9 Received complaints and appeals 🧪 ⏳
 
@@ -751,7 +775,6 @@ Trade-off: the file grows with every entity. Some types do not match the domain 
 **What is mock or hardcoded today**
 - Authentication (`mockAuthService.ts`), while `VITE_USE_MOCK_AUTH = true`.
 - Received complaints (`ComplaintPage.tsx:13-34`).
-- Report submission (only `console.log`).
 - Uploader id: movies, series and episodes send the logged-in user's id as `id_author`. With the
   mock login it is a mock id that may not exist in the backend.
 - Navbar avatar: a fixed DaisyUI sample image (`MainNavbar.tsx:49-51`).
@@ -792,7 +815,6 @@ Trade-off: the file grows with every entity. Some types do not match the domain 
 | Any user can add seasons or episodes to someone else's series, or edit and delete any content, by sending the request by hand. The frontend only hides other users' series; the backend must check ownership (1.4). | `UploadSeriesPage.tsx:21-28` |
 | A 403 (forbidden) answer would show the generic "Something went wrong" message, because no friendly message is mapped for it yet. | `api.ts:52`, `api.ts:78` |
 | The series pages do not check that the season belongs to the series in the URL, or the episode to the season. | `EpisodeListPage.tsx`, `WatchSeriesPage.tsx` |
-| The report page does not know which video is reported, and sends nothing. | `ReportPage.tsx:27-34` |
 | Custom CSS files instead of DaisyUI classes in several pages. | `src/styles/` |
 | Both `pnpm-lock.yaml` and `package-lock.json` exist, but the project uses pnpm only. | repo root |
 | `.env` has a `VITE_API_URL_HOST` variable that no code reads and `vite-env.d.ts` does not declare. | `.env` |

@@ -4,12 +4,14 @@ import type { MovieDTO } from "../types/index.ts"
 //import LanguagePanel from "../components/LanguagePanel.tsx"
 import { getMovie, videoUrl } from "../services/movieService.ts"
 import { errorMessage } from "../services/api.ts"
+import useAuth from "../hooks/useAuth.ts"
 import "../styles/WatchPage.css"
 
 //const LANGUAGES = ["Spanish (Latin America)", "Spanish (Spain)", "English", "French"]
 
 function WatchPage() {
   const { id = '' } = useParams()
+  const { user } = useAuth()
   const [movie, setMovie] = useState<MovieDTO | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -61,7 +63,10 @@ function WatchPage() {
           <video src={videoUrl(movie.path)} controls />
         </div>
 
-        <Link to="/report" className="watch-report-btn">Report</Link>
+        {/* nobody can report their own movie (the backend rejects it too) */}
+        {movie.id_author !== user?.id && (
+          <Link to={`/report/movie/${movie.id}`} className="watch-report-btn">Report</Link>
+        )}
       </div>
 
       <div className="watch-right">

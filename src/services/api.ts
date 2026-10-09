@@ -49,6 +49,11 @@ export async function request(
   }
 
   if (response.status === 404) throw new ApiError(notFoundMessage);
+  if (response.status === 409) {
+    // conflicts ("You have already reported this content"...) are already readable sentences
+    const body = await readJson(response) as { message?: unknown } | null;
+    throw new ApiError(typeof body?.message === 'string' ? body.message : GENERIC_ERROR);
+  }
   if (!response.ok) throw new ApiError(statusMessage(response.status));
   return response;
 }
