@@ -1,11 +1,23 @@
-// MOVIES
+// CATALOG (landing page and search show movies and series together)
 
-// simplified shape used by the movie cards
-export interface Movie {
+// one movie or series as shown in the catalog; "kind" tells them apart
+export interface CatalogItem {
+  kind: 'movie' | 'series'
   id: number
   title: string
   category: string
 }
+
+export type CatalogType = 'all' | CatalogItem['kind']
+
+export interface CatalogFilters {
+  query: string
+  type: CatalogType
+  // key of the category (lowercase), or '' for every category
+  category: string
+}
+
+// MOVIES
 
 // shape coming from the backend (only 'active' movies are listed by it)
 export interface MovieDTO {

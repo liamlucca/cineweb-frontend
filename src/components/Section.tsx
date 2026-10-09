@@ -1,32 +1,18 @@
 import { Link } from "react-router-dom"
-import type { Movie, Series } from "../types/index.ts"
+import type { CatalogItem } from "../types/index.ts"
 
 interface SectionProps {
   title: string
-  movies: Movie[]
-  // optional, so pages that only have movies (like search) don't need to pass it
-  series?: Series[]
+  // movies and series; each card is labeled and linked by its kind
+  items: CatalogItem[]
 }
 
-// One card of the carousel: "kind" tells movies and series apart
-interface CarouselItem {
-  kind: 'movie' | 'series'
-  id: number
-  title: string
-  subtitle: string
-  link: string
+// where "See more" goes for each kind of item
+function linkTo(item: CatalogItem): string {
+  return item.kind === 'series' ? `/series/${item.id}/seasons` : `/watch/${item.id}`
 }
 
-function Section({ title, movies, series = [] }: SectionProps) {
-
-  const items: CarouselItem[] = [
-    ...movies.map((movie): CarouselItem => ({
-      kind: 'movie', id: movie.id, title: movie.title, subtitle: movie.category, link: `/watch/${movie.id}`,
-    })),
-    ...series.map((item): CarouselItem => ({
-      kind: 'series', id: item.id, title: item.title, subtitle: item.category, link: `/series/${item.id}/seasons`,
-    })),
-  ]
+function Section({ title, items }: SectionProps) {
 
   function scrollLeft(e: React.MouseEvent<HTMLButtonElement>) {
     const carousel = e.currentTarget.parentElement?.querySelector('.carousel')
@@ -85,8 +71,8 @@ function Section({ title, movies, series = [] }: SectionProps) {
                     {item.kind === 'series' ? 'Series' : 'Movie'}
                   </span>
                   <p className="text-sm font-bold">{item.title}</p>
-                  <p className="text-xs text-gray-400">{item.subtitle}</p>
-                  <Link to={item.link} className="btn btn-primary btn-sm mt-1">See more</Link>
+                  <p className="text-xs text-gray-400">{item.category}</p>
+                  <Link to={linkTo(item)} className="btn btn-primary btn-sm mt-1">See more</Link>
                   </div>
               </div>
             </div>

@@ -1,6 +1,4 @@
-import type {
-  Movie, MovieDTO, MovieUpdate, MovieUploadData,
-} from '../types/index.ts';
+import type { MovieDTO, MovieUpdate, MovieUploadData } from '../types/index.ts';
 import {
   API_URL, ApiError, GENERIC_ERROR, authHeader, readJson, request, uploadWithProgress,
 } from './api.ts';
@@ -10,15 +8,6 @@ const NOT_FOUND_ERROR = 'We couldn\'t find that video.';
 // Full URL of a video file served by the backend (path looks like "/movies/123-name.mp4")
 export function videoUrl(path: string): string {
   return `${API_URL}${path}`;
-}
-
-// Simplified shape used by the movie cards
-export function toMovie(movie: MovieDTO): Movie {
-  return {
-    id: movie.id,
-    title: movie.title,
-    category: movie.category,
-  };
 }
 
 export async function getMovies(): Promise<MovieDTO[]> {

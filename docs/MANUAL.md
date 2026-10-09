@@ -79,12 +79,12 @@ locally.
 | `POST /api/users/register` with `{ user_name, first_name, last_name, email, password }` → `{ data: user }` | `HttpAuthService.register` (`authService.ts:64-78`) | ✅ Available (commit `9d30d59`). Checked against the running backend on 2026-10-09 (see 3.1). |
 | `POST /api/users/logout` (with the token) → 204 | `HttpAuthService.logout` (`authService.ts:80-88`), called by `AuthProvider` on "Log Out" | ✅ Available (commit `9d30d59`). Checked against the running backend on 2026-10-09 (see 3.1). |
 | `GET /api/users/me` (with the token) → `{ data: user }`, or 401 if the token is not valid | `HttpAuthService.getCurrentUser` (`authService.ts:90-107`), called by `AuthProvider` when the app starts | ✅ Available (commit `9d30d59`). Checked against the running backend on 2026-10-09 (see 3.1). |
-| `GET /api/movie` → array of movies | `getMovies` (`movieService.ts:24-28`), used by `LandingPage`, `SearchPage`, `MyVideosPage` | ✅ Available. |
+| `GET /api/movie` → array of movies | `getMovies` (`movieService.ts:24-28`), used by `useCatalog` (landing and search) and `MyVideosPage` | ✅ Available. |
 | `GET /api/movie/:id` → `{ movie }` | `getMovie` (`movieService.ts:30-35`), used by `WatchPage` | ✅ Available. |
 | `POST /api/movie` (multipart: `data` + `file`) | `uploadMovie` (`movieService.ts:49-59`), used by `UploadPage` | ✅ Available. Requires `id_author` (see below). |
 | `PATCH /api/movie/:id` | `updateMovie` (`movieService.ts:37-43`), used by `MyVideosPage` | ✅ Available. |
 | `DELETE /api/movie/:id` | `deleteMovie` (`movieService.ts:45-47`), used by `MyVideosPage` | ✅ Available. |
-| `GET /api/series` → array of series | `getAllSeries` (`seriesService.ts:70-73`), used by `LandingPage` and `UploadSeriesPage` | ✅ Available. |
+| `GET /api/series` → array of series | `getAllSeries` (`seriesService.ts:70-73`), used by `useCatalog` (landing and search), `MyVideosPage` and `UploadSeriesPage` | ✅ Available. |
 | `GET /api/series/:id` → `{ serie }` | `getSeries` (`seriesService.ts:75-78`), used by the three series pages | ✅ Available. |
 | `GET /api/seasons/serie/:serieId` → array of seasons | `getSeasons` (`seriesService.ts:81-84`), used by `SeasonSelectPage` | ✅ Available. |
 | `GET /api/seasons/:id` → `{ season }` | `getSeason` (`seriesService.ts:86-89`), used by `EpisodeListPage`, `WatchSeriesPage` | ✅ Available. |
@@ -179,7 +179,8 @@ Details:
 | `src/components/` | Reusable pieces of UI: navbar, search bar, carousel section, request status, route guard. |
 | `src/services/` | Code that talks to the outside world (HTTP, localStorage). Today: auth, movies and series. |
 | `src/context/` | App-wide state shared through React Context. Today: the session. |
-| `src/hooks/` | Custom hooks. Today: `useAuth`. |
+| `src/hooks/` | Custom hooks. Today: `useAuth` and `useCatalog`. |
+| `src/utils/` | Pure functions with no React and no HTTP, easy to unit test. Today: `catalog.ts`. |
 | `src/types/` | All TypeScript types for domain data and DTOs, in a single file `index.ts`. |
 | `src/test/` | Test setup (`setup.ts`). Test files live next to the code they test, as `*.test.tsx`. |
 | `src/mockup/` | Fake stand-ins used while the backend is missing. Today only `mockAuthService.ts`. |
@@ -220,8 +221,10 @@ Details:
 | `src/services/movieService.ts` | Every `/api/movie` call (`getMovies`, `getMovie`, `updateMovie`, `deleteMovie`, `uploadMovie`) plus `videoUrl` and `toMovie`. |
 | `src/services/seriesService.ts` | Every `/api/series`, `/api/seasons` and `/api/episodes` call. Converts the backend's snake_case DTOs into `Series`, `Season` and `Episode`. |
 | `src/components/RequestStatus.tsx` | Shows a spinner, a friendly error or an empty message, and its `children` only when there is data. |
-| `src/pages/LandingPage.tsx` | Home page. Fetches movies and series and shows them together in two `Section` carousels. |
-| `src/pages/SearchPage.tsx` | Fetches movies and filters them by title using `?q=`. |
+| `src/hooks/useCatalog.ts` | Loads movies and series together as one list of `CatalogItem`. Used by the landing and search pages. |
+| `src/utils/catalog.ts` | Converts movies and series into `CatalogItem`, lists the categories and filters by text, type and category. |
+| `src/pages/LandingPage.tsx` | Home page: category links, an "All" carousel and one carousel per category. |
+| `src/pages/SearchPage.tsx` | Search by title, with type and category filters kept in the URL. |
 | `src/pages/WatchPage.tsx` | Shows one movie and plays it. |
 | `src/pages/UploadPage.tsx` | Upload form with a progress bar. |
 | `src/pages/UploadSeriesPage.tsx` | Upload a series in three steps (`/upload-series`). Holds the list of series and passes it to the three forms below. |
@@ -231,8 +234,8 @@ Details:
 | `src/pages/ReportPage.tsx` | Report form (reasons + "Other"). |
 | `src/pages/ComplaintPage.tsx` | "Received Complaints" list with hardcoded data. |
 | `src/pages/AppealPage.tsx` | Placeholder: only renders the word "appeal". |
-| `src/components/Section.tsx` | Horizontal carousel of movie and series cards, each with a "Movie" or "Series" badge. Props: `title`, `movies`, optional `series`. |
-| `src/components/SearchBar.tsx` | Search input that navigates to `/search?q=...`. Also links to `/complaint`. |
+| `src/components/Section.tsx` | Horizontal carousel of `CatalogItem` cards, each with a "Movie" or "Series" badge. Props: `title`, `items`. |
+| `src/components/SearchBar.tsx` | Search form that navigates to `/search?q=...`. |
 | `src/components/LanguagePanel.tsx` | Collapsible panel of language toggles. Currently not used: its imports are commented out in `WatchPage.tsx:4` and `WatchSeriesPage.tsx:2`. |
 | `src/types/index.ts` | All types: `Movie`, `MovieDTO`, `Series`, `Season`, `Episode` and their DTOs, `Report`, `Complaint`, `User`, `LoginRequest`, ... |
 
@@ -451,40 +454,50 @@ gets the generic message, so technical details never reach the user.
 
 ### 3.2 Landing page ✅
 
-1. `LandingPage` starts with empty `movies` and `series` arrays, `loading = true` and no `error`
-   (`LandingPage.tsx:12-15`).
-2. A `useEffect` with `[]` runs once when the page mounts. It calls `getMovies()` and
-   `getAllSeries()` at the same time with `Promise.all` (`LandingPage.tsx:19`), which do
-   `GET {API_URL}/api/movie` and `GET {API_URL}/api/series` (`movieService.ts:24-28`,
-   `seriesService.ts:70-73`). If either request fails, the page shows that friendly error.
-3. Each `MovieDTO` is converted into the simpler `Movie` type by `toMovie`, which keeps only
-   `id`, `title` and `category` (`movieService.ts:16-22`).
-4. `RequestStatus` shows a spinner while loading, a friendly error if a call fails, or
-   "There are no videos yet." when there are no movies and no series (`LandingPage.tsx:32-40`).
-5. Otherwise, the same movies and series are shown twice, in "Uploaded" and "More Videos", by
-   `Section`, a carousel with left and right arrows that use `scrollBy` (`Section.tsx:31-39`).
-6. `Section` turns both lists into one list of cards (`Section.tsx:22`). Each card has a `kind`
-   (`'movie'` or `'series'`) that decides its badge, "Movie" or "Series" (`Section.tsx:84`), and
-   where "See more" goes: `/watch/:id` for a movie, `/series/:id/seasons` for a series
-   (`Section.tsx:89`). The React `key` includes the kind, because a movie and a series can have
-   the same `id` (`Section.tsx:79`).
+1. `LandingPage` gets `{ items, loading, error }` from the custom hook `useCatalog`
+   (`LandingPage.tsx:10`).
+2. `useCatalog` (`useCatalog.ts`) runs once on mount. It asks for movies and series at the same
+   time with `Promise.allSettled` (`useCatalog.ts:23`), which do `GET /api/movie` and
+   `GET /api/series`. Each one is converted into a `CatalogItem` (`{ kind, id, title, category }`)
+   by `movieToCatalogItem` or `seriesToCatalogItem` (`catalog.ts:7-18`). `allSettled` (instead of
+   `Promise.all`) means that if one list fails, the other one is still shown, with a warning
+   (`LandingPage.tsx:19`).
+3. `RequestStatus` shows a spinner while loading, a friendly error if nothing loaded, or "There are
+   no videos yet." when there is nothing at all.
+4. `categoriesOf` (`catalog.ts:31-40`) lists the categories found in the data, once each:
+   "Drama", "drama " and "DRAMA" are the same category, because `categoryKey` trims and lowercases
+   them (`catalog.ts:20-22`). There is no categories table in the backend: categories are whatever
+   uploaders typed.
+5. The page shows one link per category, which opens the search filtered by it
+   (`LandingPage.tsx:32`), then an "All" carousel and one carousel per category
+   (`LandingPage.tsx:39-46`).
+6. `Section` is a carousel with left and right arrows that use `scrollBy`
+   (`Section.tsx:17-25`). Each card shows a badge from its `kind`, "Movie" or "Series"
+   (`Section.tsx:70`), and "See more" goes to `/watch/:id` for a movie or `/series/:id/seasons`
+   for a series (`linkTo`, `Section.tsx:11-13`). The React `key` includes the kind, because a movie
+   and a series can have the same `id` (`Section.tsx:65`).
 
 ### 3.3 Search ✅ ⚠️
 
-1. `SearchBar` keeps the typed text in state. Pressing Enter or clicking the button runs
-   `handleSearch`, which ignores empty text and navigates to `/search?q=<text>`, encoded with
-   `encodeURIComponent` (`SearchBar.tsx:15-20`, `41-46`).
-2. `SearchPage` reads `q` with `useSearchParams` (`SearchPage.tsx:12-13`) and passes it to
-   `SearchBar` as `initialText`, so the input keeps showing the search (`SearchPage.tsx:45`).
-3. Its `useEffect` depends on `[query]`, so it runs again whenever the search changes. It fetches
-   **all** movies with `getMovies()` and filters them in the browser by title, ignoring case
-   (`SearchPage.tsx:19-41`). A `cancelled` flag ignores the answer of an older search that arrives
-   after a newer one (`SearchPage.tsx:21`, `40`).
-4. `RequestStatus` handles loading, error and "No videos match ..." (`SearchPage.tsx:46-53`).
+1. `SearchBar` is a `<form>`: Enter and the button both run `handleSearch`
+   (`SearchBar.tsx:16-21`), which navigates to `/search?q=<text>` (encoded with
+   `encodeURIComponent`), or to `/search` when the text is empty.
+2. `SearchPage` keeps every filter in the URL: `q` (title text), `type` (`movie` or `series`) and
+   `category` (a category key) (`SearchPage.tsx:13-17`). A search can be shared as a link, and
+   "Back" returns to the previous filters. `parseCatalogType` ignores an invalid `type` in the URL
+   (`catalog.ts:52-54`).
+3. It uses the same `useCatalog` hook as the landing page and filters in the browser with
+   `filterCatalog` (`SearchPage.tsx:21`, `catalog.ts:42-49`): type, category and title text, all
+   ignoring case. The backend has no search endpoint.
+4. The two `<select>` (type and category) call `setFilter`, which changes one URL parameter and
+   keeps the others (`SearchPage.tsx:24-29`). The page re-renders because the URL changed.
+5. The `SearchBar` gets `key={filters.query}` (`SearchPage.tsx:36`), so it starts again with the
+   new text when the URL changes.
+6. `RequestStatus` handles loading, error and "No videos match this search.".
 
-⚠️ The filter checkboxes ("CATEGORY 1/2/3", `SearchBar.tsx:51-60`) are visual only: they are not
-read anywhere. Filtering by category, type or director (sketch 2) is ⏳ pending. Search only looks
-at movies: series do not appear in the results, although they do appear on the landing page.
+The filtering functions have unit tests (`catalog.test.ts`).
+
+⚠️ Filtering by director (sketch 2) is not possible: the backend has no director field.
 
 ### 3.4 Watching a movie ✅ ⚠️
 
@@ -626,8 +639,8 @@ selection (`ReportPage.tsx:27-34`), because no report endpoint exists yet. The "
 
 - `ComplaintPage` (`/complaint`, viewers only) shows "Received Complaints" from an array hardcoded
   in the component (`ComplaintPage.tsx:13-34`). Each "Appeal" button just navigates to `/`
-  (`ComplaintPage.tsx:74`). It can be reached from the flag button in `SearchBar`
-  (`SearchBar.tsx:56`).
+  (`ComplaintPage.tsx:74`). No link leads to it any more (the flag button was removed from
+  `SearchBar`); it can only be reached by typing `/complaint`.
 - `AppealPage` (`/appeal`) is a placeholder that renders the text "appeal" (`AppealPage.tsx`). ⏳
 
 ### 3.10 Administrator screens ⏳
@@ -778,11 +791,8 @@ Trade-off: the file grows with every entity. Some types do not match the domain 
 | "My Videos" does not show season, episode, duration, subtitles or audio, as the sketch does. The backend has no duration, subtitle or audio fields. | `MyVideosPage.tsx` |
 | Any user can add seasons or episodes to someone else's series, or edit and delete any content, by sending the request by hand. The frontend only hides other users' series; the backend must check ownership (1.4). | `UploadSeriesPage.tsx:21-28` |
 | A 403 (forbidden) answer would show the generic "Something went wrong" message, because no friendly message is mapped for it yet. | `api.ts:52`, `api.ts:78` |
-| Search does not include series. | `SearchPage.tsx` |
-| On the landing page, if the series request fails, the movies are not shown either (`Promise.all`). | `LandingPage.tsx:19` |
 | The series pages do not check that the season belongs to the series in the URL, or the episode to the season. | `EpisodeListPage.tsx`, `WatchSeriesPage.tsx` |
 | The report page does not know which video is reported, and sends nothing. | `ReportPage.tsx:27-34` |
-| The flag button that opens received complaints is shown to everyone; guests go to login and administrators are sent home. | `SearchBar.tsx:63` |
 | Custom CSS files instead of DaisyUI classes in several pages. | `src/styles/` |
 | Both `pnpm-lock.yaml` and `package-lock.json` exist, but the project uses pnpm only. | repo root |
 | `.env` has a `VITE_API_URL_HOST` variable that no code reads and `vite-env.d.ts` does not declare. | `.env` |
@@ -797,10 +807,10 @@ Requirements set by the course for regularity and approval. Status: ✅ Met · �
 
 | Requirement | Where in the code | Status |
 |---|---|---|
-| Handle user events (click, input...) | `AuthPage.tsx` (`onSubmit`, `toggleMode`), `SearchBar.tsx:41-46` (`onChange`, `onKeyDown`, `onClick`), `UploadPage.tsx` (`onSubmit`, `onChange`), `MyVideosPage.tsx` (edit/delete buttons), the series upload forms (`onSubmit`, `onChange`) | ✅ |
+| Handle user events (click, input...) | `AuthPage.tsx` (`onSubmit`, `toggleMode`), `SearchBar.tsx` (`onSubmit`, `onChange`), `SearchPage.tsx` filters (`onChange`), `UploadPage.tsx` (`onSubmit`, `onChange`), `MyVideosPage.tsx` (edit/delete buttons), the series upload forms (`onSubmit`, `onChange`) | ✅ |
 | Handle errors in a user-friendly way | `AuthPage` + `authService.ts`; content pages through `movieService.ts` (`ApiError`) + `errorMessage()` (`api.ts:28-30`), shown by `RequestStatus` or alerts in `WatchPage`, `UploadPage`, `MyVideosPage` | ✅ |
-| React to state changes | `SearchPage.tsx:33` (effect on `[query]`), `WatchPage.tsx:30` (`[id]`), the series pages (effects on their route params), `AuthPage.tsx:19-22` (redirect when `user` changes), `MainNavbar` (guest vs user) | ✅ |
-| Use input props | `Section` (`title`, `movies`), `MainNavbar` (`user`), `ProtectedRoute` (`allowedRoles`), `AuthProvider` (`children`), `RequestStatus`, `SearchBar` (`initialText`) | ✅ |
+| React to state changes | `SearchPage.tsx` (re-filters when the URL changes), `WatchPage.tsx:30` (`[id]`), the series pages (effects on their route params), `AuthPage.tsx:19-22` (redirect when `user` changes), `MainNavbar` (guest vs user) | ✅ |
+| Use input props | `Section` (`title`, `items`), `MainNavbar` (`user`), `ProtectedRoute` (`allowedRoles`), `AuthProvider` (`children`), `RequestStatus`, `SearchBar` (`initialText`) | ✅ |
 | Use output props | `MainNavbar` `onLogout` (`MainNavbar.tsx:7`, `App.tsx:25`), `NewSeriesForm` and `NewSeasonForm` `onCreated` (`UploadSeriesPage.tsx:44`, `46`) | ✅ |
 | At least one service | `src/services/authService.ts`, `src/services/movieService.ts`, `src/services/seriesService.ts` (+ `session.ts`, `api.ts`) | ✅ |
 | Model API data with interfaces/types | `src/types/index.ts` (`MovieDTO`, `MovieUpdate`, `MovieUploadData`, `SeriesDTO`, `SeasonDTO`, `EpisodeDTO`, `User`, `LoginRequest`, `AuthResponse`, ...) | ✅ |

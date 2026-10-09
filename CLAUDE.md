@@ -32,7 +32,8 @@ Team of 3. This repo is the frontend only.
 - `src/components/` — reusable UI (includes `ProtectedRoute.tsx`).
 - `src/services/` — all HTTP calls (`authService.ts`, one service per entity).
 - `src/context/` — app-wide state (`AuthContext.ts` defines the context, `AuthProvider.tsx` provides it).
-- `src/hooks/` — custom hooks (`useAuth.ts`).
+- `src/hooks/` — custom hooks (`useAuth.ts`, `useCatalog.ts`).
+- `src/utils/` — pure functions with no React and no HTTP (`catalog.ts`).
 - `src/types/index.ts` — all domain models and request/response DTOs.
 
 Some of these files may not exist yet. Before creating a new file, check whether
