@@ -123,16 +123,26 @@ literally: if a task touches any of them, ask me before picking an interpretatio
 
 ## API contract
 
-Agreed or assumed so far. JSON is assumed to be camelCase (not yet confirmed
-with the backend).
+What the backend actually does (checked in its code, commit `9d30d59`).
+`docs/MANUAL.md` section 1.3 has the full endpoint list.
 
-- `POST /auth/login` — body `{ email, password }` → `{ token, user }`.
-- `POST /auth/register` — body `{ username, firstName, lastName, email, password, }`
-  → `{ token, user }`. Public registration creates viewers only.
-- Session: JWT stored in localStorage (`cineweb_token`, `cineweb_user`).
-  Authenticated requests send `Authorization: Bearer <token>` via `authHeader()`.
-- When uploading content, the backend takes `uploaderId` from the token:
-  never send it from the form.
+- Naming: the backend uses snake_case for users and content (`id_user`,
+  `id_serie`) and camelCase for reports and appeals (`targetType`). The
+  frontend keeps camelCase types: each service converts the backend's DTOs
+  (e.g. `toUser`, `toSeries`), so pages never see snake_case.
+- `POST /api/users/login` — body `{ login, password }` (`login` is the email or
+  the username) → `{ token, token_type, expires_in, user }`.
+- `POST /api/users/register` — body `{ user_name, first_name, last_name, email,
+  password }` → `{ data: user }`, no token, so the frontend logs in right after.
+  Public registration creates viewers only. Password: 8+ characters.
+- `POST /api/users/logout` revokes the token; `GET /api/users/me` → `{ data: user }`
+  or 401 when the token is no longer valid.
+- Session: an opaque token (not a JWT) that expires after 7 days, stored in
+  localStorage (`cineweb_token`, `cineweb_user`). Authenticated requests send
+  `Authorization: Bearer <token>` via `authHeader()`.
+- Uploads: the goal is that the backend takes the uploader from the token and
+  the form never sends it. Today the content routes do not read the token yet,
+  so the frontend still sends `id_author` (see the manual's known issues).
 
 ## Screens (from the sketches "Bosquejos TP DSW")
 
@@ -153,7 +163,7 @@ Administrator:
 - B. Pending appeals (accept / reject).
 - C. Appeal history (filter, change a verdict).
 
-Auth: login (email, password) and register (first name, last name, email,
+Auth: login (email or username, password) and register (first name, last name, email,
 username, password).
 
 Current priority: the user system (login, register, `AuthContext`, protected routes).
