@@ -119,7 +119,10 @@ locally.
 
 | Feature | Notes |
 |---|---|
-| Appeals, complaints, report types | The backend has routers for them, each with a single `GET /`, but they are not registered in `src/index.ts`, so no URL answers. |
+| A viewer's own moderation cases | Needed to reach the appeal form (3.9, 1.4 point 3). |
+| Reviewed appeals and changing a verdict | Needed for the appeal history screen, sketch C (3.10). |
+| Director, duration, subtitle and audio language | The sketches use them; content has no such fields, so search cannot filter by director. |
+| "Watch later" list | Sketch 3; no endpoint. |
 
 Details:
 
@@ -164,27 +167,31 @@ Details:
 
 ### 1.4 What the backend still needs (from the frontend's perspective)
 
-1. Register the appeal, complaint and report type routers in `src/index.ts`, and add the
-   endpoints the moderation screens need (report a video, appeal, accept / reject).
-2. Authentication exists under `/api/users` and the frontend adapts to it (1.3). Still needed:
-   checking the token on the movie, series, season and episode routes, so the uploader comes from
-   the token instead of `id_author`. Optional: return a token on sign-up, which would save the
-   extra login request, and use one naming style (snake_case or camelCase) everywhere.
-3. Agree on error status codes. The frontend already maps 401 (wrong login), 400 (invalid data)
-   and 409 (email or username in use) to messages (`authService.ts:54-73`).
-4. Give each uploaded episode a unique file name, so episodes with the same title do not overwrite
-   each other (see 1.3).
-5. Check ownership: reject `POST /api/seasons` and `POST /api/episodes` (and editing or deleting
-   series, seasons and episodes) when the user in the token did not upload that series. The
-   frontend only hides other users' series in `UploadSeriesPage`; anyone can still send those
-   requests directly.
-6. Let a viewer list the moderation cases opened against their content (for example
-   `GET /api/viewers/me/reports`, with the case id, the content and its status).
-   `GET /api/viewers/me` only gives `reportsReceivedCount`, and an appeal needs the case id
-   (`reportId`), so today a viewer cannot reach the appeal form from the app (3.9).
-7. An endpoint for reviewed appeals (for example `GET /api/administrators/appeals?status=reviewed`)
-   and a way to change a verdict, for the appeal history screen (sketch C). Today only pending
-   appeals can be listed, and a resolved appeal cannot be changed.
+Ordered by priority. Points 1 and 2 are security problems that anyone can use by sending requests
+by hand; the frontend cannot fix them.
+
+1. **Check the token on every request that writes content.** Today `POST`, `PUT`, `PATCH` and
+   `DELETE` on `/api/movie`, `/api/series`, `/api/seasons`, `/api/episodes` and `/api/reviews` work
+   without logging in. Anyone can upload, edit or delete anyone's content and ratings. They should
+   require the token, take the author (and `viewerId` for reviews) from it instead of the body,
+   and answer 403 when the user did not upload that content.
+2. **Do not let edits change `state`, `views`, `id_author` or `path`.** Today a `PATCH` accepts
+   them, so the owner of suspended content can put it back with `{ "state": "active" }`, which
+   undoes the moderation. Also, a `PATCH` on a series that does not send `state` sets it to
+   `'active'`, so editing a suspended series reactivates it.
+3. **Let a viewer list the moderation cases on their content** (for example
+   `GET /api/viewers/me/reports`, with the case id, the content and its status). An appeal needs
+   the case id, and `GET /api/viewers/me` only gives a count, so the appeal form cannot be reached
+   from the app (3.9).
+4. **Uploads:** limit the file size, accept only video files, and give each file a unique name.
+   Today two movies or two episodes with the same title get the same `path`, so the second upload
+   replaces the first one's video.
+5. **Appeal history (sketch C):** list reviewed appeals (for example
+   `GET /api/administrators/appeals?status=reviewed`) and allow changing a verdict.
+6. Optional: return a token on sign-up (saves the extra login request), use one naming style
+   (snake_case or camelCase) everywhere, limit login attempts, and limit CORS to the frontend's
+   URL.
+7. Content fields the sketches use: director, duration, subtitle and audio language.
 
 ---
 
@@ -728,7 +735,7 @@ report"). On success it links to the profile.
 
 ⚠️ **The appeal form cannot be reached from the app yet.** An appeal needs the moderation case id,
 and the backend only tells a viewer *how many* reports they received, not which cases are open
-(1.4, point 6). Until that endpoint exists, `/appeal/:reportId` only works by typing the case
+(1.4, point 3). Until that endpoint exists, `/appeal/:reportId` only works by typing the case
 number in the URL.
 
 The old `ComplaintPage` (hardcoded "Received Complaints") and its CSS were removed.
@@ -765,7 +772,7 @@ kept in React state. The new account is added to the users table through `onCrea
 cancelling the confirmation sends nothing.
 
 ⚠️ **Appeal history (sketch C) is not built:** the backend can only list pending appeals and cannot
-change a verdict (1.4, point 7). Checked live only that a viewer gets 403 on these endpoints: there
+change a verdict (1.4, point 5). Checked live only that a viewer gets 403 on these endpoints: there
 was no administrator account to try the screens with.
 
 ### 3.11 Reviews: like / dislike ✅ ⚠️
