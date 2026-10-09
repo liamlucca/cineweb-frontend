@@ -1,8 +1,8 @@
 import type {
-  AuthResponse, LoginRequest, RegisterRequest, User, UserDTO,
+  AuthResponse, LoginRequest, ProfileUpdate, RegisterRequest, User, UserDTO,
 } from '../types/index.ts';
 import {
-  API_URL, ApiError, CONNECTION_ERROR, GENERIC_ERROR, authHeader,
+  API_URL, ApiError, CONNECTION_ERROR, GENERIC_ERROR, authHeader, readJson, request,
 } from './api.ts';
 import MockAuthService from '../mockup/mockAuthService.ts';
 
@@ -18,10 +18,12 @@ export interface AuthService {
   logout(): Promise<void>;
   // user of the saved token, or null when the token is no longer valid
   getCurrentUser(): Promise<User | null>;
+  // saves the fields the user changed in their profile and returns the updated user
+  updateProfile(changes: ProfileUpdate): Promise<User>;
 }
 
 // Checks that a value from the network really has the shape of the backend's user
-function isUserDTO(value: unknown): value is UserDTO {
+export function isUserDTO(value: unknown): value is UserDTO {
   if (typeof value !== 'object' || value === null) return false;
   const candidate = value as Record<string, unknown>;
   return typeof candidate.id_user === 'number'
@@ -102,6 +104,25 @@ export class HttpAuthService implements AuthService {
     // the backend answers { data: user }
     const body = await response.json().catch(() => null) as { data?: unknown } | null;
     const dto = body?.data;
+    if (!isUserDTO(dto)) throw new ApiError(GENERIC_ERROR);
+    return toUser(dto);
+  }
+
+  async updateProfile(changes: ProfileUpdate): Promise<User> {
+    // only the fields that are sent change; the backend wants them in snake_case
+    const body = {
+      user_name: changes.username,
+      first_name: changes.firstName,
+      last_name: changes.lastName,
+      email: changes.email,
+    };
+    // a 409 ("Email is already in use") shows the backend's message (see request() in api.ts)
+    const response = await request('/api/users/me', "We couldn't find your account.", {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...authHeader() },
+      body: JSON.stringify(body),
+    });
+    const dto = (await readJson(response) as { data?: unknown } | null)?.data;
     if (!isUserDTO(dto)) throw new ApiError(GENERIC_ERROR);
     return toUser(dto);
   }

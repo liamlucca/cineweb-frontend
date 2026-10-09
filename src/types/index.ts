@@ -170,26 +170,30 @@ export interface ReportRequest {
   // one free-text reason (max 1000 characters); the form sends the chosen label or "Other: <text>"
   reason: string
 }
- /** COMPLAINTS */
+/** APPEALS */
 
-export interface Complaint {
-  media_id: number
+export type AppealDecision = 'approved' | 'rejected'
+// "pending" until an administrator decides
+export type AppealStatus = 'pending' | AppealDecision
 
-  // reason with the highest number of reports
-  report_type: ReportReason
-
-  reported_user_id: number
-  admin_id: number
-  status: boolean
-  complaint_id: number
+// appeal as the backend sends it (camelCase; reportId is the moderation case id)
+export interface AppealDTO {
+  id: number
+  description: string
+  reportId: number
+  administratorId: number | null
+  reviewed: boolean
+  decision: AppealDecision | null
 }
 
-/** temporary, until the backend is further along - used to show the new/viewed state */
-export type ComplaintUI = Complaint & {
-  is_new: boolean
-  media_name: string
+// "reviewed" and "decision" say the same thing twice, so the app keeps a single status
+export interface Appeal {
+  id: number
+  description: string
+  reportId: number
+  administratorId: number | null
+  status: AppealStatus
 }
-
 
 /** USERS */
 
@@ -214,6 +218,19 @@ export interface UserDTO {
   email: string
   role: UserRole
   active: boolean
+}
+
+// fields a user can change in their own profile
+export type ProfileUpdate = Partial<Pick<User, 'username' | 'firstName' | 'lastName' | 'email'>>
+
+// GET /api/viewers/me, converted: the viewer's account plus their activity
+export interface ViewerProfile {
+  user: User
+  uploadedCount: number
+  reviewsCount: number
+  // computed by the backend: reports received by content this viewer uploaded
+  reportsReceivedCount: number
+  appeals: Appeal[]
 }
 
 /** AUTH - request/response DTOs */

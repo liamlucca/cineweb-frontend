@@ -80,6 +80,9 @@ locally.
 | `POST /api/reports` (with the token, viewers only) with `{ targetType, targetId, reason }` → 201 | `reportContent` (`reportService.ts`), used by `ReportPage` | ✅ Available. 409 when the user already reported it, owns it, or it is not active. Not checked live (3.8). |
 | `GET /api/reviews/audiovisual/:type/:id` → `{ data: Review[] }` | `getReviews` (`reviewService.ts`), used by `ReviewButtons` | ✅ Available. Checked live on 2026-10-09. |
 | `POST /api/reviews` with `{ viewerId, rating, audiovisualId, audiovisualType }` → `{ data }`; `PATCH /api/reviews/:id` with `{ rating }`; `DELETE /api/reviews/:id` → 204 | `createReview`, `changeReview`, `deleteReview` (`reviewService.ts`), used by `ReviewButtons` | ✅ Available. Checked live on 2026-10-09 (create, change, list, duplicate → 409, delete). These routes do not check the token, and `viewerId` comes from the body (1.4). |
+| `GET /api/viewers/me` (viewers only) → `{ data: viewer }` with `reportsReceivedCount`, `appeals`, `uploadedAudiovisuals`, `reviews` | `getViewerProfile` (`viewerService.ts`), used by `ProfilePage` | ✅ Available. Checked live on 2026-10-09. |
+| `PATCH /api/users/me` with the changed fields in snake_case → `{ data: user }` | `HttpAuthService.updateProfile` (`authService.ts:111`), used by `ProfilePage` through `AuthContext` | ✅ Available. Checked live on 2026-10-09. 409 when the email or username is taken. |
+| `POST /api/appeals` (viewers only) with `{ reportId, description }` → 201 | `createAppeal` (`appealService.ts`), used by `AppealPage` | ✅ Available. 404 for an unknown case (checked live); 409 when the user does not own the content or already appealed. |
 | `POST /api/users/logout` (with the token) → 204 | `HttpAuthService.logout` (`authService.ts:80-88`), called by `AuthProvider` on "Log Out" | ✅ Available (commit `9d30d59`). Checked against the running backend on 2026-10-09 (see 3.1). |
 | `GET /api/users/me` (with the token) → `{ data: user }`, or 401 if the token is not valid | `HttpAuthService.getCurrentUser` (`authService.ts:90-107`), called by `AuthProvider` when the app starts | ✅ Available (commit `9d30d59`). Checked against the running backend on 2026-10-09 (see 3.1). |
 | `GET /api/movie` → array of movies | `getMovies` (`movieService.ts:24-28`), used by `useCatalog` (landing and search) and `MyVideosPage` | ✅ Available. |
@@ -140,9 +143,8 @@ Details:
   - The token is a random string the backend stores in its sessions table and that expires after
     7 days. It is not a JWT. The frontend only stores it and sends it, so this does not change it.
   - Authenticated requests send `Authorization: Bearer <token>`.
-  - Other new endpoints not used by the frontend yet: `PATCH /api/users/me` (edit the profile),
-    `/api/viewers/me`, `/api/administrators/...` (users, appeals), `GET /api/reports/:id` and
-    `/api/appeals`.
+  - Other new endpoints not used by the frontend yet: `/api/administrators/...` (users, appeals)
+    and `GET /api/reports/:id`.
   - Movie, series, season and episode routes do not check the token yet, so uploads still need
     `id_author` and anyone can still change anyone's content. The agreed goal is still that the
     backend takes the uploader from the token and the frontend never sends it.
@@ -169,6 +171,10 @@ Details:
    series, seasons and episodes) when the user in the token did not upload that series. The
    frontend only hides other users' series in `UploadSeriesPage`; anyone can still send those
    requests directly.
+6. Let a viewer list the moderation cases opened against their content (for example
+   `GET /api/viewers/me/reports`, with the case id, the content and its status).
+   `GET /api/viewers/me` only gives `reportsReceivedCount`, and an appeal needs the case id
+   (`reportId`), so today a viewer cannot reach the appeal form from the app (3.9).
 
 ---
 
@@ -187,7 +193,7 @@ Details:
 | `src/types/` | All TypeScript types for domain data and DTOs, in a single file `index.ts`. |
 | `src/test/` | Test setup (`setup.ts`). Test files live next to the code they test, as `*.test.tsx`. |
 | `src/mockup/` | Fake stand-ins used while the backend is missing. Today only `mockAuthService.ts`. |
-| `src/styles/` | Plain CSS for a few older pages (`WatchPage.css`, `SeasonSelectPage.css`, `ComplaintPage.css`). |
+| `src/styles/` | Plain CSS for a few older pages (`WatchPage.css`, `SeasonSelectPage.css`). |
 | `public/` | Static files copied as-is (`vite.svg`). |
 | `docs/` | This manual, the domain diagram (`dnd_cineweb.drawio`, source of truth for names, and `dnd_cineweb.png`, visual reference) and the screen sketches (`frontend sketch by Cande.drawio.pdf`, 19 pages, in Spanish). |
 
@@ -238,12 +244,14 @@ Details:
 | `src/components/ReviewButtons.tsx` | Like / dislike buttons with counts for one movie or episode. Props: `type`, `id`. |
 | `src/services/reviewService.ts` | `getReviews`, `createReview`, `changeReview`, `deleteReview` (`/api/reviews`). |
 | `src/services/reportService.ts` | `reportContent` (`POST /api/reports`) and `isReportTargetType`. |
-| `src/pages/ComplaintPage.tsx` | "Received Complaints" list with hardcoded data. |
-| `src/pages/AppealPage.tsx` | Placeholder: only renders the word "appeal". |
+| `src/pages/ProfilePage.tsx` | `/profile`: edit your account; viewers also see their activity and their appeals. |
+| `src/pages/AppealPage.tsx` | `/appeal/:reportId`: appeal a moderation case against your content. |
+| `src/services/viewerService.ts` | `getViewerProfile` (`GET /api/viewers/me`). |
+| `src/services/appealService.ts` | `createAppeal` (`POST /api/appeals`) and `toAppeal`, which turns `decision` into one `status`. |
 | `src/components/Section.tsx` | Horizontal carousel of `CatalogItem` cards, each with a "Movie" or "Series" badge. Props: `title`, `items`. |
 | `src/components/SearchBar.tsx` | Search form that navigates to `/search?q=...`. |
 | `src/components/LanguagePanel.tsx` | Collapsible panel of language toggles. Currently not used: its imports are commented out in `WatchPage.tsx:4` and `WatchSeriesPage.tsx:2`. |
-| `src/types/index.ts` | All types: `Movie`, `MovieDTO`, `Series`, `Season`, `Episode` and their DTOs, `Report`, `Complaint`, `User`, `LoginRequest`, ... |
+| `src/types/index.ts` | All types: `Movie`, `MovieDTO`, `Series`, `Season`, `Episode` and their DTOs, `ReportRequest`, `Review`, `Appeal`, `ViewerProfile`, `User`, `LoginRequest`, ... |
 
 ### 2.3 How the pieces connect
 
@@ -256,7 +264,9 @@ index.html
             └── <Routes>
                 ├── public pages            LandingPage, SearchPage, WatchPage, series pages, AuthPage
                 └── <ProtectedRoute allowedRoles={['viewer']}>
-                    └── UploadPage, UploadSeriesPage, MyVideosPage, ReportPage, ComplaintPage, AppealPage
+                    └── UploadPage, UploadSeriesPage, MyVideosPage, ReportPage, AppealPage
+                <ProtectedRoute> (any logged-in user)
+                    └── ProfilePage
 
 Pages / components ──useAuth()──▶ AuthContext ◀── AuthProvider
 AuthProvider ──▶ authService (Http or Mock) ──▶ backend /auth or localStorage
@@ -392,7 +402,7 @@ From there it follows the same path as login (steps 4–8).
 #### How a route is protected by role
 
 `ProtectedRoute` (`ProtectedRoute.tsx`) is a *layout route*: it has no `path` of its own, and it
-wraps child routes (`App.tsx:36-43`). For each visit it decides one of three outcomes:
+wraps child routes (`App.tsx:36-42`). For each visit it decides one of three outcomes:
 
 | Situation | Result | Code |
 |---|---|---|
@@ -400,9 +410,9 @@ wraps child routes (`App.tsx:36-43`). For each visit it decides one of three out
 | User, but role not in `allowedRoles` | Redirect to `/` | `ProtectedRoute.tsx:20-22` |
 | User with an allowed role (or no `allowedRoles` given) | Render the child page through `<Outlet />` | `ProtectedRoute.tsx:24` |
 
-Today only one group exists: `allowedRoles={['viewer']}` for `/upload`, `/my-videos`, `/report/:type/:id`,
-`/complaint` and `/appeal`. No administrator screens exist yet, so an administrator who logs in can
-only see the public pages.
+Groups today (`App.tsx`): `allowedRoles={['viewer']}` for `/upload`, `/upload-series`, `/my-videos`,
+`/report/:type/:id` and `/appeal/:reportId`, and a group with no `allowedRoles` (any logged-in user)
+for `/profile` (`App.tsx:45`).
 
 #### Logging out
 
@@ -665,13 +675,41 @@ message and an invalid type in the URL, with fake services.
 Not checked against the running backend: a real report counts toward the 3 reports that open a
 moderation case on that content, so it was not sent on a shared database.
 
-### 3.9 Received complaints and appeals 🧪 ⏳
+### 3.9 Profile, reports received and appeals ✅ ⚠️
 
-- `ComplaintPage` (`/complaint`, viewers only) shows "Received Complaints" from an array hardcoded
-  in the component (`ComplaintPage.tsx:13-34`). Each "Appeal" button just navigates to `/`
-  (`ComplaintPage.tsx:74`). No link leads to it any more (the flag button was removed from
-  `SearchBar`); it can only be reached by typing `/complaint`.
-- `AppealPage` (`/appeal`) is a placeholder that renders the text "appeal" (`AppealPage.tsx`). ⏳
+**`ProfilePage`** (`/profile`, any logged-in user, "My Profile" in the avatar menu):
+
+1. A form with username, email, first and last name, filled with the current `user`. There is no
+   password field. On submit it builds `changes` with only the fields that changed
+   (`ProfilePage.tsx:96`) and calls `updateProfile` from `AuthContext` (`ProfilePage.tsx:111`).
+   With nothing changed it says "There is nothing to change." and sends nothing.
+2. `updateProfile` in `AuthProvider` (`AuthProvider.tsx:56`) calls `authService.updateProfile`,
+   saves the returned user in localStorage and updates the state, so the navbar greeting changes
+   at once. `HttpAuthService.updateProfile` (`authService.ts:111`) sends `PATCH /api/users/me` with
+   the fields in snake_case. The mock (`mockAuthService.ts`) updates its saved account. A 409 shows
+   the backend's message ("Email is already in use").
+3. For viewers only, `ViewerActivity` (`ProfilePage.tsx:23`) loads `GET /api/viewers/me` with
+   `getViewerProfile` and shows: uploaded videos (movies and episodes), ratings given, **reports
+   received** on their content (a count computed by the backend), and **My appeals**, each with its
+   case number and status.
+
+**Appeal status.** The backend sends `reviewed` and `decision`, which say the same thing twice.
+`toAppeal` (`appealService.ts`) keeps one `status`: `'pending'` while `decision` is `null`, else
+`'approved'` or `'rejected'`. The profile shows them as "Waiting for review", "Accepted: your
+content stays online" and "Rejected: your content was suspended".
+
+**`AppealPage`** (`/appeal/:reportId`, viewers only): a text area (required, max 2000 characters,
+with a counter). It sends `POST /api/appeals` with `{ reportId, description }` through
+`createAppeal`. The backend checks with the token that the user owns the content. A 409 shows its
+reason ("An appeal already exists for this report", "Only the content owner can appeal this
+report"). On success it links to the profile.
+
+⚠️ **The appeal form cannot be reached from the app yet.** An appeal needs the moderation case id,
+and the backend only tells a viewer *how many* reports they received, not which cases are open
+(1.4, point 6). Until that endpoint exists, `/appeal/:reportId` only works by typing the case
+number in the URL.
+
+The old `ComplaintPage` (hardcoded "Received Complaints") and its CSS were removed.
 
 ### 3.10 Administrator screens ⏳
 
@@ -795,7 +833,7 @@ relies on HTML validation (`required`, `type="email"`).
 
 ### 4.6 Route protection with a layout route
 
-`ProtectedRoute` renders `<Outlet />` and wraps a group of routes (`App.tsx:36-43`), instead of
+`ProtectedRoute` renders `<Outlet />` and wraps a group of routes (`App.tsx:36-42`), instead of
 wrapping each page separately. Adding a protected page means adding one line inside the group.
 Trade-off: everything in a group shares the same roles. A page that needs other roles needs its
 own group.
@@ -804,14 +842,13 @@ own group.
 
 All types live in `src/types/index.ts`, because that is how the project already worked.
 Trade-off: the file grows with every entity. Some types do not match the domain diagram yet
-(for example `Report`, `Complaint`, `Series`). The domain diagram
+(for example `Series`, `Season` and the report / moderation case split). The domain diagram
 (`docs/dnd_cineweb.drawio`) is the source of truth for names.
 
 ### 4.8 Honest limits
 
 **What is mock or hardcoded today**
 - Authentication (`mockAuthService.ts`), while `VITE_USE_MOCK_AUTH = true`.
-- Received complaints (`ComplaintPage.tsx:13-34`).
 - Uploader id: movies, series and episodes send the logged-in user's id as `id_author`. With the
   mock login it is a mock id that may not exist in the backend.
 - Navbar avatar: a fixed DaisyUI sample image (`MainNavbar.tsx:49-51`).
@@ -852,7 +889,8 @@ Trade-off: the file grows with every entity. Some types do not match the domain 
 | Any user can add seasons or episodes to someone else's series, or edit and delete any content, by sending the request by hand. The frontend only hides other users' series; the backend must check ownership (1.4). | `UploadSeriesPage.tsx:21-28` |
 | A 403 (forbidden) answer would show the generic "Something went wrong" message, because no friendly message is mapped for it yet. | `api.ts:52`, `api.ts:78` |
 | The series pages do not check that the season belongs to the series in the URL, or the episode to the season. | `EpisodeListPage.tsx`, `WatchSeriesPage.tsx` |
-| Custom CSS files instead of DaisyUI classes in several pages. | `src/styles/` |
+| Custom CSS files instead of DaisyUI classes in the watch and season pages. | `src/styles/` |
+| A viewer cannot see which moderation cases are open against their content, so the appeal form is only reachable by typing its URL. Needs a backend endpoint (1.4). | `AppealPage.tsx` |
 | Both `pnpm-lock.yaml` and `package-lock.json` exist, but the project uses pnpm only. | repo root |
 | `.env` has a `VITE_API_URL_HOST` variable that no code reads and `vite-env.d.ts` does not declare. | `.env` |
 

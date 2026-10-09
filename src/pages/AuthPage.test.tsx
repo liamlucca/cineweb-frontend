@@ -9,7 +9,7 @@ import { ApiError } from '../services/api.ts';
 
 function renderAuthPage(login: AuthContextValue['login']) {
   const value: AuthContextValue = {
-    user: null, login, register: vi.fn(), logout: vi.fn(),
+    user: null, login, register: vi.fn(), logout: vi.fn(), updateProfile: vi.fn(),
   };
 
   render(

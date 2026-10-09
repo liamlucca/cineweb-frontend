@@ -53,6 +53,12 @@ function AuthProvider({ children }: AuthProviderProps) {
       user,
       login: async (request) => startSession(await authService.login(request)),
       register: async (request) => startSession(await authService.register(request)),
+      updateProfile: async (changes) => {
+        const updated = await authService.updateProfile(changes);
+        const token = getToken();
+        if (token) saveSession({ token, user: updated });
+        setUser(updated);
+      },
       logout: () => {
         // tell the backend first (it needs the saved token), but don't wait for its answer
         authService.logout();

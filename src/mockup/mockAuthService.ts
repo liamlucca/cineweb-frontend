@@ -1,5 +1,5 @@
 import type {
-  AuthResponse, LoginRequest, RegisterRequest, User,
+  AuthResponse, LoginRequest, ProfileUpdate, RegisterRequest, User,
 } from '../types/index.ts';
 import type { AuthService } from '../services/authService.ts';
 import { ApiError } from '../services/api.ts';
@@ -117,5 +117,22 @@ export default class MockAuthService implements AuthService {
     await delay();
     const id = Number(getToken()?.replace('mock-token-', ''));
     return loadAccounts().find((a) => a.user.id === id)?.user ?? null;
+  }
+
+  async updateProfile(changes: ProfileUpdate): Promise<User> {
+    await delay();
+    const id = Number(getToken()?.replace('mock-token-', ''));
+    const accounts = loadAccounts();
+    const account = accounts.find((a) => a.user.id === id);
+    if (!account) throw new ApiError('Your session has expired. Please log in again.');
+
+    const email = changes.email?.trim().toLowerCase();
+    const taken = accounts.some((a) => a.user.id !== id
+      && ((email && a.user.email === email) || (changes.username && a.user.username === changes.username)));
+    if (taken) throw new ApiError('That email or username is already in use.');
+
+    const user: User = { ...account.user, ...changes, ...(email ? { email } : {}) };
+    saveAccounts(accounts.map((a) => (a.user.id === id ? { ...a, user } : a)));
+    return user;
   }
 }

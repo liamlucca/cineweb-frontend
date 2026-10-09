@@ -10,7 +10,7 @@ import WatchSeriesPage from './pages/WatchSeriesPage.tsx'
 import SeasonSelectPage from './pages/SeasonSelectPage.tsx'
 import EpisodeListPage from './pages/EpisodeListPage.tsx'
 import ReportPage from './pages/ReportPage.tsx'
-import ComplaintPage from './pages/ComplaintPage.tsx'
+import ProfilePage from './pages/ProfilePage.tsx'
 import AppealPage from './pages/AppealPage.tsx'
 import MyVideosPage from './pages/MyVideosPage.tsx'
 import ProtectedRoute from './components/ProtectedRoute.tsx'
@@ -38,8 +38,12 @@ function App() {
           <Route path="/upload-series" element={<UploadSeriesPage />} />
           <Route path="/my-videos" element={<MyVideosPage />} />
           <Route path="/report/:type/:id" element={<ReportPage />} />
-          <Route path="/complaint" element={<ComplaintPage/>} />
-          <Route path="/appeal" element={<AppealPage/>} />
+          <Route path="/appeal/:reportId" element={<AppealPage/>} />
+        </Route>
+
+        {/* any logged-in user */}
+        <Route element={<ProtectedRoute />}>
+          <Route path="/profile" element={<ProfilePage />} />
         </Route>
       </Routes>
     </BrowserRouter>

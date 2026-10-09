@@ -33,7 +33,7 @@ function review(id: number, viewerId: number, rating: boolean): Review {
 function renderButtons(user: User | null) {
   render(
     <AuthContext.Provider value={{
-      user, login: vi.fn(), register: vi.fn(), logout: vi.fn(),
+      user, login: vi.fn(), register: vi.fn(), logout: vi.fn(), updateProfile: vi.fn(),
     }}
     >
       <MemoryRouter>
