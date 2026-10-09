@@ -79,11 +79,11 @@ locally.
 | `POST /api/users/register` with `{ user_name, first_name, last_name, email, password }` → `{ data: user }` | `HttpAuthService.register` (`authService.ts:64-78`) | ✅ Available (commit `9d30d59`). Checked against the running backend on 2026-10-09 (see 3.1). |
 | `POST /api/users/logout` (with the token) → 204 | `HttpAuthService.logout` (`authService.ts:80-88`), called by `AuthProvider` on "Log Out" | ✅ Available (commit `9d30d59`). Checked against the running backend on 2026-10-09 (see 3.1). |
 | `GET /api/users/me` (with the token) → `{ data: user }`, or 401 if the token is not valid | `HttpAuthService.getCurrentUser` (`authService.ts:90-107`), called by `AuthProvider` when the app starts | ✅ Available (commit `9d30d59`). Checked against the running backend on 2026-10-09 (see 3.1). |
-| `GET /api/movie` → array of movies | `getMovies` (`movieService.ts:25-29`), used by `LandingPage`, `SearchPage`, `MyVideosPage` | ✅ Available. |
-| `GET /api/movie/:id` → `{ movie }` | `getMovie` (`movieService.ts:31-36`), used by `WatchPage` | ✅ Available. |
-| `POST /api/movie` (multipart: `data` + `file`) | `uploadMovie` (`movieService.ts:50-60`), used by `UploadPage` | ✅ Available. Requires `id_author` (see below). |
-| `PATCH /api/movie/:id` | `updateMovie` (`movieService.ts:38-44`), used by `MyVideosPage` | ✅ Available. |
-| `DELETE /api/movie/:id` | `deleteMovie` (`movieService.ts:46-48`), used by `MyVideosPage` | ✅ Available. |
+| `GET /api/movie` → array of movies | `getMovies` (`movieService.ts:24-28`), used by `LandingPage`, `SearchPage`, `MyVideosPage` | ✅ Available. |
+| `GET /api/movie/:id` → `{ movie }` | `getMovie` (`movieService.ts:30-35`), used by `WatchPage` | ✅ Available. |
+| `POST /api/movie` (multipart: `data` + `file`) | `uploadMovie` (`movieService.ts:49-59`), used by `UploadPage` | ✅ Available. Requires `id_author` (see below). |
+| `PATCH /api/movie/:id` | `updateMovie` (`movieService.ts:37-43`), used by `MyVideosPage` | ✅ Available. |
+| `DELETE /api/movie/:id` | `deleteMovie` (`movieService.ts:45-47`), used by `MyVideosPage` | ✅ Available. |
 | `GET /api/series` → array of series | `getAllSeries` (`seriesService.ts:70-73`), used by `LandingPage` and `UploadSeriesPage` | ✅ Available. |
 | `GET /api/series/:id` → `{ serie }` | `getSeries` (`seriesService.ts:75-78`), used by the three series pages | ✅ Available. |
 | `GET /api/seasons/serie/:serieId` → array of seasons | `getSeasons` (`seriesService.ts:81-84`), used by `SeasonSelectPage` | ✅ Available. |
@@ -111,12 +111,16 @@ locally.
 
 Details:
 
-- **Response shape of `GET /api/movie/:id`.** `getMovie` (`movieService.ts:31-36`) expects
+- **Response shape of `GET /api/movie/:id`.** `getMovie` (`movieService.ts:30-35`) expects
   `{ movie: MovieDTO }`, which matches what the backend sends.
 - **`id_author` on upload.** The backend rejects a movie, a series or an episode without
-  `id_author`, so the frontend still sends it. For movies it is hardcoded (`UploadPage.tsx:42`).
-  For series and episodes it is the logged-in user's `id` (`UploadSeriesPage.tsx:43`, `47`). Both
-  go against the agreed contract below.
+  `id_author`, so the frontend still sends the logged-in user's `id` (`UploadPage.tsx:44`,
+  `UploadSeriesPage.tsx:43`, `47`). This goes against the agreed contract below.
+- **Movie `state`.** The backend stores `state` as text and only lists movies whose `state` is
+  exactly `'active'`. The upload sends `state: 'active'` (`UploadPage.tsx:49`). Before 2026-10-09 it
+  sent `true`, which the database stored as `'1'`: movies uploaded from the app that way never
+  appear in any list. Fixed and checked against the running backend: an upload with the new `data`
+  appeared in `GET /api/movie`.
 - **Stored episode file name.** The `path` the backend returns for an uploaded episode is built from
   the episode title, and `data` must be sent before the file for that to work
   (`seriesService.ts:116-117`). Two episodes with the same title (for example "Pilot" in two
@@ -427,8 +431,10 @@ The order matters: `HttpAuthService.logout` reads the token with `authHeader()` 
 The error appears in a DaisyUI `alert` with `role="alert"` (`AuthPage.tsx:97`), and
 `submitting` goes back to `false` so they can try again (`AuthPage.tsx:46`).
 
-How the messages travel: services throw `ApiError` (`api.ts:10-15`), an `Error` whose message is
-already friendly. The page shows `err.message` only when the error is an `ApiError`. Anything else
+How the messages travel: services throw `ApiError` (`api.ts:20-25`), an `Error` whose message is
+already friendly. For content requests, `statusMessage` (`api.ts:12-17`) turns 400, 401 and 403
+into "Please check the information you entered.", "Your session has expired. Please log in
+again." and "You do not have permission to do that.". The page shows `err.message` only when the error is an `ApiError`. Anything else
 gets the generic message, so technical details never reach the user.
 
 #### Switching from the mock to the real backend
@@ -449,10 +455,10 @@ gets the generic message, so technical details never reach the user.
    (`LandingPage.tsx:12-15`).
 2. A `useEffect` with `[]` runs once when the page mounts. It calls `getMovies()` and
    `getAllSeries()` at the same time with `Promise.all` (`LandingPage.tsx:19`), which do
-   `GET {API_URL}/api/movie` and `GET {API_URL}/api/series` (`movieService.ts:25-29`,
+   `GET {API_URL}/api/movie` and `GET {API_URL}/api/series` (`movieService.ts:24-28`,
    `seriesService.ts:70-73`). If either request fails, the page shows that friendly error.
-3. Each `MovieDTO` is converted into the simpler `Movie` type by `toMovie`: `category` becomes
-   `platform`, and `path` becomes a full URL in `file` (`movieService.ts:16-23`).
+3. Each `MovieDTO` is converted into the simpler `Movie` type by `toMovie`, which keeps only
+   `id`, `title` and `category` (`movieService.ts:16-22`).
 4. `RequestStatus` shows a spinner while loading, a friendly error if a call fails, or
    "There are no videos yet." when there are no movies and no series (`LandingPage.tsx:32-40`).
 5. Otherwise, the same movies and series are shown twice, in "Uploaded" and "More Videos", by
@@ -497,31 +503,32 @@ reporting yet (3.8).
 
 ### 3.5 Uploading a movie ✅ ⚠️
 
-1. The user picks a file. `handleFileSelect` stores it and uses the file name as the default title
-   (`UploadPage.tsx:18-25`).
-2. On "Save Movie", `handleSubmit` checks that the title is not empty, then builds `movieData`
-   (`UploadPage.tsx:27-49`).
-3. It calls `uploadMovie` (`UploadPage.tsx:52`, `movieService.ts:50-60`). The service builds a
+1. The page is a real `<form>` (`UploadPage.tsx:69`): every field is `required`, so the browser
+   checks empty fields and Enter submits.
+2. The user picks a file. `handleFileSelect` stores it and uses the file name, without its
+   extension, as the default title (`UploadPage.tsx:20-28`).
+3. On submit, `handleSubmit` builds `movieData` with the logged-in user's `id` as `id_author` and
+   `state: 'active'` (`UploadPage.tsx:30-50`).
+4. It calls `uploadMovie` (`UploadPage.tsx:53`, `movieService.ts:49-59`). The service builds a
    `FormData` with two parts, `data` (the JSON text) and `file` (the video), and passes it to
-   `uploadWithProgress` (`api.ts:54-78`). That helper sends it with `XMLHttpRequest` instead of
+   `uploadWithProgress` (`api.ts:63-86`). That helper sends it with `XMLHttpRequest` instead of
    `fetch`, because `fetch` cannot report upload progress. Each `progress` event updates the
-   progress bar (`UploadPage.tsx:109`). The request carries `authHeader()` (`api.ts:75`).
-4. On success it shows "Your video was uploaded." with a link to "My Videos". On failure it shows a
-   friendly error (`UploadPage.tsx:111-118`).
+   progress bar (`UploadPage.tsx:122`). The request carries `authHeader()` (`api.ts:83`).
+5. On success it clears the form, including the file input with `form.reset()`
+   (`UploadPage.tsx:59`), and shows "Your video was uploaded." with a link to "My Videos". On
+   failure it shows a friendly error (`UploadPage.tsx:124`).
 
-⚠️ `id_author: 2` is still hardcoded (`UploadPage.tsx:42`). The agreed contract says the backend
-must take the uploader from the token and the form must never send it (1.3), but the backend still
-requires `id_author` today. Remove it once the backend reads the token.
+⚠️ The backend still requires `id_author` (1.3). Remove it once the backend reads the token.
 
 ### 3.6 My Videos ✅ ⚠️
 
-1. On mount, it calls `getMovies()` (`MyVideosPage.tsx:37-43`), meaning **all** movies,
-   not only the user's own. `RequestStatus` handles loading, error and "You have no uploaded
-   videos." (`MyVideosPage.tsx:157-162`).
+1. On mount, it calls `getMovies()` and keeps only the movies whose `id_author` is the logged-in
+   user's `id` (`MyVideosPage.tsx:37-43`), because there is no "movies of a user" endpoint.
+   `RequestStatus` handles loading, error and "You have no uploaded videos."
+   (`MyVideosPage.tsx:157-162`).
 2. **Delete:** `deleteVideo` asks for confirmation with `window.confirm`, then calls `deleteMovie`
-   and removes the video from the list on success (`MyVideosPage.tsx:54-70`). This is a real
-   delete request, while the planned design describes a logical delete (an `active` flag). Whether
-   the backend deletes the row or marks it inactive was not checked.
+   and removes the video from the list on success (`MyVideosPage.tsx:54-70`). The backend deletes
+   the row (`DELETE FROM movies`), while the sketch describes a logical delete.
 3. **Edit:** `startEditing` copies the video into the edit fields (`MyVideosPage.tsx:73-79`).
    `saveEdit` rejects an empty title, calls `updateMovie` and updates the list locally
    (`MyVideosPage.tsx:90-121`). `cancelEditing` clears the fields (`MyVideosPage.tsx:82-87`).
@@ -536,8 +543,8 @@ requires `id_author` today. Remove it once the backend reads the token.
    deleted from here yet.
 6. The header has "Upload videos" and "Upload series" buttons (`MyVideosPage.tsx:139`).
 
-⚠️ It lists every movie, because there is no "my movies" endpoint yet, while series are filtered by
-user. `uploaderId` comes from the backend's `id_author`; the diagram calls it `upladerId`, a typo.
+⚠️ Movies and series are filtered in the browser, because the backend has no "content of a user"
+endpoint. `uploaderId` comes from the backend's `id_author`; the diagram calls it `upladerId`, a typo.
 
 ### 3.7 Series: seasons, episodes, watching and uploading ✅ ⚠️
 
@@ -679,7 +686,7 @@ so no extra library is needed.
 the backend team.
 
 **Why:** it is simple, survives reloads, and works with a `Bearer` header (`authHeader()`,
-`api.ts:23-26`).
+`api.ts:33-36`).
 
 **Trade-offs and risks:**
 - **XSS:** any JavaScript running on the page can read localStorage. If an attacker manages to
@@ -732,8 +739,8 @@ Trade-off: the file grows with every entity. Some types do not match the domain 
 - Authentication (`mockAuthService.ts`), while `VITE_USE_MOCK_AUTH = true`.
 - Received complaints (`ComplaintPage.tsx:13-34`).
 - Report submission (only `console.log`).
-- Uploader id (`id_author: 2` in `UploadPage.tsx:42`). Series and episodes send the logged-in
-  user's id instead, which is a mock id while the mock login is used.
+- Uploader id: movies, series and episodes send the logged-in user's id as `id_author`. With the
+  mock login it is a mock id that may not exist in the backend.
 - Navbar avatar: a fixed DaisyUI sample image (`MainNavbar.tsx:49-51`).
 
 **What is not tested**
@@ -755,7 +762,7 @@ Trade-off: the file grows with every entity. Some types do not match the domain 
 - A token that expires while the app is open is only noticed on the next reload (4.3). Logging out
   revokes the token on the server (3.1).
 - Mock passwords in plain text in localStorage (development only).
-- Upload, edit and delete requests send the token (`movieService.ts:41`, `47`, `api.ts:75`), but the
+- Upload, edit and delete requests send the token (`movieService.ts:40`, `47`, `api.ts:83`), but the
   backend does not check it yet, so today it cannot know who makes them.
 - No backend authorization exists yet on any endpoint. For example, `UploadSeriesPage` only offers
   the user's own series, but a request sent by hand can add a season or an episode to any series
@@ -765,18 +772,15 @@ Trade-off: the file grows with every entity. Some types do not match the domain 
 
 | Issue | Where |
 |---|---|
-| Hardcoded `id_author: 2`, because the backend still requires it. | `UploadPage.tsx:42` |
-| Series and episodes send the logged-in user's id as `id_author`, against the agreed contract. | `UploadSeriesPage.tsx:43`, `47` |
+| Movies, series and episodes send the logged-in user's id as `id_author`, against the agreed contract. | `UploadSeriesPage.tsx:43`, `47` |
 | Uploaded episodes with the same title overwrite each other's video (backend file naming). | `POST /api/episodes` (1.3) |
-| "My Videos" lists every movie, not only the user's own (series are filtered by user). | `MyVideosPage.tsx:37-43` |
 | Series cannot be edited or deleted from "My Videos" (the backend has `PATCH` / `DELETE /api/series/:id`). The sketch asks for a logical delete. | `MyVideosPage.tsx` |
 | "My Videos" does not show season, episode, duration, subtitles or audio, as the sketch does. The backend has no duration, subtitle or audio fields. | `MyVideosPage.tsx` |
 | Any user can add seasons or episodes to someone else's series, or edit and delete any content, by sending the request by hand. The frontend only hides other users' series; the backend must check ownership (1.4). | `UploadSeriesPage.tsx:21-28` |
-| A 403 (forbidden) answer would show the generic "Something went wrong" message, because no friendly message is mapped for it yet. | `api.ts:41-44`, `api.ts:68-70` |
+| A 403 (forbidden) answer would show the generic "Something went wrong" message, because no friendly message is mapped for it yet. | `api.ts:52`, `api.ts:78` |
 | Search does not include series. | `SearchPage.tsx` |
 | On the landing page, if the series request fails, the movies are not shown either (`Promise.all`). | `LandingPage.tsx:19` |
 | The series pages do not check that the season belongs to the series in the URL, or the episode to the season. | `EpisodeListPage.tsx`, `WatchSeriesPage.tsx` |
-| The movie upload form is not a `<form>`: Enter does not submit and the inputs have no `required`. The series forms are. | `UploadPage.tsx:61-122` |
 | The report page does not know which video is reported, and sends nothing. | `ReportPage.tsx:27-34` |
 | The flag button that opens received complaints is shown to everyone; guests go to login and administrators are sent home. | `SearchBar.tsx:63` |
 | Custom CSS files instead of DaisyUI classes in several pages. | `src/styles/` |
@@ -793,8 +797,8 @@ Requirements set by the course for regularity and approval. Status: ✅ Met · �
 
 | Requirement | Where in the code | Status |
 |---|---|---|
-| Handle user events (click, input...) | `AuthPage.tsx` (`onSubmit`, `toggleMode`), `SearchBar.tsx:41-46` (`onChange`, `onKeyDown`, `onClick`), `UploadPage.tsx:68-107`, `MyVideosPage.tsx` (edit/delete buttons), the series upload forms (`onSubmit`, `onChange`) | ✅ |
-| Handle errors in a user-friendly way | `AuthPage` + `authService.ts`; content pages through `movieService.ts` (`ApiError`) + `errorMessage()` (`api.ts:18-20`), shown by `RequestStatus` or alerts in `WatchPage`, `UploadPage`, `MyVideosPage` | ✅ |
+| Handle user events (click, input...) | `AuthPage.tsx` (`onSubmit`, `toggleMode`), `SearchBar.tsx:41-46` (`onChange`, `onKeyDown`, `onClick`), `UploadPage.tsx` (`onSubmit`, `onChange`), `MyVideosPage.tsx` (edit/delete buttons), the series upload forms (`onSubmit`, `onChange`) | ✅ |
+| Handle errors in a user-friendly way | `AuthPage` + `authService.ts`; content pages through `movieService.ts` (`ApiError`) + `errorMessage()` (`api.ts:28-30`), shown by `RequestStatus` or alerts in `WatchPage`, `UploadPage`, `MyVideosPage` | ✅ |
 | React to state changes | `SearchPage.tsx:33` (effect on `[query]`), `WatchPage.tsx:30` (`[id]`), the series pages (effects on their route params), `AuthPage.tsx:19-22` (redirect when `user` changes), `MainNavbar` (guest vs user) | ✅ |
 | Use input props | `Section` (`title`, `movies`), `MainNavbar` (`user`), `ProtectedRoute` (`allowedRoles`), `AuthProvider` (`children`), `RequestStatus`, `SearchBar` (`initialText`) | ✅ |
 | Use output props | `MainNavbar` `onLogout` (`MainNavbar.tsx:7`, `App.tsx:25`), `NewSeriesForm` and `NewSeasonForm` `onCreated` (`UploadSeriesPage.tsx:44`, `46`) | ✅ |
@@ -824,7 +828,7 @@ response. `await` pauses an `async` function until the Promise is ready. `.then(
 with callbacks (`LandingPage.tsx` explains it in its bottom comment).
 
 **Bearer token / Authorization header** — How a request proves who is sending it: the header
-`Authorization: Bearer <token>`. Built by `authHeader()` (`api.ts:23`).
+`Authorization: Bearer <token>`. Built by `authHeader()` (`api.ts:33`).
 
 **Component** — A function that returns UI (JSX). Example: `Section`, `AuthPage`.
 

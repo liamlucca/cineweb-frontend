@@ -5,6 +5,16 @@ export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 export const CONNECTION_ERROR = 'We couldn\'t reach the server. Please try again later.';
 export const GENERIC_ERROR = 'Something went wrong. Please try again.';
 export const INVALID_DATA_ERROR = 'Please check the information you entered.';
+export const SESSION_ERROR = 'Your session has expired. Please log in again.';
+export const FORBIDDEN_ERROR = 'You do not have permission to do that.';
+
+// Friendly message for the HTTP errors every service handles the same way
+function statusMessage(status: number): string {
+  if (status === 400) return INVALID_DATA_ERROR;
+  if (status === 401) return SESSION_ERROR;
+  if (status === 403) return FORBIDDEN_ERROR;
+  return GENERIC_ERROR;
+}
 
 // Error whose message is already friendly and can be shown to the user as is
 export class ApiError extends Error {
@@ -39,8 +49,7 @@ export async function request(
   }
 
   if (response.status === 404) throw new ApiError(notFoundMessage);
-  if (response.status === 400) throw new ApiError(INVALID_DATA_ERROR);
-  if (!response.ok) throw new ApiError(GENERIC_ERROR);
+  if (!response.ok) throw new ApiError(statusMessage(response.status));
   return response;
 }
 
@@ -66,8 +75,7 @@ export function uploadWithProgress(
     });
     xhr.addEventListener('load', () => {
       if (xhr.status >= 200 && xhr.status < 300) resolve();
-      else if (xhr.status === 400) reject(new ApiError(INVALID_DATA_ERROR));
-      else reject(new ApiError(GENERIC_ERROR));
+      else reject(new ApiError(statusMessage(xhr.status)));
     });
     xhr.addEventListener('error', () => reject(new ApiError(CONNECTION_ERROR)));
 

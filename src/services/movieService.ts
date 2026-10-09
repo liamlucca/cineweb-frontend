@@ -17,8 +17,7 @@ export function toMovie(movie: MovieDTO): Movie {
   return {
     id: movie.id,
     title: movie.title,
-    platform: movie.category,
-    file: videoUrl(movie.path),
+    category: movie.category,
   };
 }
 

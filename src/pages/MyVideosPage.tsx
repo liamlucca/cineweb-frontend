@@ -10,6 +10,8 @@ import { errorMessage } from "../services/api.ts";
 import useAuth from "../hooks/useAuth.ts";
 
 function MyVideosPage() {
+  const { user } = useAuth();
+  const userId = user?.id;
   const [videos, setVideos] = useState<MovieDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
@@ -28,19 +30,17 @@ function MyVideosPage() {
   const [editedDescription, setEditedDescription] = useState("");
 
   // Series uploaded by the logged-in user (only listed for now, not edited)
-  const { user } = useAuth();
-  const userId = user?.id;
   const [mySeries, setMySeries] = useState<Series[]>([]);
   const [loadingSeries, setLoadingSeries] = useState(true);
   const [seriesError, setSeriesError] = useState("");
 
   useEffect(() => {
-    // Fetches the videos from the backend
+    // There is no "movies of a user" endpoint, so all movies are fetched and filtered here
     getMovies()
-      .then(setVideos)
+      .then((allMovies) => setVideos(allMovies.filter((movie) => movie.id_author === userId)))
       .catch((err: unknown) => setLoadError(errorMessage(err)))
       .finally(() => setLoading(false));
-  }, []);
+  }, [userId]);
 
   useEffect(() => {
     // There is no "series of a user" endpoint, so all series are fetched and filtered here

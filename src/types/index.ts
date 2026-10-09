@@ -1,21 +1,22 @@
 // MOVIES
 
+// simplified shape used by the movie cards
 export interface Movie {
   id: number
   title: string
-  platform: string
-  file: string
+  category: string
 }
 
-// shape coming from the backend
+// shape coming from the backend (only 'active' movies are listed by it)
 export interface MovieDTO {
   id: number
+  id_author: number
   path: string
   title: string
   category: string
   views: number
   description: string
-  state: boolean
+  state: string
 }
 
 // fields a viewer can change from "My Videos"
@@ -28,8 +29,8 @@ export interface MovieUploadData {
   category: string
   views: number
   description: string
-  report: boolean
-  state: boolean
+  // the backend only lists movies whose state is exactly 'active'
+  state: 'active'
 }
 
 // SERIES

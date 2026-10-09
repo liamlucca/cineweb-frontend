@@ -21,7 +21,7 @@ function Section({ title, movies, series = [] }: SectionProps) {
 
   const items: CarouselItem[] = [
     ...movies.map((movie): CarouselItem => ({
-      kind: 'movie', id: movie.id, title: movie.title, subtitle: movie.platform, link: `/watch/${movie.id}`,
+      kind: 'movie', id: movie.id, title: movie.title, subtitle: movie.category, link: `/watch/${movie.id}`,
     })),
     ...series.map((item): CarouselItem => ({
       kind: 'series', id: item.id, title: item.title, subtitle: item.category, link: `/series/${item.id}/seasons`,
