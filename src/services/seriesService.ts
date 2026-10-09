@@ -1,6 +1,6 @@
 import type {
   Episode, EpisodeDTO, EpisodeUploadData, Season, SeasonDTO, SeasonUploadData,
-  Series, SeriesDTO, SeriesUploadData,
+  Series, SeriesDTO, SeriesUpdate, SeriesUploadData,
 } from '../types/index.ts';
 import {
   ApiError, GENERIC_ERROR, authHeader, readJson, request, uploadWithProgress,
@@ -102,6 +102,23 @@ export async function getEpisode(id: string): Promise<Episode> {
 
 export async function createSeries(data: SeriesUploadData): Promise<Series> {
   return toSeries(await postJson<SeriesDTO>('/api/series', data, SERIES_NOT_FOUND));
+}
+
+// The backend deletes the series row (not a logical delete); its seasons and episodes go with it
+export async function deleteSeries(id: number): Promise<void> {
+  await request(`/api/series/${id}`, SERIES_NOT_FOUND, { method: 'DELETE', headers: authHeader() });
+}
+
+export async function updateSeries(id: number, changes: SeriesUpdate): Promise<Series> {
+  const response = await request(`/api/series/${id}`, SERIES_NOT_FOUND, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...authHeader() },
+    body: JSON.stringify(changes),
+  });
+  // the backend answers { message, data: updated series }
+  const updated = (await readJson(response) as { data?: SeriesDTO } | null)?.data;
+  if (!updated) throw new ApiError(GENERIC_ERROR);
+  return toSeries(updated);
 }
 
 export async function createSeason(data: SeasonUploadData): Promise<Season> {

@@ -106,6 +106,9 @@ export interface EpisodeDTO {
 }
 
 // JSON bodies sent to create series content (the backend requires id_author for now)
+// fields an uploader can change from "My Videos"
+export type SeriesUpdate = Pick<Series, 'title' | 'category' | 'description'>
+
 export interface SeriesUploadData {
   id_author: number
   title: string

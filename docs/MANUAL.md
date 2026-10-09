@@ -111,7 +111,8 @@ locally.
 | Endpoints | Notes |
 |---|---|
 | `GET /api/movie/:id/stream` | Streams the video in chunks. `WatchPage` plays the static file instead (`WatchPage.tsx:61`); both work. |
-| `PUT` / `PATCH` / `DELETE` on series, seasons and episodes, `GET /api/episodes/:id/stream` | Not used. `WatchSeriesPage` plays the static file, like `WatchPage`. |
+| `PUT` on series; `PUT` / `PATCH` / `DELETE` on seasons and episodes; `GET /api/episodes/:id/stream` | Not used. Seasons and episodes cannot be edited or deleted from the app yet. `WatchSeriesPage` plays the static file, like `WatchPage`. |
+| `PATCH /api/series/:id` with `{ title, category, description }` → `{ data }`; `DELETE /api/series/:id` | `updateSeries`, `deleteSeries` (`seriesService.ts`), used by `MySeriesItem` | ✅ Available. Checked live on 2026-10-09. The delete removes the row (and, by the database's cascade, its seasons and episodes), not a logical delete. |
 | `GET /api/reviews`, `GET /api/reviews/viewer/:viewerId`, `GET /api/reviews/:id` | Not used: `ReviewButtons` only needs the reviews of one movie or episode. |
 
 **Not available**
@@ -255,6 +256,7 @@ Details:
 | `src/services/reportService.ts` | `reportContent` (`POST /api/reports`) and `isReportTargetType`. |
 | `src/pages/AdminPage.tsx` | `/admin` (administrators only): tabs for pending appeals, users and a new administrator. |
 | `src/components/AppealReviewCard.tsx` | One pending appeal: shows the reported case and its reasons, accepts or rejects. Output prop `onResolved`. |
+| `src/components/MySeriesItem.tsx` | One of the user's series in "My Videos": view, edit, delete. Output props `onUpdated`, `onDeleted`. |
 | `src/components/AccountsTable.tsx` | Table of accounts with activate / deactivate. Output prop `onChanged`. |
 | `src/components/NewAdministratorForm.tsx` | Form to create an administrator. Output prop `onCreated`. |
 | `src/services/adminService.ts` | Every administrator call: appeals, moderation cases, accounts, new administrators. |
@@ -590,8 +592,10 @@ The filtering functions have unit tests (`catalog.test.ts`).
    no "series of a user" endpoint, so it fetches every series with `getAllSeries()` and keeps the
    ones whose `uploaderId` is the user's `id` (`MyVideosPage.tsx:45-51`). It has its own loading,
    error and "You have no uploaded series." state (`MyVideosPage.tsx:313`), so a failure in one
-   block does not hide the other. Each series links to its seasons. Series cannot be edited or
-   deleted from here yet.
+   block does not hide the other. Each series is a `MySeriesItem` (`MySeriesItem.tsx`) with "See
+   seasons", "Edit" (an inline form that sends `PATCH /api/series/:id` with title, category and
+   description) and "Delete" (after a confirmation, `DELETE /api/series/:id`). It tells the page
+   with its output props `onUpdated` and `onDeleted`, and the page updates its list.
 6. The header has "Upload videos" and "Upload series" buttons (`MyVideosPage.tsx:139`).
 
 ⚠️ Movies and series are filtered in the browser, because the backend has no "content of a user"
@@ -929,7 +933,7 @@ Trade-off: the file grows with every entity. Some types do not match the domain 
 |---|---|
 | Movies, series and episodes send the logged-in user's id as `id_author`, against the agreed contract. | `UploadSeriesPage.tsx:43`, `47` |
 | Uploaded episodes with the same title overwrite each other's video (backend file naming). | `POST /api/episodes` (1.3) |
-| Series cannot be edited or deleted from "My Videos" (the backend has `PATCH` / `DELETE /api/series/:id`). The sketch asks for a logical delete. | `MyVideosPage.tsx` |
+| Seasons and episodes cannot be edited or deleted from the app (series and movies can). Deleting is physical in the backend, while the sketch asks for a logical delete. | `MySeriesItem.tsx`, `MyVideosPage.tsx` |
 | "My Videos" does not show season, episode, duration, subtitles or audio, as the sketch does. The backend has no duration, subtitle or audio fields. | `MyVideosPage.tsx` |
 | Any user can add seasons or episodes to someone else's series, or edit and delete any content, by sending the request by hand. The frontend only hides other users' series; the backend must check ownership (1.4). | `UploadSeriesPage.tsx:21-28` |
 | A 403 (forbidden) answer would show the generic "Something went wrong" message, because no friendly message is mapped for it yet. | `api.ts:52`, `api.ts:78` |
@@ -953,7 +957,7 @@ Requirements set by the course for regularity and approval. Status: ✅ Met · �
 | Handle errors in a user-friendly way | `AuthPage` + `authService.ts`; content pages through `movieService.ts` (`ApiError`) + `errorMessage()` (`api.ts:28-30`), shown by `RequestStatus` or alerts in `WatchPage`, `UploadPage`, `MyVideosPage` | ✅ |
 | React to state changes | `SearchPage.tsx` (re-filters when the URL changes), `WatchPage.tsx:21` (`[id]`), the series pages (effects on their route params), `AuthPage.tsx:19-22` (redirect when `user` changes), `MainNavbar` (guest vs user) | ✅ |
 | Use input props | `Section` (`title`, `items`), `MainNavbar` (`user`), `ProtectedRoute` (`allowedRoles`), `AuthProvider` (`children`), `RequestStatus`, `SearchBar` (`initialText`) | ✅ |
-| Use output props | `MainNavbar` `onLogout` (`MainNavbar.tsx:7`, `App.tsx:25`), `NewSeriesForm` and `NewSeasonForm` `onCreated` (`UploadSeriesPage.tsx:44`, `46`) ; `AppealReviewCard` `onResolved`, `AccountsTable` `onChanged`, `NewAdministratorForm` `onCreated` (`AdminPage.tsx`) | ✅ |
+| Use output props | `MainNavbar` `onLogout` (`MainNavbar.tsx:7`, `App.tsx:25`), `NewSeriesForm` and `NewSeasonForm` `onCreated` (`UploadSeriesPage.tsx:44`, `46`) ; `AppealReviewCard` `onResolved`, `AccountsTable` `onChanged`, `NewAdministratorForm` `onCreated` (`AdminPage.tsx`) ; `MySeriesItem` `onUpdated` / `onDeleted` (`MyVideosPage.tsx`) | ✅ |
 | At least one service | `src/services/authService.ts`, `src/services/movieService.ts`, `src/services/seriesService.ts` (+ `session.ts`, `api.ts`) | ✅ |
 | Model API data with interfaces/types | `src/types/index.ts` (`MovieDTO`, `MovieUpdate`, `MovieUploadData`, `SeriesDTO`, `SeasonDTO`, `EpisodeDTO`, `User`, `LoginRequest`, `AuthResponse`, ...) | ✅ |
 | Apply an OOP design pattern | Strategy: `AuthService` interface with `HttpAuthService` and `MockAuthService` classes (`authService.ts`, `mockAuthService.ts`). Adapter: `HttpAuthService` translates the backend's user API into the app's types (4.1) | ✅ |

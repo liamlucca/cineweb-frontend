@@ -8,6 +8,7 @@ import {
 import { getAllSeries } from "../services/seriesService.ts";
 import { errorMessage } from "../services/api.ts";
 import useAuth from "../hooks/useAuth.ts";
+import MySeriesItem from "../components/MySeriesItem.tsx";
 
 function MyVideosPage() {
   const { user } = useAuth();
@@ -29,7 +30,7 @@ function MyVideosPage() {
   const [editedCategory, setEditedCategory] = useState("");
   const [editedDescription, setEditedDescription] = useState("");
 
-  // Series uploaded by the logged-in user (only listed for now, not edited)
+  // Series uploaded by the logged-in user (each one can be edited or deleted)
   const [mySeries, setMySeries] = useState<Series[]>([]);
   const [loadingSeries, setLoadingSeries] = useState(true);
   const [seriesError, setSeriesError] = useState("");
@@ -317,38 +318,12 @@ function MyVideosPage() {
           emptyMessage="You have no uploaded series."
         >
           {mySeries.map((item) => (
-            <div
+            <MySeriesItem
               key={item.id}
-              className="flex flex-col md:flex-row items-center gap-6 border-b pb-6"
-            >
-              {/* Cover placeholder, same size as the movie videos */}
-              <div className="w-full max-w-64 h-36 rounded bg-base-300 flex items-center justify-center">
-                <span className="badge badge-secondary">Series</span>
-              </div>
-
-              {/* Details */}
-              <div className="flex-1 w-full">
-                <p className="text-lg">
-                  <strong>Title:</strong>{" "}
-                  {item.title}
-                </p>
-                <p className="text-lg">
-                  <strong>Category:</strong>{" "}
-                  {item.category}
-                </p>
-                <p className="text-lg">
-                  <strong>Description:</strong>{" "}
-                  {item.description}
-                </p>
-              </div>
-
-              {/* Buttons */}
-              <div className="flex flex-col items-center justify-center gap-3">
-                <Link to={`/series/${item.id}/seasons`} className="btn btn-outline w-32">
-                  See seasons
-                </Link>
-              </div>
-            </div>
+              series={item}
+              onUpdated={(updated) => setMySeries((current) => current.map((s) => (s.id === updated.id ? updated : s)))}
+              onDeleted={(id) => setMySeries((current) => current.filter((s) => s.id !== id))}
+            />
           ))}
         </RequestStatus>
       </div>
