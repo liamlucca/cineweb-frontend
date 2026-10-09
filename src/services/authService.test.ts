@@ -129,6 +129,24 @@ describe('HttpAuthService', () => {
     expect(init.headers).toEqual({ Authorization: 'Bearer abc' });
   });
 
+  it('gets the current user from /api/users/me', async () => {
+    localStorage.setItem('cineweb_token', 'abc');
+    fetchMock.mockResolvedValue(jsonResponse(200, { data: BACKEND_USER }));
+
+    const current = await new HttpAuthService().getCurrentUser();
+
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toMatch(/\/api\/users\/me$/);
+    expect(init.headers).toEqual({ Authorization: 'Bearer abc' });
+    expect(current?.username).toBe('ana');
+  });
+
+  it('returns no user when the saved token is no longer valid', async () => {
+    fetchMock.mockResolvedValue(jsonResponse(401, { message: 'Invalid or expired token' }));
+
+    await expect(new HttpAuthService().getCurrentUser()).resolves.toBeNull();
+  });
+
   it('does not fail to log out when the server is unreachable', async () => {
     localStorage.setItem('cineweb_token', 'abc');
     fetchMock.mockRejectedValue(new TypeError('Failed to fetch'));

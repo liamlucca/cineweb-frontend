@@ -16,6 +16,8 @@ export interface AuthService {
   register(request: RegisterRequest): Promise<AuthResponse>;
   // ends the session on the server; never fails, so logging out always works locally
   logout(): Promise<void>;
+  // user of the saved token, or null when the token is no longer valid
+  getCurrentUser(): Promise<User | null>;
 }
 
 // Checks that a value from the network really has the shape of the backend's user
@@ -83,6 +85,25 @@ export class HttpAuthService implements AuthService {
     } catch {
       // server unreachable: the token will still expire on its own after 7 days
     }
+  }
+
+  async getCurrentUser(): Promise<User | null> {
+    let response: Response;
+    try {
+      response = await fetch(`${API_URL}/api/users/me`, { headers: authHeader() });
+    } catch {
+      throw new ApiError(CONNECTION_ERROR);
+    }
+
+    // 401: the token expired, was revoked, or the account was deactivated
+    if (response.status === 401) return null;
+    if (!response.ok) throw new ApiError(GENERIC_ERROR);
+
+    // the backend answers { data: user }
+    const body = await response.json().catch(() => null) as { data?: unknown } | null;
+    const dto = body?.data;
+    if (!isUserDTO(dto)) throw new ApiError(GENERIC_ERROR);
+    return toUser(dto);
   }
 
   private static async post(

@@ -3,6 +3,7 @@ import type {
 } from '../types/index.ts';
 import type { AuthService } from '../services/authService.ts';
 import { ApiError } from '../services/api.ts';
+import { getToken } from '../services/session.ts';
 
 /*
  * Development-only stand-in for the backend's /api/users endpoints, for working without the backend.
@@ -109,5 +110,12 @@ export default class MockAuthService implements AuthService {
   // mock tokens are not stored anywhere, so there is nothing to end
   async logout(): Promise<void> {
     await delay();
+  }
+
+  // mock tokens look like "mock-token-<id>", so the user is found by that id
+  async getCurrentUser(): Promise<User | null> {
+    await delay();
+    const id = Number(getToken()?.replace('mock-token-', ''));
+    return loadAccounts().find((a) => a.user.id === id)?.user ?? null;
   }
 }

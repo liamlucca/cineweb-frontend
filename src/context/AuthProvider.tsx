@@ -1,8 +1,10 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { AuthResponse, User } from '../types/index.ts';
 import { authService } from '../services/authService.ts';
-import { clearSession, getStoredSession, saveSession } from '../services/session.ts';
+import {
+  clearSession, getStoredSession, getToken, saveSession,
+} from '../services/session.ts';
 import { AuthContext } from './AuthContext.ts';
 import type { AuthContextValue } from './AuthContext.ts';
 
@@ -14,6 +16,32 @@ interface AuthProviderProps {
 function AuthProvider({ children }: AuthProviderProps) {
   // read synchronously so protected routes don't redirect before the session is restored
   const [user, setUser] = useState<User | null>(() => getStoredSession()?.user ?? null);
+
+  // the saved token may have expired or been revoked: ask the backend once when the app starts
+  useEffect(() => {
+    const token = getToken();
+    if (!token) return undefined;
+
+    let cancelled = false;
+    authService.getCurrentUser()
+      .then((current) => {
+        // ignore the answer if the user logged in or out while it was on its way
+        if (cancelled || getToken() !== token) return;
+        if (current) {
+          // also refreshes the saved data (the profile may have changed)
+          saveSession({ token, user: current });
+          setUser(current);
+        } else {
+          clearSession();
+          setUser(null);
+        }
+      })
+      .catch(() => {
+        // server unreachable: keep the saved session instead of logging the user out
+      });
+
+    return () => { cancelled = true; };
+  }, []);
 
   const value = useMemo<AuthContextValue>(() => {
     const startSession = (session: AuthResponse) => {
