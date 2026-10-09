@@ -105,4 +105,9 @@ export default class MockAuthService implements AuthService {
     saveAccounts([...accounts, { user, password: request.password }]);
     return toResponse(user);
   }
+
+  // mock tokens are not stored anywhere, so there is nothing to end
+  async logout(): Promise<void> {
+    await delay();
+  }
 }

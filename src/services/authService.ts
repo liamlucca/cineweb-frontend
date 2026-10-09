@@ -2,7 +2,7 @@ import type {
   AuthResponse, LoginRequest, RegisterRequest, User, UserDTO,
 } from '../types/index.ts';
 import {
-  API_URL, ApiError, CONNECTION_ERROR, GENERIC_ERROR,
+  API_URL, ApiError, CONNECTION_ERROR, GENERIC_ERROR, authHeader,
 } from './api.ts';
 import MockAuthService from '../mockup/mockAuthService.ts';
 
@@ -14,6 +14,8 @@ import MockAuthService from '../mockup/mockAuthService.ts';
 export interface AuthService {
   login(request: LoginRequest): Promise<AuthResponse>;
   register(request: RegisterRequest): Promise<AuthResponse>;
+  // ends the session on the server; never fails, so logging out always works locally
+  logout(): Promise<void>;
 }
 
 // Checks that a value from the network really has the shape of the backend's user
@@ -71,6 +73,16 @@ export class HttpAuthService implements AuthService {
 
     // the backend answers the sign-up without a token, so log in right away
     return this.login({ login: request.email, password: request.password });
+  }
+
+  async logout(): Promise<void> {
+    // read the token now: the caller clears the local session right after calling this
+    const headers = authHeader();
+    try {
+      await fetch(`${API_URL}/api/users/logout`, { method: 'POST', headers });
+    } catch {
+      // server unreachable: the token will still expire on its own after 7 days
+    }
   }
 
   private static async post(

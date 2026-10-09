@@ -116,4 +116,23 @@ describe('HttpAuthService', () => {
     // no login attempt after a failed sign-up
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
+
+  it('logs out on the server with the saved token', async () => {
+    localStorage.setItem('cineweb_token', 'abc');
+    fetchMock.mockResolvedValue(new Response(null, { status: 204 }));
+
+    await new HttpAuthService().logout();
+
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toMatch(/\/api\/users\/logout$/);
+    expect(init.method).toBe('POST');
+    expect(init.headers).toEqual({ Authorization: 'Bearer abc' });
+  });
+
+  it('does not fail to log out when the server is unreachable', async () => {
+    localStorage.setItem('cineweb_token', 'abc');
+    fetchMock.mockRejectedValue(new TypeError('Failed to fetch'));
+
+    await expect(new HttpAuthService().logout()).resolves.toBeUndefined();
+  });
 });

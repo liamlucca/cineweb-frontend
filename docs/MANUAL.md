@@ -75,8 +75,8 @@ locally.
 
 | Endpoint | Used by | Backend status |
 |---|---|---|
-| `POST /api/users/login` with `{ login, password }` → `{ token, token_type, expires_in, user }` | `HttpAuthService.login` (`authService.ts:48-58`) | ✅ Available (commit `9d30d59`). Not run against a live backend yet. |
-| `POST /api/users/register` with `{ user_name, first_name, last_name, email, password }` → `{ data: user }` | `HttpAuthService.register` (`authService.ts:60-74`) | ✅ Available (commit `9d30d59`). Not run against a live backend yet. |
+| `POST /api/users/login` with `{ login, password }` → `{ token, token_type, expires_in, user }` | `HttpAuthService.login` (`authService.ts:50-60`) | ✅ Available (commit `9d30d59`). Not run against a live backend yet. |
+| `POST /api/users/register` with `{ user_name, first_name, last_name, email, password }` → `{ data: user }` | `HttpAuthService.register` (`authService.ts:62-76`) | ✅ Available (commit `9d30d59`). Not run against a live backend yet. |
 | `GET /api/movie` → array of movies | `getMovies` (`movieService.ts:25-29`), used by `LandingPage`, `SearchPage`, `MyVideosPage` | ✅ Available. |
 | `GET /api/movie/:id` → `{ movie }` | `getMovie` (`movieService.ts:31-36`), used by `WatchPage` | ✅ Available. |
 | `POST /api/movie` (multipart: `data` + `file`) | `uploadMovie` (`movieService.ts:50-60`), used by `UploadPage` | ✅ Available. Requires `id_author` (see below). |
@@ -121,12 +121,12 @@ Details:
   series) get the same `path`, so the second upload replaces the first one's video.
 - **User endpoints (commit `9d30d59`).** The backend built authentication under `/api/users`
   instead of the `/auth` URLs first agreed. The frontend adapts to it in `HttpAuthService`
-  (`authService.ts:47-98`, see 3.1 and 4.1):
+  (`authService.ts:49-110`, see 3.1 and 4.1):
   - Login receives `{ login, password }`, where `login` is the email **or** the username.
   - Sign-up answers `{ data: user }` with no token, so the frontend logs in right after it
-    (`authService.ts:73`).
+    (`authService.ts:75`).
   - The user comes in snake_case (`UserDTO`: `id_user`, `user_name`, `first_name`, `last_name`,
-    `email`, `role`, `active`). `toUser` (`authService.ts:30-41`) converts it into the app's `User`.
+    `email`, `role`, `active`). `toUser` (`authService.ts:32-43`) converts it into the app's `User`.
     The backend has no phone, so `phone` is always `null`.
   - The token is a random string the backend stores in its sessions table and that expires after
     7 days. It is not a JWT. The frontend only stores it and sends it, so this does not change it.
@@ -153,7 +153,7 @@ Details:
    the token instead of `id_author`. Optional: return a token on sign-up, which would save the
    extra login request, and use one naming style (snake_case or camelCase) everywhere.
 3. Agree on error status codes. The frontend already maps 401 (wrong login), 400 (invalid data)
-   and 409 (email or username in use) to messages (`authService.ts:27-36`).
+   and 409 (email or username in use) to messages (`authService.ts:52-71`).
 4. Optional but useful: an endpoint such as `GET /auth/me` to check a stored token (see 4.3).
 5. Give each uploaded episode a unique file name, so episodes with the same title do not overwrite
    each other (see 1.3).
@@ -303,14 +303,14 @@ Example: a guest clicks "Upload Video", which leads to `/upload`.
      is named `login` because it accepts the email or the username (`AuthPage.tsx:81`).
 4. **The context delegates.** `login` in `AuthProvider.tsx:26` calls `authService.login(request)`.
    `authService` is either `MockAuthService` or `HttpAuthService`, chosen once at
-   `authService.ts:101` from `VITE_USE_MOCK_AUTH`.
+   `authService.ts:113` from `VITE_USE_MOCK_AUTH`.
 5. **The service answers.**
    - Mock (`mockAuthService.ts:74-84`): waits 500 ms, finds the account by email or username
      (trimmed, ignoring case), compares the password, and returns
      `{ token: "mock-token-<id>", user }`.
-   - Real (`authService.ts:48-58`): `POST {API_URL}/api/users/login` with `{ login, password }`.
+   - Real (`authService.ts:50-60`): `POST {API_URL}/api/users/login` with `{ login, password }`.
      It checks that the answer has a string `token` and a user with the backend's shape
-     (`isUserDTO`, `authService.ts:20-27`) before trusting it, and converts that user with
+     (`isUserDTO`, `authService.ts:22-29`) before trusting it, and converts that user with
      `toUser`.
 6. **The session starts.** `startSession` (`AuthProvider.tsx:19-22`) calls `saveSession`, which
    writes `cineweb_token` and `cineweb_user` to localStorage (`session.ts:20-23`), and then
@@ -334,7 +334,7 @@ From there it follows the same path as login (steps 4–8).
 - Mock (`mockAuthService.ts:84-104`): rejects the request if the email or username is taken, creates
   a user with the next free `id` and always `role: 'viewer'`, and saves the account under
   `cineweb_mock_accounts`.
-- Real (`authService.ts:60-74`): `POST /api/users/register` with the fields renamed to snake_case
+- Real (`authService.ts:62-76`): `POST /api/users/register` with the fields renamed to snake_case
   (`user_name`, `first_name`, `last_name`). The backend answers without a token, so the service
   then calls its own `login` with the new email and password and returns that session. Public
   sign-up creates viewers only, so `RegisterRequest` has no `role` field
@@ -376,19 +376,30 @@ only see the public pages.
 
 The "Log Out" button calls `handleLogout` (`MainNavbar.tsx:13-16`). It calls the `onLogout` prop,
 which `App` connects to `logout` from the context (`App.tsx:25`), and then navigates to `/`.
-`logout` (`AuthProvider.tsx:28-31`) removes both localStorage keys and sets `user` to `null`.
+`logout` (`AuthProvider.tsx:28-33`) does three things, in this order:
+
+1. Calls `authService.logout()` (`AuthProvider.tsx:30`). With the real backend this sends
+   `POST /api/users/logout` with the token (`authService.ts:78-86`), so the server deletes that
+   session and the token stops working at once. The mock does nothing. It does not wait for the
+   answer, and `HttpAuthService.logout` never fails: if the server is unreachable, the user is
+   still logged out locally, and the token expires on its own after 7 days.
+2. Removes both localStorage keys with `clearSession()`.
+3. Sets `user` to `null`, so the navbar and the guards react.
+
+The order matters: `HttpAuthService.logout` reads the token with `authHeader()` before its first
+`await`, so it still finds it even though `clearSession()` runs right after.
 
 #### What happens when something fails
 
 | Failure | Where it is handled | What the user sees |
 |---|---|---|
-| Wrong credentials, or an account deactivated by an administrator | Mock: `mockAuthService.ts:82`. Real: status 401 → `authService.ts:51` | "Incorrect email, username or password." |
-| Email or username already used | Mock: `mockAuthService.ts:94`. Real: status 409 → `authService.ts:69` | "That email or username is already in use." |
-| Invalid sign-up data (real backend) | Status 400 → `authService.ts:68` | "Please check your details: the username needs 3 to 50 characters and the password at least 8." |
-| Empty login fields (real backend) | Status 400 → `authService.ts:50` | "Please enter your email or username and your password." |
-| Server unreachable / network down | `fetch` throws → `authService.ts:89` | "We couldn't reach the server. Please try again later." |
-| Any other HTTP error | `authService.ts:93` | "Something went wrong. Please try again." |
-| Login answer without a token or a valid user | `authService.ts:56` | "Something went wrong. Please try again." |
+| Wrong credentials, or an account deactivated by an administrator | Mock: `mockAuthService.ts:82`. Real: status 401 → `authService.ts:53` | "Incorrect email, username or password." |
+| Email or username already used | Mock: `mockAuthService.ts:94`. Real: status 409 → `authService.ts:71` | "That email or username is already in use." |
+| Invalid sign-up data (real backend) | Status 400 → `authService.ts:70` | "Please check your details: the username needs 3 to 50 characters and the password at least 8." |
+| Empty login fields (real backend) | Status 400 → `authService.ts:52` | "Please enter your email or username and your password." |
+| Server unreachable / network down | `fetch` throws → `authService.ts:101` | "We couldn't reach the server. Please try again later." |
+| Any other HTTP error | `authService.ts:105` | "Something went wrong. Please try again." |
+| Login answer without a token or a valid user | `authService.ts:58` | "Something went wrong. Please try again." |
 | Unexpected error (a bug, not an `ApiError`) | `AuthPage.tsx:45` | "Something went wrong. Please try again." |
 | Corrupted session in localStorage | `session.ts:36-43` | Nothing visible: they are treated as logged out. |
 | `useAuth()` used outside `AuthProvider` | `useAuth.ts:7` | Developer error, thrown on purpose to catch the bug early. |
@@ -606,7 +617,7 @@ When they are built, they should go in a new route group wrapped in
 ### 4.1 Fake backend behind an interface (Strategy pattern)
 
 **What:** `AuthService` is an interface with two implementations, `HttpAuthService` and
-`MockAuthService`. A single line chooses one from `.env` (`authService.ts:66-68`).
+`MockAuthService`. A single line chooses one from `.env` (`authService.ts:113-115`).
 
 **Why:** the backend had no auth when this was built, and frontend work should not be blocked. The rest of the app
 (context, pages) only knows the interface, so switching to the real backend changes one variable,
@@ -705,7 +716,7 @@ Trade-off: the file grows with every entity. Some types do not match the domain 
 - Navbar avatar: a fixed DaisyUI sample image (`MainNavbar.tsx:49-51`).
 
 **What is not tested**
-- Unit tests cover `ProtectedRoute`, `AuthPage` and `HttpAuthService` (5.2). There is no
+- Unit tests cover `ProtectedRoute`, `AuthPage` and `HttpAuthService` (login, sign-up, logout) (5.2). There is no
   end-to-end test yet.
 - The user system was checked with `tsc -b` and `pnpm build`, both passing. It was **not**
   tested by clicking through the browser before this manual was written.
@@ -719,7 +730,7 @@ Trade-off: the file grows with every entity. Some types do not match the domain 
 **Known security risks**
 - Token in localStorage, readable by any script on the page (4.3).
 - The role shown in the frontend can be changed by the user. The backend must enforce permissions.
-- No token expiry or revocation check.
+- No token expiry check on startup. Logging out does revoke the token on the server (3.1).
 - Mock passwords in plain text in localStorage (development only).
 - Upload, edit and delete requests send the token (`movieService.ts:41`, `47`, `api.ts:75`), but the
   backend does not check it yet, so today it cannot know who makes them.
@@ -773,7 +784,7 @@ Requirements set by the course for regularity and approval. Status: ✅ Met · �
 
 | Requirement | Where in the code | Status |
 |---|---|---|
-| At least one component unit test | Vitest + Testing Library, run with `pnpm test`. `ProtectedRoute.test.tsx` (guest → `/login`, wrong role → `/`, allowed role sees the page) and `AuthPage.test.tsx` (sends the login request, friendly and generic error messages, switch to sign up). Both give the component a fake `AuthContext` value, so they do not use the mock service or localStorage. `authService.test.ts` tests `HttpAuthService` with a fake `fetch`: URLs, snake_case bodies, the conversion to `User`, the login after sign-up and the friendly errors | ✅ |
+| At least one component unit test | Vitest + Testing Library, run with `pnpm test`. `ProtectedRoute.test.tsx` (guest → `/login`, wrong role → `/`, allowed role sees the page) and `AuthPage.test.tsx` (sends the login request, friendly and generic error messages, switch to sign up). Both give the component a fake `AuthContext` value, so they do not use the mock service or localStorage. `authService.test.ts` tests `HttpAuthService` with a fake `fetch`: URLs, snake_case bodies, the conversion to `User`, the login after sign-up, the friendly errors and the logout request | ✅ |
 | At least one end-to-end test | None | ❌ |
 | Login, with access protected by the backend's user levels via `ProtectedRoute` | Frontend side done: `ProtectedRoute.tsx`, `AuthPage.tsx`, `AuthProvider.tsx`, roles `administrator` / `viewer` in `types/index.ts:92`. But the user levels come from the **mock**, because the backend has no auth, and no admin routes exist yet | 🟡 |
 | Environments defined with `.env` | `.env` (git-ignored), `.env.example`, `VITE_API_URL`, `VITE_USE_MOCK_AUTH`, typed in `vite-env.d.ts`. There is one environment, with no separate development/production files | ✅ |
