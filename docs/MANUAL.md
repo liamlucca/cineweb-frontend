@@ -75,10 +75,10 @@ locally.
 
 | Endpoint | Used by | Backend status |
 |---|---|---|
-| `POST /api/users/login` with `{ login, password }` → `{ token, token_type, expires_in, user }` | `HttpAuthService.login` (`authService.ts:52-62`) | ✅ Available (commit `9d30d59`). Not run against a live backend yet. |
-| `POST /api/users/register` with `{ user_name, first_name, last_name, email, password }` → `{ data: user }` | `HttpAuthService.register` (`authService.ts:64-78`) | ✅ Available (commit `9d30d59`). Not run against a live backend yet. |
-| `POST /api/users/logout` (with the token) → 204 | `HttpAuthService.logout` (`authService.ts:80-88`), called by `AuthProvider` on "Log Out" | ✅ Available (commit `9d30d59`). Not run against a live backend yet. |
-| `GET /api/users/me` (with the token) → `{ data: user }`, or 401 if the token is not valid | `HttpAuthService.getCurrentUser` (`authService.ts:90-107`), called by `AuthProvider` when the app starts | ✅ Available (commit `9d30d59`). Not run against a live backend yet. |
+| `POST /api/users/login` with `{ login, password }` → `{ token, token_type, expires_in, user }` | `HttpAuthService.login` (`authService.ts:52-62`) | ✅ Available (commit `9d30d59`). Checked against the running backend on 2026-10-09 (see 3.1). |
+| `POST /api/users/register` with `{ user_name, first_name, last_name, email, password }` → `{ data: user }` | `HttpAuthService.register` (`authService.ts:64-78`) | ✅ Available (commit `9d30d59`). Checked against the running backend on 2026-10-09 (see 3.1). |
+| `POST /api/users/logout` (with the token) → 204 | `HttpAuthService.logout` (`authService.ts:80-88`), called by `AuthProvider` on "Log Out" | ✅ Available (commit `9d30d59`). Checked against the running backend on 2026-10-09 (see 3.1). |
+| `GET /api/users/me` (with the token) → `{ data: user }`, or 401 if the token is not valid | `HttpAuthService.getCurrentUser` (`authService.ts:90-107`), called by `AuthProvider` when the app starts | ✅ Available (commit `9d30d59`). Checked against the running backend on 2026-10-09 (see 3.1). |
 | `GET /api/movie` → array of movies | `getMovies` (`movieService.ts:25-29`), used by `LandingPage`, `SearchPage`, `MyVideosPage` | ✅ Available. |
 | `GET /api/movie/:id` → `{ movie }` | `getMovie` (`movieService.ts:31-36`), used by `WatchPage` | ✅ Available. |
 | `POST /api/movie` (multipart: `data` + `file`) | `uploadMovie` (`movieService.ts:50-60`), used by `UploadPage` | ✅ Available. Requires `id_author` (see below). |
@@ -273,8 +273,15 @@ Series pages  ──▶ seriesService.ts ──fetch / XMLHttpRequest──▶ b
 
 Works end to end in the browser using the **mock** backend (`VITE_USE_MOCK_AUTH = true`).
 The real HTTP version (`HttpAuthService`) talks to the backend's `/api/users` endpoints. It is
-covered by unit tests with a fake `fetch` (`authService.test.ts`), but it has not been run against
-a live backend yet.
+covered by unit tests with a fake `fetch` (`authService.test.ts`).
+
+**Checked against the running backend (2026-10-09, commit `9d30d59`)**, by sending the same HTTP
+requests the frontend sends (with `curl`, not by clicking through the browser): sign-up (201
+`{ data: user }`), login with the email and with the username (200
+`{ token, token_type, expires_in, user }`), `GET /api/users/me` (200), logout (204), `/me` after
+logout (401), duplicated sign-up (409), invalid sign-up (400), wrong password (401) and empty login
+(400). Every answer had the shape and status code `HttpAuthService` and its tests expect. The CORS
+preflight from `http://localhost:5173` allows the `authorization` and `content-type` headers.
 
 Mock accounts (`src/mockup/mockAuthService.ts:21-46`). You can log in with the email or the
 username:
@@ -637,8 +644,8 @@ not the components. It is also the OOP design pattern that the course requires.
 
 **Trade-offs:**
 - The mock is not the backend. It can drift from what the backend really does (status codes, field
-  names, validation rules). `HttpAuthService` is tested with a fake `fetch`, but has **not run
-  against a live server** yet.
+  names, validation rules). `HttpAuthService` is tested with a fake `fetch`, and its requests were
+  checked against the running backend with `curl` (3.1).
 
 **Adapter.** `HttpAuthService` is also an Adapter: the backend's user API has its own URLs and
 snake_case fields, and the class translates both ways (`toUser`, the snake_case sign-up body), so
@@ -734,8 +741,9 @@ Trade-off: the file grows with every entity. Some types do not match the domain 
   `HttpAuthService` (login, sign-up, logout, current user) (5.2). There is no end-to-end test yet.
 - The user system was checked with `tsc -b` and `pnpm build`, both passing. It was **not**
   tested by clicking through the browser before this manual was written.
-- `HttpAuthService` is covered by unit tests with a fake `fetch` (`authService.test.ts`), but has
-  never talked to a live backend.
+- `HttpAuthService` is covered by unit tests with a fake `fetch` (`authService.test.ts`), and its
+  requests were checked against the running backend with `curl` (3.1). The login, sign-up and
+  logout screens were not clicked through in the browser with the real backend yet.
 - The movie pages were not tested against the backend. The local backend copy now exposes the
   movie endpoints (1.3), so they can be tested by running it.
 - The series pages, the series upload page and the series block of "My Videos" were checked with
