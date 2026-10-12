@@ -31,6 +31,7 @@ export async function updateMovie(id: number, changes: MovieUpdate): Promise<voi
   });
 }
 
+// Logical delete: the backend hides the movie (state 'deleted') but keeps its data
 export async function deleteMovie(id: number): Promise<void> {
   await request(`/api/movie/${id}`, NOT_FOUND_ERROR, { method: 'DELETE', headers: authHeader() });
 }

@@ -51,9 +51,9 @@ function MyVideosPage() {
       .finally(() => setLoadingSeries(false));
   }, [userId]);
 
-  // Deletes a video from the backend
+  // Deletes a video. The backend only hides it (logical delete, sketch 8)
   const deleteVideo = async (video: MovieDTO) => {
-    if (!window.confirm(`Delete "${video.title}"? This cannot be undone.`)) return;
+    if (!window.confirm(`Delete "${video.title}"? It will no longer be shown on CineWeb.`)) return;
 
     setBusyVideoId(video.id);
     setActionError("");

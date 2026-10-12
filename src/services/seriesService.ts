@@ -1,5 +1,5 @@
 import type {
-  Episode, EpisodeDTO, EpisodeUploadData, Season, SeasonDTO, SeasonUploadData,
+  Episode, EpisodeDTO, EpisodeUpdate, EpisodeUploadData, Season, SeasonDTO, SeasonUpdate, SeasonUploadData,
   Series, SeriesDTO, SeriesUpdate, SeriesUploadData,
 } from '../types/index.ts';
 import {
@@ -105,21 +105,46 @@ export async function createSeries(data: SeriesUploadData): Promise<Series> {
   return toSeries(await postJson<SeriesDTO>('/api/series', data, SERIES_NOT_FOUND));
 }
 
-// The backend deletes the series row (not a logical delete); its seasons and episodes go with it
+// PATCH endpoints answer { message, data: <updated item> }
+async function patchJson<T>(path: string, body: unknown, notFoundMessage: string): Promise<T> {
+  const response = await request(path, notFoundMessage, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...authHeader() },
+    body: JSON.stringify(body),
+  });
+  const updated = (await readJson(response) as { data?: T } | null)?.data;
+  if (!updated) throw new ApiError(GENERIC_ERROR);
+  return updated;
+}
+
+// Logical delete: the backend hides the series, and with it its seasons and episodes
 export async function deleteSeries(id: number): Promise<void> {
   await request(`/api/series/${id}`, SERIES_NOT_FOUND, { method: 'DELETE', headers: authHeader() });
 }
 
 export async function updateSeries(id: number, changes: SeriesUpdate): Promise<Series> {
-  const response = await request(`/api/series/${id}`, SERIES_NOT_FOUND, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json', ...authHeader() },
-    body: JSON.stringify(changes),
-  });
-  // the backend answers { message, data: updated series }
-  const updated = (await readJson(response) as { data?: SeriesDTO } | null)?.data;
-  if (!updated) throw new ApiError(GENERIC_ERROR);
-  return toSeries(updated);
+  return toSeries(await patchJson<SeriesDTO>(`/api/series/${id}`, changes, SERIES_NOT_FOUND));
+}
+
+// Only the series' uploader can change its seasons and episodes (403 otherwise).
+// A number that the season or series already uses answers 409 with the backend's message.
+
+export async function updateSeason(id: number, changes: SeasonUpdate): Promise<Season> {
+  return toSeason(await patchJson<SeasonDTO>(`/api/seasons/${id}`, changes, SEASON_NOT_FOUND));
+}
+
+// Logical delete: the season and its episodes are hidden
+export async function deleteSeason(id: number): Promise<void> {
+  await request(`/api/seasons/${id}`, SEASON_NOT_FOUND, { method: 'DELETE', headers: authHeader() });
+}
+
+export async function updateEpisode(id: number, changes: EpisodeUpdate): Promise<Episode> {
+  return toEpisode(await patchJson<EpisodeDTO>(`/api/episodes/${id}`, changes, EPISODE_NOT_FOUND));
+}
+
+// Logical delete: the episode is hidden
+export async function deleteEpisode(id: number): Promise<void> {
+  await request(`/api/episodes/${id}`, EPISODE_NOT_FOUND, { method: 'DELETE', headers: authHeader() });
 }
 
 export async function createSeason(data: SeasonUploadData): Promise<Season> {

@@ -130,6 +130,10 @@ export interface EpisodeUploadData {
   description: string
 }
 
+// fields an uploader can change in a season or an episode (they cannot move to another series or season)
+export type SeasonUpdate = Partial<Pick<SeasonUploadData, 'season_number' | 'description'>>
+export type EpisodeUpdate = Partial<Pick<EpisodeUploadData, 'episode_number' | 'title' | 'description'>>
+
 
 /** REVIEWS (like / dislike) */
 

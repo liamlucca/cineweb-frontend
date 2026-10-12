@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import type { Series } from '../types/index.ts';
 import { deleteSeries, updateSeries } from '../services/seriesService.ts';
 import { errorMessage } from '../services/api.ts';
+import SeasonsManager from './SeasonsManager.tsx';
 
 interface MySeriesItemProps {
   series: Series
@@ -11,9 +12,10 @@ interface MySeriesItemProps {
   onDeleted: (id: number) => void
 }
 
-// One of the user's series in "My Videos": view, edit or delete it
+// One of the user's series in "My Videos": view, edit or delete it, and manage its seasons and episodes
 function MySeriesItem({ series, onUpdated, onDeleted }: MySeriesItemProps) {
   const [editing, setEditing] = useState(false);
+  const [managing, setManaging] = useState(false);
   const [title, setTitle] = useState(series.title);
   const [category, setCategory] = useState(series.category);
   const [description, setDescription] = useState(series.description);
@@ -46,7 +48,8 @@ function MySeriesItem({ series, onUpdated, onDeleted }: MySeriesItemProps) {
   }
 
   async function remove() {
-    if (!window.confirm(`Delete "${series.title}" with all its seasons and episodes? This cannot be undone.`)) return;
+    // logical delete: the backend hides the series with its seasons and episodes
+    if (!window.confirm(`Delete "${series.title}" with all its seasons and episodes? They will no longer be shown on CineWeb.`)) return;
     setBusy(true);
     setError('');
     try {
@@ -59,7 +62,8 @@ function MySeriesItem({ series, onUpdated, onDeleted }: MySeriesItemProps) {
   }
 
   return (
-    <div className="flex flex-col md:flex-row items-center gap-6 border-b pb-6">
+    <div className="border-b pb-6 space-y-4">
+    <div className="flex flex-col md:flex-row items-center gap-6">
       {/* Cover placeholder, same size as the movie videos */}
       <div className="w-full max-w-64 h-36 rounded bg-base-300 flex items-center justify-center">
         <span className="badge badge-secondary">Series</span>
@@ -102,6 +106,14 @@ function MySeriesItem({ series, onUpdated, onDeleted }: MySeriesItemProps) {
           <div className="flex flex-col items-center justify-center gap-3">
             <Link to={`/series/${series.id}/seasons`} className="btn btn-outline w-32">See seasons</Link>
             <button type="button" className="btn btn-outline w-32" onClick={startEditing} disabled={busy}>Edit</button>
+            <button
+              type="button"
+              className="btn btn-outline w-32"
+              onClick={() => setManaging((open) => !open)}
+              aria-expanded={managing}
+            >
+              {managing ? 'Close seasons' : 'Seasons'}
+            </button>
             <button type="button" className="btn btn-error w-32" onClick={remove} disabled={busy}>
               {busy && <span className="loading loading-spinner loading-sm" />}
               Delete
@@ -109,6 +121,9 @@ function MySeriesItem({ series, onUpdated, onDeleted }: MySeriesItemProps) {
           </div>
         </>
       )}
+    </div>
+    {/* edit or delete the seasons and the episodes of this series */}
+    {managing && <SeasonsManager seriesId={series.id} />}
     </div>
   );
 }
