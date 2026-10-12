@@ -146,18 +146,17 @@ export type ReviewRequest = Omit<Review, 'id' | 'viewerId'>
 
 /** REPORTS */
 
-/* Array with the possible Reasons for a Report */
-export const REPORT_REASONS = [
-  'Violence',
-  'Sexual content',
-  'Harassment and bullying',
-  'Hate speech and abuse',
-  'Dangerous or harmful activities',
-  'Other'
-] as const
+// A reason a viewer can choose when reporting ("ReportReason" in the diagram).
+// Administrators manage the catalog (GET/POST/PATCH/DELETE /api/report-types).
+export interface ReportType {
+  id: number
+  name: string
+  // true for types such as "Other", which need an explanation in the report
+  requiresDetails: boolean
+}
 
-/* Defines the report reason type */
-export type ReportReason = typeof REPORT_REASONS[number]
+// what an administrator sends to create or edit a report type
+export type ReportTypeInput = Pick<ReportType, 'name' | 'requiresDetails'>
 
 // what can be reported (episodes are reported through their series)
 export type ReportTargetType = 'movie' | 'series'
@@ -166,8 +165,9 @@ export type ReportTargetType = 'movie' | 'series'
 export interface ReportRequest {
   targetType: ReportTargetType
   targetId: number
-  // one free-text reason (max 1000 characters); the form sends the chosen label or "Other: <text>"
-  reason: string
+  reportTypeId: number
+  // optional explanation (max 1000 characters); required when the type requiresDetails
+  details?: string
 }
 // A moderation case opens when content gets 3 reports; it is what an appeal is about
 export type ModerationCaseStatus = 'pending' | 'appealed' | 'upheld' | 'dismissed'

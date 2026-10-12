@@ -1,17 +1,15 @@
 import { useEffect, useState } from "react"
 import type { FormEvent } from "react"
 import { Link, useParams } from "react-router-dom"
-import { REPORT_REASONS } from "../types/index.ts"
-import type { ReportReason } from "../types/index.ts"
+import type { ReportType } from "../types/index.ts"
 import { getMovie } from "../services/movieService.ts"
 import { getSeries } from "../services/seriesService.ts"
 import { isReportTargetType, reportContent } from "../services/reportService.ts"
+import { getReportTypes } from "../services/reportTypeService.ts"
 import { errorMessage } from "../services/api.ts"
 import RequestStatus from "../components/RequestStatus.tsx"
 
-const MAX_REASON_LENGTH = 1000
-// room for the "Other: " prefix inside the backend's 1000 characters
-const MAX_OTHER_LENGTH = MAX_REASON_LENGTH - 'Other: '.length
+const MAX_DETAILS_LENGTH = 1000
 
 export default function ReportPage() {
   // route: /report/:type/:id, e.g. /report/movie/3 or /report/series/1
@@ -20,13 +18,15 @@ export default function ReportPage() {
 
   // title of what is being reported, so the user knows what they report
   const [title, setTitle] = useState('')
+  // the reasons come from the backend's catalog, managed by administrators
+  const [reportTypes, setReportTypes] = useState<ReportType[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
 
-  //holds the selected option
-  const [selectedReason, setSelectedReason] = useState<ReportReason | "">("")
-  //when the user selects "Other" - holds the description
-  const [otherReasonDescription, setOtherReasonDescription] = useState("")
+  //holds the selected report type
+  const [selectedTypeId, setSelectedTypeId] = useState<number | null>(null)
+  //optional explanation, required for types such as "Other"
+  const [details, setDetails] = useState("")
 
   const [showConfirmation, setShowConfirmation] = useState(false)
   const [sending, setSending] = useState(false)
@@ -39,10 +39,12 @@ export default function ReportPage() {
     setLoading(true)
     setLoadError('')
 
-    const load = targetType === 'movie' ? getMovie(id) : getSeries(id)
-    load
-      .then((content) => {
-        if (!cancelled) setTitle(content.title)
+    const loadContent = targetType === 'movie' ? getMovie(id) : getSeries(id)
+    Promise.all([loadContent, getReportTypes()])
+      .then(([content, types]) => {
+        if (cancelled) return
+        setTitle(content.title)
+        setReportTypes(types)
       })
       .catch((err: unknown) => {
         if (!cancelled) setLoadError(errorMessage(err))
@@ -54,9 +56,10 @@ export default function ReportPage() {
     return () => { cancelled = true }
   }, [targetType, id])
 
-  // a reason is required, and "Other" also needs its description
-  const canSave = selectedReason !== ""
-    && (selectedReason !== "Other" || otherReasonDescription.trim() !== "")
+  const selectedType = reportTypes.find((item) => item.id === selectedTypeId)
+  // a reason is required, and types such as "Other" also need the explanation
+  const canSave = selectedType !== undefined
+    && (!selectedType.requiresDetails || details.trim() !== "")
 
   // the form only opens the confirmation box
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -65,17 +68,15 @@ export default function ReportPage() {
   }
 
   async function confirmReport() {
-    if (!targetType || selectedReason === "") return
+    if (!targetType || !selectedType) return
     setSending(true)
     setSendError('')
     try {
       await reportContent({
         targetType,
         targetId: Number(id),
-        // the backend takes one free-text reason
-        reason: selectedReason === "Other"
-          ? `Other: ${otherReasonDescription.trim()}`
-          : selectedReason,
+        reportTypeId: selectedType.id,
+        ...(details.trim() ? { details: details.trim() } : {}),
       })
       setSent(true)
     } catch (err) {
@@ -95,7 +96,12 @@ export default function ReportPage() {
   return (
     <div className="flex justify-center p-4 sm:p-6">
       <div className="card bg-neutral w-full max-w-lg shadow-xl">
-        <RequestStatus loading={loading} error={loadError} isEmpty={false} emptyMessage="">
+        <RequestStatus
+          loading={loading}
+          error={loadError}
+          isEmpty={reportTypes.length === 0}
+          emptyMessage="Reporting is not available right now. Please try again later."
+        >
           {sent ? (
             <div className="card-body gap-4">
               <h1 className="card-title">Thanks for your report</h1>
@@ -108,31 +114,35 @@ export default function ReportPage() {
               <p className="text-sm opacity-70">Why are you reporting this {targetType}?</p>
 
               {/*options: radio buttons only allow one to be selected*/}
-              {REPORT_REASONS.map((reason) => (
-                <label className="label cursor-pointer justify-between" key={reason}>
-                  <span>{reason}</span>
+              {reportTypes.map((reportType) => (
+                <label className="label cursor-pointer justify-between" key={reportType.id}>
+                  <span>{reportType.name}</span>
                   <input
                     type="radio"
                     className="radio radio-primary"
-                    name="reason"
-                    value={reason}
-                    checked={selectedReason === reason}
-                    onChange={() => setSelectedReason(reason)}
+                    name="reportType"
+                    value={reportType.id}
+                    checked={selectedTypeId === reportType.id}
+                    onChange={() => setSelectedTypeId(reportType.id)}
                   />
                 </label>
               ))}
 
-              {/*if "Other" is selected */}
-              {selectedReason === "Other" && (
-                <textarea
-                  className="textarea textarea-bordered w-full"
-                  placeholder="Write the reason..."
-                  aria-label="Other reason"
-                  required
-                  maxLength={MAX_OTHER_LENGTH}
-                  value={otherReasonDescription}
-                  onChange={(e) => setOtherReasonDescription(e.target.value)}
-                />
+              {/*the explanation is optional, except for types such as "Other"*/}
+              {selectedType && (
+                <label className="flex flex-col gap-1">
+                  <span className="text-sm">
+                    {selectedType.requiresDetails ? 'Explain the reason' : 'Add details (optional)'}
+                  </span>
+                  <textarea
+                    className="textarea textarea-bordered w-full"
+                    placeholder="Write the reason..."
+                    required={selectedType.requiresDetails}
+                    maxLength={MAX_DETAILS_LENGTH}
+                    value={details}
+                    onChange={(e) => setDetails(e.target.value)}
+                  />
+                </label>
               )}
 
               {sendError && <div role="alert" className="alert alert-error text-sm">{sendError}</div>}
