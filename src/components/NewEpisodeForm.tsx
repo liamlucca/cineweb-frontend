@@ -7,13 +7,12 @@ import { errorMessage } from '../services/api.ts';
 
 interface NewEpisodeFormProps {
   series: Series[]
-  // id of the logged-in user (the backend still requires id_author)
-  authorId: number
   // last season created on the page, so its series' season list is fetched again
   newestSeason: Season | null
 }
 
-function NewEpisodeForm({ series, authorId, newestSeason }: NewEpisodeFormProps) {
+// The backend takes the uploader from the token
+function NewEpisodeForm({ series, newestSeason }: NewEpisodeFormProps) {
   const [seriesId, setSeriesId] = useState('');
   const [seasons, setSeasons] = useState<Season[]>([]);
   const [loadingSeasons, setLoadingSeasons] = useState(false);
@@ -82,7 +81,6 @@ function NewEpisodeForm({ series, authorId, newestSeason }: NewEpisodeFormProps)
         episode_number: Number(episodeNumber),
         title: title.trim(),
         description: description.trim(),
-        id_author: authorId,
       }, file, setProgress);
       setUploadedTo(`/series/${seriesId}/season/${seasonId}/episodes`);
       // ready for the next episode of the same season

@@ -20,7 +20,7 @@ function UploadSeriesPage() {
 
   useEffect(() => {
     // There is no "series of a user" endpoint, so all series are fetched and filtered here.
-    // This only hides other users' series: the backend must also reject those requests.
+    // The backend also rejects seasons and episodes for someone else's series (403).
     getAllSeries()
       .then((allSeries) => setSeries(allSeries.filter((item) => item.uploaderId === userId)))
       .catch((err: unknown) => setError(errorMessage(err)))
@@ -39,12 +39,9 @@ function UploadSeriesPage() {
 
       <RequestStatus loading={loading} error={error} isEmpty={false} emptyMessage="">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
-          <NewSeriesForm
-            authorId={user.id}
-            onCreated={(created) => setSeries((current) => [...current, created])}
-          />
+          <NewSeriesForm onCreated={(created) => setSeries((current) => [...current, created])} />
           <NewSeasonForm series={series} onCreated={setNewestSeason} />
-          <NewEpisodeForm series={series} authorId={user.id} newestSeason={newestSeason} />
+          <NewEpisodeForm series={series} newestSeason={newestSeason} />
         </div>
       </RequestStatus>
     </div>

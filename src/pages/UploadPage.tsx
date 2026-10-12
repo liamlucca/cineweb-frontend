@@ -4,10 +4,8 @@ import { Link } from 'react-router-dom'
 import type { MovieUploadData } from '../types/index.ts'
 import { uploadMovie } from '../services/movieService.ts'
 import { errorMessage } from '../services/api.ts'
-import useAuth from '../hooks/useAuth.ts'
 
 function UploadPage() {
-  const { user } = useAuth()
   const [file, setFile] = useState<File | null>(null)
   const [title, setTitle] = useState('')
   const [category, setCategory] = useState('')
@@ -29,8 +27,7 @@ function UploadPage() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    // ProtectedRoute only lets logged-in viewers in, so user is always set here
-    if (!file || !user) return
+    if (!file) return
     // keep the form: event.currentTarget is null after the await
     const form = event.currentTarget
 
@@ -39,14 +36,11 @@ function UploadPage() {
     setSuccess(false)
     setError('')
 
+    // the backend takes the uploader from the token
     const movieData: MovieUploadData = {
-      // TODO: the backend still requires id_author. Remove it once it takes the uploader from the token.
-      id_author: user.id,
       title: title.trim(),
       category: category.trim(),
-      views: 0,
       description: description.trim(),
-      state: 'active',
     }
 
     try {

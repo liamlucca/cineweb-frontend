@@ -5,12 +5,11 @@ import { createSeries } from '../services/seriesService.ts';
 import { errorMessage } from '../services/api.ts';
 
 interface NewSeriesFormProps {
-  // id of the logged-in user (the backend still requires id_author)
-  authorId: number
   onCreated: (series: Series) => void
 }
 
-function NewSeriesForm({ authorId, onCreated }: NewSeriesFormProps) {
+// The backend takes the uploader from the token
+function NewSeriesForm({ onCreated }: NewSeriesFormProps) {
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState('');
   const [description, setDescription] = useState('');
@@ -26,7 +25,6 @@ function NewSeriesForm({ authorId, onCreated }: NewSeriesFormProps) {
 
     try {
       const series = await createSeries({
-        id_author: authorId,
         title: title.trim(),
         category: category.trim(),
         description: description.trim(),

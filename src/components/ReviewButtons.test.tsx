@@ -64,7 +64,7 @@ describe('ReviewButtons', () => {
     await userEvent.setup().click(await screen.findByRole('button', { name: 'Like (0)' }));
 
     expect(createReview).toHaveBeenCalledWith({
-      viewerId: 2, rating: true, audiovisualId: 5, audiovisualType: 'movie',
+      rating: true, audiovisualId: 5, audiovisualType: 'movie',
     });
     expect(await screen.findByRole('button', { name: 'Like (1)' })).toHaveAttribute('aria-pressed', 'true');
   });

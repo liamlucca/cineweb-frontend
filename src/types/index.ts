@@ -34,15 +34,12 @@ export interface MovieDTO {
 // fields a viewer can change from "My Videos"
 export type MovieUpdate = Pick<MovieDTO, 'title' | 'category' | 'description'>
 
-// JSON sent in the "data" part of the upload request (the backend requires id_author for now)
+// JSON sent in the "data" part of the upload request.
+// The backend takes the uploader from the token and sets views and state itself.
 export interface MovieUploadData {
-  id_author: number
   title: string
   category: string
-  views: number
   description: string
-  // the backend only lists movies whose state is exactly 'active'
-  state: 'active'
 }
 
 // SERIES
@@ -105,12 +102,11 @@ export interface EpisodeDTO {
   id_author: number
 }
 
-// JSON bodies sent to create series content (the backend requires id_author for now)
 // fields an uploader can change from "My Videos"
 export type SeriesUpdate = Pick<Series, 'title' | 'category' | 'description'>
 
+// JSON bodies sent to create series content (the backend takes the uploader from the token)
 export interface SeriesUploadData {
-  id_author: number
   title: string
   category: string
   description: string
@@ -127,7 +123,6 @@ export interface EpisodeUploadData {
   episode_number: number
   title: string
   description: string
-  id_author: number
 }
 
 
@@ -146,7 +141,8 @@ export interface Review {
   audiovisualType: ReviewTargetType
 }
 
-export type ReviewRequest = Omit<Review, 'id'>
+// the backend takes the viewer from the token
+export type ReviewRequest = Omit<Review, 'id' | 'viewerId'>
 
 /** REPORTS */
 

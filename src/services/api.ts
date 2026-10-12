@@ -7,12 +7,16 @@ export const GENERIC_ERROR = 'Something went wrong. Please try again.';
 export const INVALID_DATA_ERROR = 'Please check the information you entered.';
 export const SESSION_ERROR = 'Your session has expired. Please log in again.';
 export const FORBIDDEN_ERROR = 'You do not have permission to do that.';
+export const FILE_TOO_LARGE_ERROR = 'The file is too large. Please choose a smaller video.';
+export const FILE_TYPE_ERROR = 'That file is not a video. Please choose a video file.';
 
 // Friendly message for the HTTP errors every service handles the same way
 function statusMessage(status: number): string {
   if (status === 400) return INVALID_DATA_ERROR;
   if (status === 401) return SESSION_ERROR;
   if (status === 403) return FORBIDDEN_ERROR;
+  if (status === 413) return FILE_TOO_LARGE_ERROR;
+  if (status === 415) return FILE_TYPE_ERROR;
   return GENERIC_ERROR;
 }
 

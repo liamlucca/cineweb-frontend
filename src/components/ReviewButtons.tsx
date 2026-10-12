@@ -51,10 +51,8 @@ function ReviewButtons({ type, id }: ReviewButtonsProps) {
     setError('');
     try {
       if (!myReview) {
-        const created = await createReview({
-          // TODO: the backend takes viewerId from the body; it should take it from the token
-          viewerId: user.id, rating, audiovisualId: id, audiovisualType: type,
-        });
+        // the backend takes the viewer from the token
+        const created = await createReview({ rating, audiovisualId: id, audiovisualType: type });
         setReviews((current) => [...current, created]);
       } else if (myReview.rating === rating) {
         await deleteReview(myReview.id);

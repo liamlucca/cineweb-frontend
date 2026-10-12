@@ -141,9 +141,13 @@ What the backend actually does (checked in its code, commit `9d30d59`).
 - Session: an opaque token (not a JWT) that expires after 7 days, stored in
   localStorage (`cineweb_token`, `cineweb_user`). Authenticated requests send
   `Authorization: Bearer <token>` via `authHeader()`.
-- Uploads: the goal is that the backend takes the uploader from the token and
-  the form never sends it. Today the content routes do not read the token yet,
-  so the frontend still sends `id_author` (see the manual's known issues).
+- Writes on movies, series, seasons, episodes and reviews need the token. The
+  backend takes the uploader (`id_author`) and the reviewer (`viewerId`) from it,
+  so the frontend never sends them. Someone else's content answers 403. Edits only
+  accept title, category and description (plus season/episode numbers).
+- Uploads: videos only (415 otherwise), size limit (413), unique file names.
+  The backend sets `state` and `views`; the frontend never sends them.
+- Backend branch with these changes: `regularidad` (created from `Liam`).
 
 ## Screens (from the sketches "Bosquejos TP DSW")
 
