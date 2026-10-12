@@ -144,6 +144,23 @@ export interface Review {
 // the backend takes the viewer from the token
 export type ReviewRequest = Omit<Review, 'id' | 'viewerId'>
 
+/** WATCH LATER (sketch 3) */
+
+// what can be saved for later: a movie or a whole series
+export type WatchLaterType = 'movie' | 'series'
+
+// one item of the viewer's list ("WatchLater" in the diagram), with the content it points to
+export interface WatchLaterItem {
+  id: number
+  viewerId: number
+  audiovisualId: number
+  audiovisualType: WatchLaterType
+  addedAt: string
+  title: string
+  category: string
+  description: string
+}
+
 /** REPORTS */
 
 // A reason a viewer can choose when reporting ("ReportReason" in the diagram).

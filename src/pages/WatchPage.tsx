@@ -6,6 +6,7 @@ import { getMovie, videoUrl } from "../services/movieService.ts"
 import { errorMessage } from "../services/api.ts"
 import useAuth from "../hooks/useAuth.ts"
 import ReviewButtons from "../components/ReviewButtons.tsx"
+import WatchLaterButton from "../components/WatchLaterButton.tsx"
 import "../styles/WatchPage.css"
 
 //const LANGUAGES = ["Spanish (Latin America)", "Spanish (Spain)", "English", "French"]
@@ -73,8 +74,9 @@ function WatchPage() {
       <div className="watch-right">
         <h1 className="watch-title">{movie.title}</h1>
         <p className="watch-category">{movie.category}</p>
-        <div className="my-3">
+        <div className="my-3 flex flex-col gap-2">
           <ReviewButtons type="movie" id={movie.id} />
+          <WatchLaterButton type="movie" id={movie.id} />
         </div>
         <p className={`watch-description ${descriptionExpanded ? "expanded" : ""}`}>
           {movie.description}

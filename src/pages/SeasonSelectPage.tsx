@@ -4,6 +4,7 @@ import type { Season, Series } from "../types/index.ts"
 import { getSeasons, getSeries } from "../services/seriesService.ts"
 import { errorMessage } from "../services/api.ts"
 import RequestStatus from "../components/RequestStatus.tsx"
+import WatchLaterButton from "../components/WatchLaterButton.tsx"
 import "../styles/SeasonSelectPage.css"
 
 function SeasonSelectPage() {
@@ -78,6 +79,11 @@ function SeasonSelectPage() {
         <div className="season-main">
           <h1 className="season-title">{series?.title}</h1>
           <p className="mb-4 opacity-70">{series?.description}</p>
+          {series && (
+            <div className="mb-4">
+              <WatchLaterButton type="series" id={series.id} />
+            </div>
+          )}
 
           <div className="season-dropdown-wrapper">
             <span className="season-dropdown-icon"></span>

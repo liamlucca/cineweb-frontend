@@ -14,6 +14,7 @@ import ProfilePage from './pages/ProfilePage.tsx'
 import AdminPage from './pages/AdminPage.tsx'
 import AppealPage from './pages/AppealPage.tsx'
 import ModerationCasePage from './pages/ModerationCasePage.tsx'
+import WatchLaterPage from './pages/WatchLaterPage.tsx'
 import MyVideosPage from './pages/MyVideosPage.tsx'
 import ProtectedRoute from './components/ProtectedRoute.tsx'
 import useAuth from './hooks/useAuth.ts'
@@ -41,6 +42,7 @@ function App() {
           <Route path="/my-videos" element={<MyVideosPage />} />
           <Route path="/report/:type/:id" element={<ReportPage />} />
           <Route path="/appeal/:reportId" element={<AppealPage/>} />
+          <Route path="/watch-later" element={<WatchLaterPage />} />
         </Route>
 
         {/* administrator-only screens (sketches A and B) */}
