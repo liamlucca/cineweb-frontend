@@ -1,23 +1,12 @@
 import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link } from 'react-router-dom';
-import type { AppealStatus, ProfileUpdate, ViewerProfile } from '../types/index.ts';
+import type { ProfileUpdate, ViewerProfile } from '../types/index.ts';
 import useAuth from '../hooks/useAuth.ts';
 import { getViewerProfile } from '../services/viewerService.ts';
 import { errorMessage } from '../services/api.ts';
 import RequestStatus from '../components/RequestStatus.tsx';
-
-const STATUS_BADGE: Record<AppealStatus, string> = {
-  pending: 'badge-warning',
-  approved: 'badge-success',
-  rejected: 'badge-error',
-};
-
-const STATUS_TEXT: Record<AppealStatus, string> = {
-  pending: 'Waiting for review',
-  approved: 'Accepted: your content stays online',
-  rejected: 'Rejected: your content was suspended',
-};
+import MyReportsList from '../components/MyReportsList.tsx';
 
 // Viewer activity from GET /api/viewers/me (administrators do not have it)
 function ViewerActivity() {
@@ -53,21 +42,8 @@ function ViewerActivity() {
             </div>
           </div>
 
-          <h2 className="text-xl font-bold mt-8 mb-3">My appeals</h2>
-          {profile.appeals.length === 0 && <p className="opacity-70">You have not appealed any report.</p>}
-          <ul className="space-y-3">
-            {profile.appeals.map((appeal) => (
-              <li key={appeal.id} className="card bg-base-200">
-                <div className="card-body p-4 gap-2">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-bold">Case #{appeal.reportId}</span>
-                    <span className={`badge ${STATUS_BADGE[appeal.status]}`}>{STATUS_TEXT[appeal.status]}</span>
-                  </div>
-                  <p className="text-sm opacity-80">{appeal.description}</p>
-                </div>
-              </li>
-            ))}
-          </ul>
+          {/* the cases against the viewer's content, with "Appeal" and "Withdraw appeal" */}
+          <MyReportsList />
         </>
       )}
     </RequestStatus>

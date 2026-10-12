@@ -293,7 +293,6 @@ export interface ViewerProfile {
   reviewsCount: number
   // computed by the backend: reports received by content this viewer uploaded
   reportsReceivedCount: number
-  appeals: Appeal[]
 }
 
 /** AUTH - request/response DTOs */

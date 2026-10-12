@@ -1,9 +1,9 @@
-import type { UserDTO, ViewerProfile } from '../types/index.ts';
+import type { ModerationCase, UserDTO, ViewerProfile } from '../types/index.ts';
 import {
   ApiError, GENERIC_ERROR, authHeader, readJson, request,
 } from './api.ts';
 import { isUserDTO, toUser } from './authService.ts';
-import { isAppealDTO, toAppeal } from './appealService.ts';
+import { toModerationCase } from './reportService.ts';
 
 const NOT_FOUND_ERROR = 'We couldn\'t find your profile.';
 
@@ -24,7 +24,7 @@ function isViewerDTO(value: unknown): value is ViewerDTO {
     && Array.isArray(candidate.reviews);
 }
 
-// Only for viewers: administrators get a 403 from this endpoint
+// Only for viewers: administrators get a 403 from these endpoints
 export async function getViewerProfile(): Promise<ViewerProfile> {
   const response = await request('/api/viewers/me', NOT_FOUND_ERROR, { headers: authHeader() });
   const dto = (await readJson(response) as { data?: unknown } | null)?.data;
@@ -36,6 +36,13 @@ export async function getViewerProfile(): Promise<ViewerProfile> {
     uploadedCount: dto.uploadedAudiovisuals.length,
     reviewsCount: dto.reviews.length,
     reportsReceivedCount: dto.reportsReceivedCount,
-    appeals: dto.appeals.filter(isAppealDTO).map(toAppeal),
   };
+}
+
+// Moderation cases opened against the viewer's content, with their appeal if there is one
+export async function getMyReports(): Promise<ModerationCase[]> {
+  const response = await request('/api/viewers/me/reports', NOT_FOUND_ERROR, { headers: authHeader() });
+  const data = (await readJson(response) as { data?: unknown } | null)?.data;
+  if (!Array.isArray(data)) throw new ApiError(GENERIC_ERROR);
+  return data.map(toModerationCase);
 }

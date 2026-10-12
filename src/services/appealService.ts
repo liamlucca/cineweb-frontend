@@ -31,3 +31,12 @@ export async function createAppeal(reportId: number, description: string): Promi
     body: JSON.stringify({ reportId, description }),
   });
 }
+
+// Withdraws an appeal no administrator reviewed yet; its case can be appealed again.
+// 409 when it was already reviewed, 403 when it is not the user's.
+export async function withdrawAppeal(appealId: number): Promise<void> {
+  await request(`/api/appeals/${appealId}`, 'We couldn\'t find that appeal.', {
+    method: 'DELETE',
+    headers: authHeader(),
+  });
+}
