@@ -11,17 +11,20 @@ import AppealReviewCard from '../components/AppealReviewCard.tsx';
 import AccountsTable from '../components/AccountsTable.tsx';
 import NewAdministratorForm from '../components/NewAdministratorForm.tsx';
 import ReportTypesManager from '../components/ReportTypesManager.tsx';
+import ModerationCasesPanel from '../components/ModerationCasesPanel.tsx';
 
-type Tab = 'appeals' | 'reportTypes' | 'users' | 'administrators';
+type Tab = 'appeals' | 'cases' | 'reportTypes' | 'users' | 'administrators';
 
 const TABS: { id: Tab, label: string }[] = [
   { id: 'appeals', label: 'Pending appeals' },
+  { id: 'cases', label: 'Reports' },
   { id: 'reportTypes', label: 'Report reasons' },
   { id: 'users', label: 'Users' },
   { id: 'administrators', label: 'New administrator' },
 ];
 
-// Administrator landing page (sketch A) with the pending appeals (sketch B) and user management
+// Administrator landing page (sketch A): pending appeals (sketch B), reported content,
+// the report reasons catalog and user management
 function AdminPage() {
   const { user } = useAuth();
   const [tab, setTab] = useState<Tab>('appeals');
@@ -122,6 +125,9 @@ function AdminPage() {
           </RequestStatus>
         </section>
       )}
+
+      {/* list of reported content with filters; each case opens its detail page */}
+      {tab === 'cases' && <ModerationCasesPanel reportTypes={reportTypes} />}
 
       {tab === 'reportTypes' && (
         <RequestStatus loading={loadingTypes} error={typesError} isEmpty={false} emptyMessage="">

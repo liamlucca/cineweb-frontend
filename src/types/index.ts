@@ -169,17 +169,63 @@ export interface ReportRequest {
   // optional explanation (max 1000 characters); required when the type requiresDetails
   details?: string
 }
-// A moderation case opens when content gets 3 reports; it is what an appeal is about
+// A moderation case opens when content gets 3 reports; it is what an appeal is about.
+// pending: the owner can appeal · appealed: waiting for an administrator ·
+// upheld: the appeal was rejected and the content suspended · dismissed: the content stays online
 export type ModerationCaseStatus = 'pending' | 'appealed' | 'upheld' | 'dismissed'
 
+// how many reports of one type a case has (computed by the backend)
+export interface ReasonCount {
+  reportTypeId: number
+  reportType: string
+  count: number
+}
+
+// the appeal of a case, if the owner sent one
+export interface CaseAppeal {
+  id: number
+  description: string
+  status: AppealStatus
+}
+
+// A case as GET /api/reports and GET /api/viewers/me/reports list it: the case, the reported
+// content and its owner (the reported user), the reasons grouped by type, and the appeal
 export interface ModerationCase {
   id: number
   targetType: ReportTargetType
   targetId: number
   status: ModerationCaseStatus
   reportCount: number
-  // reason of each individual report
-  reasons: string[]
+  createdAt: string
+  content: {
+    // null if the content no longer exists
+    title: string | null
+    // 'active', 'suspended' or 'deleted'
+    state: string | null
+    ownerId: number | null
+    ownerUsername: string | null
+  }
+  reasons: ReasonCount[]
+  appeal: CaseAppeal | null
+}
+
+// one report of a case; only administrators see them (GET /api/reports/:id)
+export interface CaseReport {
+  id: number
+  reporterId: number
+  reportType: string
+  details: string | null
+}
+
+export interface ModerationCaseDetail extends ModerationCase {
+  reports: CaseReport[]
+}
+
+// optional filters of the administrators' case list
+export interface CaseFilters {
+  id?: number
+  status?: ModerationCaseStatus
+  reportTypeId?: number
 }
 
 /** APPEALS */

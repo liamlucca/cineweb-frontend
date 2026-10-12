@@ -1,20 +1,18 @@
 import type {
-  Account, Appeal, AppealDecision, ModerationCase, ModerationCaseStatus, RegisterRequest,
+  Account, Appeal, AppealDecision, CaseFilters, ModerationCase, ModerationCaseDetail, RegisterRequest,
 } from '../types/index.ts';
 import {
   ApiError, GENERIC_ERROR, authHeader, readJson, request,
 } from './api.ts';
 import { isUserDTO, toUser } from './authService.ts';
 import { isAppealDTO, toAppeal } from './appealService.ts';
-import { isReportTargetType } from './reportService.ts';
+import { toCaseReport, toModerationCase } from './reportService.ts';
 
 // Every function here needs an administrator session: the backend answers 403 otherwise
 
 const APPEAL_NOT_FOUND = 'That appeal was already resolved or does not exist.';
 const CASE_NOT_FOUND = 'We couldn\'t find that report.';
 const USER_NOT_FOUND = 'We couldn\'t find that user.';
-
-const CASE_STATUSES: ModerationCaseStatus[] = ['pending', 'appealed', 'upheld', 'dismissed'];
 
 // the backend answers { data: ... } on every administrator endpoint
 async function readBody(response: Response): Promise<Record<string, unknown>> {
@@ -43,27 +41,27 @@ export async function getPendingAppeals(): Promise<Appeal[]> {
   return data.filter(isAppealDTO).map(toAppeal);
 }
 
-// GET /api/reports/:id answers { data: case, reportCount, reports: [{ reason, ... }] }
-export async function getModerationCase(id: number): Promise<ModerationCase> {
-  const response = await request(`/api/reports/${id}`, CASE_NOT_FOUND, { headers: authHeader() });
-  const { data, reportCount, reports } = await readBody(response);
-  const moderationCase = data as Record<string, unknown> | null;
-  if (!moderationCase
-    || typeof moderationCase.targetType !== 'string'
-    || !isReportTargetType(moderationCase.targetType)
-    || !CASE_STATUSES.includes(moderationCase.status as ModerationCaseStatus)) {
-    throw new ApiError(GENERIC_ERROR);
-  }
+// GET /api/reports with optional ?id=, ?status= and ?reportTypeId= (newest cases first)
+export async function getModerationCases(filters: CaseFilters = {}): Promise<ModerationCase[]> {
+  const query = new URLSearchParams();
+  if (filters.id) query.set('id', String(filters.id));
+  if (filters.status) query.set('status', filters.status);
+  if (filters.reportTypeId) query.set('reportTypeId', String(filters.reportTypeId));
+  const search = query.toString();
 
+  const response = await request(`/api/reports${search ? `?${search}` : ''}`, CASE_NOT_FOUND, { headers: authHeader() });
+  const { data } = await readBody(response);
+  if (!Array.isArray(data)) throw new ApiError(GENERIC_ERROR);
+  return data.map(toModerationCase);
+}
+
+// GET /api/reports/:id answers { data: case summary, reportCount, reports: [{ reportType, details, ... }] }
+export async function getModerationCase(id: number): Promise<ModerationCaseDetail> {
+  const response = await request(`/api/reports/${id}`, CASE_NOT_FOUND, { headers: authHeader() });
+  const { data, reports } = await readBody(response);
   return {
-    id: Number(moderationCase.id),
-    targetType: moderationCase.targetType,
-    targetId: Number(moderationCase.targetId),
-    status: moderationCase.status as ModerationCaseStatus,
-    reportCount: Number(reportCount),
-    reasons: Array.isArray(reports)
-      ? reports.map((report) => String((report as { reason?: unknown }).reason ?? ''))
-      : [],
+    ...toModerationCase(data),
+    reports: Array.isArray(reports) ? reports.map(toCaseReport) : [],
   };
 }
 

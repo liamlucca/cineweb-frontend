@@ -36,18 +36,33 @@ describe('AppealReviewCard', () => {
     vi.restoreAllMocks();
   });
 
-  it('shows the reported case with its reasons counted', async () => {
+  it('shows the reported content, its owner and the reasons counted', async () => {
     getModerationCase.mockResolvedValue({
-      id: 9, targetType: 'movie', targetId: 3, status: 'appealed', reportCount: 3,
-      reasons: ['Violence', 'Other: spam', 'Violence'],
+      id: 9,
+      targetType: 'movie',
+      targetId: 3,
+      status: 'appealed',
+      reportCount: 3,
+      createdAt: '2026-10-12T10:00:00.000Z',
+      content: {
+        title: 'Pilot', state: 'active', ownerId: 5, ownerUsername: 'maria',
+      },
+      reasons: [
+        { reportTypeId: 1, reportType: 'Violence', count: 2 },
+        { reportTypeId: 6, reportType: 'Other', count: 1 },
+      ],
+      appeal: { id: 4, description: 'It is a parody.', status: 'pending' },
+      reports: [],
     });
     renderCard();
 
     await userEvent.setup().click(screen.getByRole('button', { name: 'See the reports' }));
 
     expect(getModerationCase).toHaveBeenCalledWith(9);
-    expect(await screen.findByText('Violence (2)')).toBeInTheDocument();
-    expect(screen.getByText('Other: spam (1)')).toBeInTheDocument();
+    expect(await screen.findByText('Violence × 2')).toBeInTheDocument();
+    expect(screen.getByText('Other × 1')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Pilot' })).toHaveAttribute('href', '/watch/3');
+    expect(screen.getByText(/uploaded by @maria/)).toBeInTheDocument();
   });
 
   it('rejects the appeal and tells the page the content was suspended', async () => {

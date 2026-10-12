@@ -3,18 +3,12 @@ import { Link } from 'react-router-dom';
 import type { Appeal, AppealDecision, ModerationCase } from '../types/index.ts';
 import { getModerationCase, resolveAppeal } from '../services/adminService.ts';
 import { errorMessage } from '../services/api.ts';
+import CaseSummary from './CaseSummary.tsx';
 
 interface AppealReviewCardProps {
   appeal: Appeal
   // tells the page the appeal was resolved, so it can leave the pending list
   onResolved: (appeal: Appeal, decision: AppealDecision, contentSuspended: boolean) => void
-}
-
-// how many reports gave each reason, most repeated first
-function countReasons(reasons: string[]): [string, number][] {
-  const counts = new Map<string, number>();
-  reasons.forEach((reason) => counts.set(reason, (counts.get(reason) ?? 0) + 1));
-  return [...counts.entries()].sort((a, b) => b[1] - a[1]);
 }
 
 // One pending appeal (sketch B): see the reported case, then accept or reject the appeal
@@ -52,11 +46,6 @@ function AppealReviewCard({ appeal, onResolved }: AppealReviewCardProps) {
     }
   }
 
-  // suspended content is hidden by the backend, so this link may show "not found"
-  const contentLink = moderationCase?.targetType === 'series'
-    ? `/series/${moderationCase.targetId}/seasons`
-    : `/watch/${moderationCase?.targetId}`;
-
   return (
     <div className="card bg-base-200">
       <div className="card-body p-4 gap-3">
@@ -75,15 +64,9 @@ function AppealReviewCard({ appeal, onResolved }: AppealReviewCardProps) {
 
         {moderationCase && (
           <div className="bg-base-100 rounded-box p-3 text-sm space-y-2">
-            <p>
-              Reported {moderationCase.targetType}: <Link to={contentLink} className="link">#{moderationCase.targetId}</Link>
-              {' · '}{moderationCase.reportCount} reports · status: {moderationCase.status}
-            </p>
-            <ul className="list-disc list-inside">
-              {countReasons(moderationCase.reasons).map(([reason, count]) => (
-                <li key={reason}>{reason} ({count})</li>
-              ))}
-            </ul>
+            {/* the reported content, its owner and the reasons grouped by the backend */}
+            <CaseSummary moderationCase={moderationCase} />
+            <Link to={`/admin/reports/${moderationCase.id}`} className="link">See every report</Link>
           </div>
         )}
 

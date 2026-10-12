@@ -13,6 +13,7 @@ import ReportPage from './pages/ReportPage.tsx'
 import ProfilePage from './pages/ProfilePage.tsx'
 import AdminPage from './pages/AdminPage.tsx'
 import AppealPage from './pages/AppealPage.tsx'
+import ModerationCasePage from './pages/ModerationCasePage.tsx'
 import MyVideosPage from './pages/MyVideosPage.tsx'
 import ProtectedRoute from './components/ProtectedRoute.tsx'
 import useAuth from './hooks/useAuth.ts'
@@ -45,6 +46,7 @@ function App() {
         {/* administrator-only screens (sketches A and B) */}
         <Route element={<ProtectedRoute allowedRoles={['administrator']} />}>
           <Route path="/admin" element={<AdminPage />} />
+          <Route path="/admin/reports/:id" element={<ModerationCasePage />} />
         </Route>
 
         {/* any logged-in user */}
