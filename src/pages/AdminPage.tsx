@@ -1,17 +1,22 @@
 import { useEffect, useState } from 'react';
-import type { Account, Appeal, AppealDecision } from '../types/index.ts';
+import type {
+  Account, Appeal, AppealDecision, ReportType,
+} from '../types/index.ts';
 import { getAccounts, getPendingAppeals } from '../services/adminService.ts';
+import { getReportTypes } from '../services/reportTypeService.ts';
 import { errorMessage } from '../services/api.ts';
 import useAuth from '../hooks/useAuth.ts';
 import RequestStatus from '../components/RequestStatus.tsx';
 import AppealReviewCard from '../components/AppealReviewCard.tsx';
 import AccountsTable from '../components/AccountsTable.tsx';
 import NewAdministratorForm from '../components/NewAdministratorForm.tsx';
+import ReportTypesManager from '../components/ReportTypesManager.tsx';
 
-type Tab = 'appeals' | 'users' | 'administrators';
+type Tab = 'appeals' | 'reportTypes' | 'users' | 'administrators';
 
 const TABS: { id: Tab, label: string }[] = [
   { id: 'appeals', label: 'Pending appeals' },
+  { id: 'reportTypes', label: 'Report reasons' },
   { id: 'users', label: 'Users' },
   { id: 'administrators', label: 'New administrator' },
 ];
@@ -31,6 +36,11 @@ function AdminPage() {
   const [loadingAccounts, setLoadingAccounts] = useState(true);
   const [accountsError, setAccountsError] = useState('');
 
+  // catalog of report reasons (CRUD in its own tab)
+  const [reportTypes, setReportTypes] = useState<ReportType[]>([]);
+  const [loadingTypes, setLoadingTypes] = useState(true);
+  const [typesError, setTypesError] = useState('');
+
   useEffect(() => {
     getPendingAppeals()
       .then(setAppeals)
@@ -41,6 +51,11 @@ function AdminPage() {
       .then(setAccounts)
       .catch((err: unknown) => setAccountsError(errorMessage(err)))
       .finally(() => setLoadingAccounts(false));
+
+    getReportTypes()
+      .then(setReportTypes)
+      .catch((err: unknown) => setTypesError(errorMessage(err)))
+      .finally(() => setLoadingTypes(false));
   }, []);
 
   function handleResolved(appeal: Appeal, decision: AppealDecision, contentSuspended: boolean) {
@@ -59,6 +74,12 @@ function AdminPage() {
     });
   }
 
+  function handleTypeSaved(saved: ReportType) {
+    setReportTypes((current) => (current.some((item) => item.id === saved.id)
+      ? current.map((item) => (item.id === saved.id ? saved : item))
+      : [...current, saved]));
+  }
+
   // ProtectedRoute only lets administrators in, so this only satisfies TypeScript
   if (!user) return null;
 
@@ -67,14 +88,15 @@ function AdminPage() {
       <h1 className="text-3xl font-bold">Administration</h1>
       <p className="opacity-70 mb-4">Hi, {user.firstName}. Review appeals and manage accounts.</p>
 
-      <div role="tablist" className="tabs tabs-box mb-6">
+      {/* the tabs scroll sideways on phones instead of wrapping */}
+      <div role="tablist" className="tabs tabs-box mb-6 flex-nowrap overflow-x-auto">
         {TABS.map((item) => (
           <button
             key={item.id}
             type="button"
             role="tab"
             aria-selected={tab === item.id}
-            className={`tab ${tab === item.id ? 'tab-active' : ''}`}
+            className={`tab whitespace-nowrap ${tab === item.id ? 'tab-active' : ''}`}
             onClick={() => setTab(item.id)}
           >
             {item.label}
@@ -99,6 +121,16 @@ function AdminPage() {
             </div>
           </RequestStatus>
         </section>
+      )}
+
+      {tab === 'reportTypes' && (
+        <RequestStatus loading={loadingTypes} error={typesError} isEmpty={false} emptyMessage="">
+          <ReportTypesManager
+            reportTypes={reportTypes}
+            onSaved={handleTypeSaved}
+            onDeleted={(id) => setReportTypes((current) => current.filter((item) => item.id !== id))}
+          />
+        </RequestStatus>
       )}
 
       {tab === 'users' && (
