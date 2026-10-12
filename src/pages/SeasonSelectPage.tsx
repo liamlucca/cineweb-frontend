@@ -78,6 +78,7 @@ function SeasonSelectPage() {
 
         <div className="season-main">
           <h1 className="season-title">{series?.title}</h1>
+          {series?.uploaderUsername && <p className="text-sm opacity-70">Uploaded by @{series.uploaderUsername}</p>}
           <p className="mb-4 opacity-70">{series?.description}</p>
           {series && (
             <div className="mb-4">

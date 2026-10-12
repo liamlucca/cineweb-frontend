@@ -29,6 +29,8 @@ export interface MovieDTO {
   views: number
   description: string
   state: string
+  // username of the uploader, joined by the backend
+  uploader_user_name?: string
 }
 
 // fields a viewer can change from "My Videos"
@@ -55,6 +57,8 @@ export interface Series {
   description: string
   // id of the user who uploaded it ("upladerId" in the diagram, a typo)
   uploaderId: number
+  // username of that user, or null if the backend did not send it
+  uploaderUsername: string | null
 }
 
 export interface Season {
@@ -81,6 +85,7 @@ export interface SeriesDTO {
   category: string
   description: string
   state: boolean | string
+  uploader_user_name?: string
 }
 
 export interface SeasonDTO {

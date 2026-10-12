@@ -18,6 +18,7 @@ function toSeries(dto: SeriesDTO): Series {
     category: dto.category,
     description: dto.description,
     uploaderId: dto.id_author,
+    uploaderUsername: dto.uploader_user_name ?? null,
   };
 }
 

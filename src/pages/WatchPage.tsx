@@ -74,6 +74,7 @@ function WatchPage() {
       <div className="watch-right">
         <h1 className="watch-title">{movie.title}</h1>
         <p className="watch-category">{movie.category}</p>
+        {movie.uploader_user_name && <p className="text-sm opacity-70">Uploaded by @{movie.uploader_user_name}</p>}
         <div className="my-3 flex flex-col gap-2">
           <ReviewButtons type="movie" id={movie.id} />
           <WatchLaterButton type="movie" id={movie.id} />

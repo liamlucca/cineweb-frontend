@@ -48,7 +48,7 @@ describe('ReportPage', () => {
   beforeEach(() => {
     reportContent.mockReset();
     getSeries.mockResolvedValue({
-      id: 1, title: 'Strange Things', category: 'Drama', description: '', uploaderId: 9,
+      id: 1, title: 'Strange Things', category: 'Drama', description: '', uploaderId: 9, uploaderUsername: 'maria',
     });
     getReportTypes.mockResolvedValue(REPORT_TYPES);
   });
