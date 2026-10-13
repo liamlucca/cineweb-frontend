@@ -205,7 +205,7 @@ Details:
 | `src/test/` | Test setup (`setup.ts`). Test files live next to the code they test, as `*.test.ts(x)`. |
 | `src/mockup/` | `mockAuthService.ts`: fake accounts for working without a backend (`VITE_USE_MOCK_AUTH = true`). |
 | `public/` | Static files copied as-is. |
-| `docs/` | The course documentation in Spanish (entry point `README.md`, progress log `avance.md` built from the git history, `minutas/` for meeting minutes, `tracking.md`), this manual, the domain diagram (`dnd_cineweb.drawio`, source of truth for names, and `dnd_cineweb.png`, visual reference) and the screen sketches (`frontend sketch by Cande.drawio.pdf`, 19 pages, in Spanish). |
+| `docs/` | The course documentation (entry point `README.md`, progress minutes `progress.md` built from the git history, `tracking.md`), this manual, the domain diagram (`dnd_cineweb.drawio`, source of truth for names, and `dnd_cineweb.png`, visual reference) and the screen sketches (`frontend sketch by Cande.drawio.pdf`, 19 pages, in Spanish). |
 
 ### 2.2 Important files one by one
 
@@ -1001,7 +1001,7 @@ response. `await` pauses an `async` function until the Promise is ready. `.then(
 with callbacks (`LandingPage.tsx` explains it in its bottom comment).
 
 **Bearer token / Authorization header** — How a request proves who is sending it: the header
-`Authorization: Bearer <token>`. Built by `authHeader()` (`api.ts:33`).
+`Authorization: Bearer <token>`. Built by `authHeader()` (`api.ts:42`).
 
 **Component** — A function that returns UI (JSX). Example: `Section`, `AuthPage`.
 
