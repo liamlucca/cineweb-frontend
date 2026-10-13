@@ -9,6 +9,7 @@ import { getAllSeries } from "../services/seriesService.ts";
 import { errorMessage } from "../services/api.ts";
 import useAuth from "../hooks/useAuth.ts";
 import MySeriesItem from "../components/MySeriesItem.tsx";
+import useDocumentTitle from "../hooks/useDocumentTitle.ts";
 
 function MyVideosPage() {
   const { user } = useAuth();
@@ -120,6 +121,9 @@ function MyVideosPage() {
       setBusyVideoId(null);
     }
   };
+
+  // browser tab title
+  useDocumentTitle('My videos');
 
   return (
     <div className="min-h-screen p-4 sm:p-8">

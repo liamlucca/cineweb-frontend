@@ -6,6 +6,7 @@ import { errorMessage } from "../services/api.ts"
 import RequestStatus from "../components/RequestStatus.tsx"
 import WatchLaterButton from "../components/WatchLaterButton.tsx"
 import "../styles/SeasonSelectPage.css"
+import useDocumentTitle from "../hooks/useDocumentTitle.ts"
 
 function SeasonSelectPage() {
   // the route is /series/:id/seasons, so there is no season in the URL: start with the first one
@@ -44,6 +45,9 @@ function SeasonSelectPage() {
 
   // until the user picks one, the first season is the active one
   const activeSeason = seasons.find(s => s.id === activeSeasonId) ?? seasons[0]
+
+  // browser tab title
+  useDocumentTitle(series?.title ?? 'Series')
 
   return (
     <RequestStatus

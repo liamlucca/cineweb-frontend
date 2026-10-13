@@ -7,6 +7,7 @@ import { getViewerProfile } from '../services/viewerService.ts';
 import { errorMessage } from '../services/api.ts';
 import RequestStatus from '../components/RequestStatus.tsx';
 import MyReportsList from '../components/MyReportsList.tsx';
+import useDocumentTitle from '../hooks/useDocumentTitle.ts';
 
 // Viewer activity from GET /api/viewers/me (administrators do not have it)
 function ViewerActivity() {
@@ -60,6 +61,9 @@ function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+
+  // browser tab title
+  useDocumentTitle('My profile');
 
   // ProtectedRoute only lets logged-in users in, so this only satisfies TypeScript
   if (!user) return null;

@@ -5,6 +5,7 @@ import RequestStatus from "../components/RequestStatus.tsx"
 import useCatalog from "../hooks/useCatalog.ts"
 import type { CatalogFilters } from "../types/index.ts"
 import { categoriesOf, filterCatalog, parseCatalogType } from "../utils/catalog.ts"
+import useDocumentTitle from "../hooks/useDocumentTitle.ts"
 
 function SearchPage() {
   //explanation of useSearchParams is at the bottom
@@ -29,6 +30,9 @@ function SearchPage() {
   }
 
   const title = filters.query ? `Results for: "${filters.query}"` : 'Results'
+
+  // browser tab title
+  useDocumentTitle(filters.query ? `Search: ${filters.query}` : 'Search')
 
   return (
     <div>

@@ -6,6 +6,7 @@ import { errorMessage } from "../services/api.ts"
 import RequestStatus from "../components/RequestStatus.tsx"
 import "../styles/SeasonSelectPage.css"
 import "../styles/WatchPage.css"
+import useDocumentTitle from "../hooks/useDocumentTitle.ts"
 
 function EpisodeListPage() {
   // names must match the route in App.tsx: /series/:id/season/:seasonId/episodes
@@ -38,6 +39,9 @@ function EpisodeListPage() {
 
     return () => { cancelled = true }
   }, [id, seasonId])
+
+  // browser tab title
+  useDocumentTitle(season && series ? `${series.title} · Season ${season.seasonNumber}` : 'Episodes')
 
   return (
     <div className="season-main p-6">

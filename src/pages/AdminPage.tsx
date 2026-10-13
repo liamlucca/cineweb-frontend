@@ -12,6 +12,7 @@ import AccountsTable from '../components/AccountsTable.tsx';
 import NewAdministratorForm from '../components/NewAdministratorForm.tsx';
 import ReportTypesManager from '../components/ReportTypesManager.tsx';
 import ModerationCasesPanel from '../components/ModerationCasesPanel.tsx';
+import useDocumentTitle from '../hooks/useDocumentTitle.ts';
 
 type Tab = 'appeals' | 'cases' | 'reportTypes' | 'users' | 'administrators';
 
@@ -82,6 +83,9 @@ function AdminPage() {
       ? current.map((item) => (item.id === saved.id ? saved : item))
       : [...current, saved]));
   }
+
+  // browser tab title
+  useDocumentTitle('Administration');
 
   // ProtectedRoute only lets administrators in, so this only satisfies TypeScript
   if (!user) return null;

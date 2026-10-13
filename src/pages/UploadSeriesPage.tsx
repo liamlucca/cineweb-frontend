@@ -7,6 +7,7 @@ import RequestStatus from '../components/RequestStatus.tsx';
 import NewSeriesForm from '../components/NewSeriesForm.tsx';
 import NewSeasonForm from '../components/NewSeasonForm.tsx';
 import NewEpisodeForm from '../components/NewEpisodeForm.tsx';
+import useDocumentTitle from '../hooks/useDocumentTitle.ts';
 
 // Upload a series step by step: create the series, add seasons, then upload episodes
 function UploadSeriesPage() {
@@ -26,6 +27,9 @@ function UploadSeriesPage() {
       .catch((err: unknown) => setError(errorMessage(err)))
       .finally(() => setLoading(false));
   }, [userId]);
+
+  // browser tab title
+  useDocumentTitle('Upload a series');
 
   // ProtectedRoute only lets logged-in viewers in, so this only satisfies TypeScript
   if (!user) return null;

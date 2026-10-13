@@ -9,6 +9,7 @@ import RequestStatus from "../components/RequestStatus.tsx"
 import useAuth from "../hooks/useAuth.ts"
 import ReviewButtons from "../components/ReviewButtons.tsx"
 import "../styles/WatchPage.css"
+import useDocumentTitle from "../hooks/useDocumentTitle.ts"
 
 //const LANGUAGES = ["Spanish (Latin America)", "Spanish (Spain)", "English", "French"]
 
@@ -45,6 +46,9 @@ function WatchSeriesPage() {
 
     return () => { cancelled = true }
   }, [id, seasonId, episodeId])
+
+  // browser tab title
+  useDocumentTitle(episode && series ? `${series.title} · ${episode.title}` : 'Watch')
 
   return (
     <RequestStatus loading={loading} error={error} isEmpty={!episode} emptyMessage="We couldn't find that episode.">

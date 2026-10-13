@@ -4,11 +4,15 @@ import SearchBar from "../components/SearchBar.tsx"
 import RequestStatus from "../components/RequestStatus.tsx"
 import useCatalog from "../hooks/useCatalog.ts"
 import { categoriesOf, categoryKey } from "../utils/catalog.ts"
+import useDocumentTitle from "../hooks/useDocumentTitle.ts"
 
 function LandingPage() {
   // movies and series together (see hooks/useCatalog.ts)
   const { items, loading, error } = useCatalog()
   const categories = categoriesOf(items)
+
+  // browser tab title
+  useDocumentTitle()
 
   return (
     <div>

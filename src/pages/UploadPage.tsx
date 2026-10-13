@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import type { MovieUploadData } from '../types/index.ts'
 import { uploadMovie } from '../services/movieService.ts'
 import { errorMessage } from '../services/api.ts'
+import useDocumentTitle from '../hooks/useDocumentTitle.ts'
 
 function UploadPage() {
   const [file, setFile] = useState<File | null>(null)
@@ -57,6 +58,9 @@ function UploadPage() {
 
     setUploading(false)
   }
+
+  // browser tab title
+  useDocumentTitle('Upload a movie')
 
   return (
     <div className="min-h-[78vh] flex items-center justify-center bg-base-100 p-4 sm:p-6">

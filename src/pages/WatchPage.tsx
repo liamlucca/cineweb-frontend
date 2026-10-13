@@ -8,6 +8,7 @@ import useAuth from "../hooks/useAuth.ts"
 import ReviewButtons from "../components/ReviewButtons.tsx"
 import WatchLaterButton from "../components/WatchLaterButton.tsx"
 import "../styles/WatchPage.css"
+import useDocumentTitle from "../hooks/useDocumentTitle.ts"
 
 //const LANGUAGES = ["Spanish (Latin America)", "Spanish (Spain)", "English", "French"]
 
@@ -38,6 +39,9 @@ function WatchPage() {
 
     return () => { cancelled = true }
   }, [id])
+
+  // browser tab title
+  useDocumentTitle(movie?.title ?? 'Watch')
 
   // CHECKING DATA
   if (loading) {

@@ -7,6 +7,7 @@ import { getMyReports } from '../services/viewerService.ts';
 import { errorMessage } from '../services/api.ts';
 import RequestStatus from '../components/RequestStatus.tsx';
 import CaseSummary from '../components/CaseSummary.tsx';
+import useDocumentTitle from '../hooks/useDocumentTitle.ts';
 
 const MAX_DESCRIPTION_LENGTH = 2000;
 const NOT_FOUND = 'We couldn\'t find that report about your content.';
@@ -65,6 +66,9 @@ export default function AppealPage() {
 
   // a case that was already appealed or decided cannot be appealed again
   const canAppeal = moderationCase?.status === 'pending' && !moderationCase.appeal;
+
+  // browser tab title
+  useDocumentTitle(`Appeal case #${reportId}`);
 
   return (
     <div className="flex justify-center p-4 sm:p-6">

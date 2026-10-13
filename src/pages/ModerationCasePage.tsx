@@ -5,6 +5,7 @@ import { getModerationCase, resolveAppeal } from '../services/adminService.ts';
 import { errorMessage } from '../services/api.ts';
 import RequestStatus from '../components/RequestStatus.tsx';
 import CaseSummary from '../components/CaseSummary.tsx';
+import useDocumentTitle from '../hooks/useDocumentTitle.ts';
 
 // Detail of a moderation case for administrators: the reported content and user,
 // every report with its reason and details, and the appeal (which can be decided here)
@@ -61,6 +62,9 @@ function ModerationCasePage() {
     }
     setDeciding(false);
   }
+
+  // browser tab title
+  useDocumentTitle(`Report case #${id}`);
 
   return (
     <div className="p-4 md:p-6 max-w-4xl mx-auto space-y-4">

@@ -5,6 +5,7 @@ import { getWatchLater, removeFromWatchLater } from '../services/watchLaterServi
 import { errorMessage } from '../services/api.ts';
 import { contentPath } from '../utils/moderation.ts';
 import RequestStatus from '../components/RequestStatus.tsx';
+import useDocumentTitle from '../hooks/useDocumentTitle.ts';
 
 // The viewer's "Watch later" list (sketch 3): movies and series saved from their detail page
 function WatchLaterPage() {
@@ -32,6 +33,9 @@ function WatchLaterPage() {
     }
     setBusyId(null);
   }
+
+  // browser tab title
+  useDocumentTitle('Watch later');
 
   return (
     <div className="p-4 md:p-6 max-w-4xl mx-auto">

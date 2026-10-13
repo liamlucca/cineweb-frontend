@@ -3,6 +3,7 @@ import type { FormEvent } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import useAuth from '../hooks/useAuth.ts';
 import { ApiError } from '../services/api.ts';
+import useDocumentTitle from '../hooks/useDocumentTitle.ts';
 
 interface AuthLocationState {
   from?: string;
@@ -14,6 +15,9 @@ function AuthPage() {
   const [isRegister, setIsRegister] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+
+  // browser tab title
+  useDocumentTitle(isRegister ? 'Sign up' : 'Log in');
 
   // once logged in, go back to the page that sent us here (or home)
   if (user) {

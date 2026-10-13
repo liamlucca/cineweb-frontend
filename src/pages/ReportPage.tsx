@@ -8,6 +8,7 @@ import { isReportTargetType, reportContent } from "../services/reportService.ts"
 import { getReportTypes } from "../services/reportTypeService.ts"
 import { errorMessage } from "../services/api.ts"
 import RequestStatus from "../components/RequestStatus.tsx"
+import useDocumentTitle from "../hooks/useDocumentTitle.ts"
 
 const MAX_DETAILS_LENGTH = 1000
 
@@ -85,6 +86,9 @@ export default function ReportPage() {
     setSending(false)
     setShowConfirmation(false)
   }
+
+  // browser tab title
+  useDocumentTitle(title ? `Report "${title}"` : 'Report a video')
 
   if (!targetType) {
     return <div role="alert" className="alert alert-error m-4">We couldn't find that video.</div>
