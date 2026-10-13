@@ -4,6 +4,8 @@ import { Link } from 'react-router-dom';
 import type { Season, Series } from '../types/index.ts';
 import { getSeasons, uploadEpisode } from '../services/seriesService.ts';
 import { errorMessage } from '../services/api.ts';
+import type { VideoInfo } from '../utils/videoThumbnail.ts';
+import VideoPicker from './VideoPicker.tsx';
 
 interface NewEpisodeFormProps {
   series: Series[]
@@ -23,6 +25,10 @@ function NewEpisodeForm({ series, newestSeason }: NewEpisodeFormProps) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [file, setFile] = useState<File | null>(null);
+  // thumbnail and duration read from the file in the browser
+  const [videoInfo, setVideoInfo] = useState<VideoInfo>({ thumbnail: null, duration: null });
+  // changing it remounts the picker, which clears its preview after an upload
+  const [pickerKey, setPickerKey] = useState(0);
 
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -59,9 +65,9 @@ function NewEpisodeForm({ series, newestSeason }: NewEpisodeFormProps) {
     setSeasons([]);
   }
 
-  function handleFileSelect(e: ChangeEvent<HTMLInputElement>) {
-    const selectedFile = e.target.files?.[0];
-    if (selectedFile) setFile(selectedFile);
+  function handleFileSelect(selectedFile: File, info: VideoInfo) {
+    setFile(selectedFile);
+    setVideoInfo(info);
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -81,13 +87,16 @@ function NewEpisodeForm({ series, newestSeason }: NewEpisodeFormProps) {
         episode_number: Number(episodeNumber),
         title: title.trim(),
         description: description.trim(),
-      }, file, setProgress);
+        ...(videoInfo.duration ? { duration: videoInfo.duration } : {}),
+      }, file, videoInfo.thumbnail, setProgress);
       setUploadedTo(`/series/${seriesId}/season/${seasonId}/episodes`);
       // ready for the next episode of the same season
       setEpisodeNumber(String(Number(episodeNumber) + 1));
       setTitle('');
       setDescription('');
       setFile(null);
+      setVideoInfo({ thumbnail: null, duration: null });
+      setPickerKey((key) => key + 1);
       form.reset();
     } catch (err) {
       setError(errorMessage(err));
@@ -166,14 +175,7 @@ function NewEpisodeForm({ series, newestSeason }: NewEpisodeFormProps) {
         />
 
         <label className="label" htmlFor="episode-file">Video file</label>
-        <input
-          id="episode-file"
-          type="file"
-          accept="video/*"
-          className="file-input file-input-bordered w-full"
-          required
-          onChange={handleFileSelect}
-        />
+        <VideoPicker key={pickerKey} id="episode-file" onPicked={handleFileSelect} disabled={uploading} />
 
         <button type="submit" className="btn btn-primary w-full mt-2" disabled={uploading}>
           {uploading ? 'Uploading...' : 'Upload episode'}

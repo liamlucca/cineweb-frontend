@@ -1,13 +1,19 @@
 import { useState } from 'react'
-import type { ChangeEvent, FormEvent } from 'react'
+import type { FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import type { MovieUploadData } from '../types/index.ts'
 import { uploadMovie } from '../services/movieService.ts'
 import { errorMessage } from '../services/api.ts'
+import type { VideoInfo } from '../utils/videoThumbnail.ts'
+import VideoPicker from '../components/VideoPicker.tsx'
 import useDocumentTitle from '../hooks/useDocumentTitle.ts'
 
 function UploadPage() {
   const [file, setFile] = useState<File | null>(null)
+  // thumbnail and duration read from the file in the browser
+  const [videoInfo, setVideoInfo] = useState<VideoInfo>({ thumbnail: null, duration: null })
+  // changing it remounts the picker, which clears its preview after an upload
+  const [pickerKey, setPickerKey] = useState(0)
   const [title, setTitle] = useState('')
   const [category, setCategory] = useState('')
   const [description, setDescription] = useState('')
@@ -16,14 +22,12 @@ function UploadPage() {
   const [error, setError] = useState('')
   const [progress, setProgress] = useState(0)
 
-  function handleFileSelect(e: ChangeEvent<HTMLInputElement>) { //e: the event fired when the input changes
-    const selectedFile = e.target.files?.[0]  //e.target is the HTML input. If nothing is found it returns undefined (hence the ?)
-    if (selectedFile) {
-      setFile(selectedFile)
-      setSuccess(false)
-      // use the file name, without its extension, as the default title
-      if (!title) setTitle(selectedFile.name.replace(/\.[^.]+$/, ''))
-    }
+  function handleFileSelect(selectedFile: File, info: VideoInfo) {
+    setFile(selectedFile)
+    setVideoInfo(info)
+    setSuccess(false)
+    // use the file name, without its extension, as the default title
+    if (!title) setTitle(selectedFile.name.replace(/\.[^.]+$/, ''))
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -42,12 +46,15 @@ function UploadPage() {
       title: title.trim(),
       category: category.trim(),
       description: description.trim(),
+      ...(videoInfo.duration ? { duration: videoInfo.duration } : {}),
     }
 
     try {
-      await uploadMovie(movieData, file, setProgress)
+      await uploadMovie(movieData, file, videoInfo.thumbnail, setProgress)
       setSuccess(true)
       setFile(null)
+      setVideoInfo({ thumbnail: null, duration: null })
+      setPickerKey((key) => key + 1)
       setTitle('')
       setCategory('')
       setDescription('')
@@ -70,14 +77,7 @@ function UploadPage() {
           <p className="text-sm text-center opacity-70">Fill in the details and choose the file</p>
 
           <label className="label" htmlFor="movie-file">Video file</label>
-          <input
-            id="movie-file"
-            type="file"
-            accept="video/*"
-            required
-            onChange={handleFileSelect}
-            className="file-input file-input-bordered w-full"
-          />
+          <VideoPicker key={pickerKey} id="movie-file" onPicked={handleFileSelect} disabled={uploading} />
 
           <label className="label" htmlFor="movie-title">Title</label>
           <input

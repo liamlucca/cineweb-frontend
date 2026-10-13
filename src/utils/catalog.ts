@@ -52,3 +52,13 @@ export function filterCatalog(items: CatalogItem[], filters: CatalogFilters): Ca
 export function parseCatalogType(value: string | null): CatalogType {
   return value === 'movie' || value === 'series' ? value : 'all';
 }
+
+// "1:02:05" for long videos, "2:05" for short ones, '' when the duration is unknown
+export function formatDuration(seconds: number | null | undefined): string {
+  if (seconds === null || seconds === undefined || !Number.isFinite(seconds) || seconds <= 0) return '';
+  const total = Math.round(seconds);
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  const rest = String(total % 60).padStart(2, '0');
+  return hours > 0 ? `${hours}:${String(minutes).padStart(2, '0')}:${rest}` : `${minutes}:${rest}`;
+}

@@ -28,6 +28,11 @@ export class ApiError extends Error {
   }
 }
 
+// Full URL of a file the backend serves (videos, thumbnails), or null when there is none
+export function mediaUrl(path: string | null | undefined): string | null {
+  return path ? `${API_URL}${path}` : null;
+}
+
 // Message to show the user for any error thrown by a service
 export function errorMessage(error: unknown): string {
   return error instanceof ApiError ? error.message : GENERIC_ERROR;

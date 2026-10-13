@@ -31,6 +31,10 @@ export interface MovieDTO {
   state: string
   // username of the uploader, joined by the backend
   uploader_user_name?: string
+  // "/thumbnails/..." captured when it was uploaded; null for old movies
+  thumbnail_path?: string | null
+  // length in seconds; null for old movies
+  duration?: number | null
 }
 
 // fields a viewer can change from "My Videos"
@@ -42,6 +46,8 @@ export interface MovieUploadData {
   title: string
   category: string
   description: string
+  // seconds, read from the file in the browser (left out when unknown)
+  duration?: number
 }
 
 // SERIES
@@ -59,6 +65,8 @@ export interface Series {
   uploaderId: number
   // username of that user, or null if the backend did not send it
   uploaderUsername: string | null
+  // cover, or the thumbnail of the first episode (the backend chooses); null when there is none
+  thumbnailPath: string | null
 }
 
 export interface Season {
@@ -75,6 +83,8 @@ export interface Episode {
   title: string
   description: string
   path: string
+  thumbnailPath: string | null
+  duration: number | null
 }
 
 // shapes coming from the backend (snake_case, converted by seriesService)
@@ -86,6 +96,7 @@ export interface SeriesDTO {
   description: string
   state: boolean | string
   uploader_user_name?: string
+  thumbnail_path?: string | null
 }
 
 export interface SeasonDTO {
@@ -105,6 +116,8 @@ export interface EpisodeDTO {
   views: number
   state: string
   id_author: number
+  thumbnail_path?: string | null
+  duration?: number | null
 }
 
 // fields an uploader can change from "My Videos"
@@ -128,6 +141,8 @@ export interface EpisodeUploadData {
   episode_number: number
   title: string
   description: string
+  // seconds, read from the file in the browser (left out when unknown)
+  duration?: number
 }
 
 // fields an uploader can change in a season or an episode (they cannot move to another series or season)

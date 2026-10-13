@@ -36,14 +36,17 @@ export async function deleteMovie(id: number): Promise<void> {
   await request(`/api/movie/${id}`, NOT_FOUND_ERROR, { method: 'DELETE', headers: authHeader() });
 }
 
+// thumbnail: JPEG captured in the browser (see utils/videoThumbnail.ts), or null to upload without one
 export function uploadMovie(
   data: MovieUploadData,
   file: File,
+  thumbnail: Blob | null,
   onProgress: (percent: number) => void,
 ): Promise<void> {
   const formData = new FormData();
   formData.append('data', JSON.stringify(data));
   // NOTE: keep this key as 'file', the backend's multer config expects that exact field name
   formData.append('file', file);
+  if (thumbnail) formData.append('thumbnail', thumbnail, 'thumbnail.jpg');
   return uploadWithProgress('/api/movie', formData, onProgress);
 }

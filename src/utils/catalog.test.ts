@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { CatalogItem } from '../types/index.ts';
 import {
-  NO_FILTERS, categoriesOf, filterCatalog, parseCatalogType,
+  NO_FILTERS, categoriesOf, filterCatalog, formatDuration, parseCatalogType,
 } from './catalog.ts';
 
 const ITEMS: CatalogItem[] = [
@@ -42,5 +42,18 @@ describe('catalog utilities', () => {
     expect(parseCatalogType('series')).toBe('series');
     expect(parseCatalogType('cartoons')).toBe('all');
     expect(parseCatalogType(null)).toBe('all');
+  });
+});
+
+describe('formatDuration', () => {
+  it('shows minutes and seconds, and hours only for long videos', () => {
+    expect(formatDuration(125)).toBe('2:05');
+    expect(formatDuration(59)).toBe('0:59');
+    expect(formatDuration(3725)).toBe('1:02:05');
+  });
+
+  it('shows nothing when the duration is unknown', () => {
+    expect(formatDuration(null)).toBe('');
+    expect(formatDuration(0)).toBe('');
   });
 });

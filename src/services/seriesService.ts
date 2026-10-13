@@ -19,6 +19,7 @@ function toSeries(dto: SeriesDTO): Series {
     description: dto.description,
     uploaderId: dto.id_author,
     uploaderUsername: dto.uploader_user_name ?? null,
+    thumbnailPath: dto.thumbnail_path ?? null,
   };
 }
 
@@ -39,6 +40,8 @@ function toEpisode(dto: EpisodeDTO): Episode {
     title: dto.title,
     description: dto.description,
     path: dto.path,
+    thumbnailPath: dto.thumbnail_path ?? null,
+    duration: dto.duration ?? null,
   };
 }
 
@@ -101,8 +104,20 @@ export async function getEpisode(id: string): Promise<Episode> {
   return toEpisode(dto);
 }
 
-export async function createSeries(data: SeriesUploadData): Promise<Series> {
-  return toSeries(await postJson<SeriesDTO>('/api/series', data, SERIES_NOT_FOUND));
+// cover: optional image chosen by the user; without it the request is plain JSON
+export async function createSeries(data: SeriesUploadData, cover: File | null = null): Promise<Series> {
+  if (!cover) return toSeries(await postJson<SeriesDTO>('/api/series', data, SERIES_NOT_FOUND));
+
+  const formData = new FormData();
+  formData.append('data', JSON.stringify(data));
+  formData.append('thumbnail', cover);
+  // no Content-Type header: the browser sets the multipart boundary itself
+  const response = await request('/api/series', SERIES_NOT_FOUND, {
+    method: 'POST', headers: authHeader(), body: formData,
+  });
+  const created = (await readJson(response) as { data?: SeriesDTO } | null)?.data;
+  if (!created) throw new ApiError(GENERIC_ERROR);
+  return toSeries(created);
 }
 
 // PATCH endpoints answer { message, data: <updated item> }
@@ -154,6 +169,7 @@ export async function createSeason(data: SeasonUploadData): Promise<Season> {
 export function uploadEpisode(
   data: EpisodeUploadData,
   file: File,
+  thumbnail: Blob | null,
   onProgress: (percent: number) => void,
 ): Promise<void> {
   const formData = new FormData();
@@ -161,5 +177,6 @@ export function uploadEpisode(
   formData.append('data', JSON.stringify(data));
   // NOTE: keep this key as 'archivo', the backend's multer config for episodes expects that exact field name
   formData.append('archivo', file);
+  if (thumbnail) formData.append('thumbnail', thumbnail, 'thumbnail.jpg');
   return uploadWithProgress('/api/episodes', formData, onProgress);
 }
