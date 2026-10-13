@@ -1,98 +1,66 @@
+import { useRef } from "react"
 import { Link } from "react-router-dom"
 import type { CatalogItem } from "../types/index.ts"
+import ContentCard from "./ContentCard.tsx"
 
 interface SectionProps {
   title: string
   // movies and series; each card is labeled and linked by its kind
   items: CatalogItem[]
+  // optional "See all" link, e.g. to the search filtered by this category
+  seeAllTo?: string
 }
 
-// where "See more" goes for each kind of item
-function linkTo(item: CatalogItem): string {
-  return item.kind === 'series' ? `/series/${item.id}/seasons` : `/watch/${item.id}`
-}
+// A horizontal carousel of cards. Phones scroll it with the finger; larger screens also get arrows.
+function Section({ title, items, seeAllTo }: SectionProps) {
+  // the scrolling row, so the arrows can move it
+  const rowRef = useRef<HTMLDivElement>(null)
 
-function Section({ title, items }: SectionProps) {
-
-  function scrollLeft(e: React.MouseEvent<HTMLButtonElement>) {
-    const carousel = e.currentTarget.parentElement?.querySelector('.carousel')
-    carousel?.scrollBy({ left: -300, behavior: 'smooth' })
+  // scrollBy: a browser function that moves the scroll of an element (here, most of a screen)
+  function scroll(direction: 1 | -1) {
+    const row = rowRef.current
+    row?.scrollBy({ left: direction * row.clientWidth * 0.8, behavior: "smooth" })
   }
 
-  function scrollRight(e: React.MouseEvent<HTMLButtonElement>) {
-    const carousel = e.currentTarget.parentElement?.querySelector('.carousel')
-    carousel?.scrollBy({ left: 300, behavior: 'smooth' })
-  }
-
-  /*
-  -------------------------------------
-  Explanation of scroll right/left:
-  1.
-   <div className="relative group">      parentElement (this is where we do the querySelector)
-    ├── right button                     currentTarget (the clicked button)
-    ├── carousel
-    └── left button
-  </div>
-
-  2.
-  querySelector('.carousel')
-  A function that looks inside the element for a child that has that class (in this case carousel1)
-
-  3.
-  scrollBy
-  A browser function that moves the scroll of an element
- -------------------------------------
-  */
+  if (items.length === 0) return null
 
   return (
-    <div className="my-6">
-      <h2 className="color-primary text-xl font-bold mb-3 px-4">{title}</h2>
+    <section className="my-8" aria-label={title}>
+      <div className="flex items-baseline justify-between gap-4 px-4 mb-3">
+        <h2 className="text-xl md:text-2xl font-bold">{title}</h2>
+        {seeAllTo && <Link to={seeAllTo} className="link link-hover text-sm opacity-80 shrink-0">See all</Link>}
+      </div>
 
-      <div className="flex group">
-
-        {/* Left arrow */}
+      <div className="relative group">
         <button
-          onClick={scrollLeft}
-          className="self-center left-0 top-1/2 -translate-y-1/2 z-10 btn btn-circle btn-sm opacity-0 group-hover:opacity-100 transition-opacity"
+          type="button"
+          onClick={() => scroll(-1)}
+          aria-label={`Scroll ${title} left`}
+          className="hidden md:flex btn btn-circle btn-sm absolute left-1 top-[35%] z-10 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
         >
           ❮
         </button>
 
-        {/* each movie or series */}
-        <div className="carousel carousel-center gap-4 px-4 w-full justify-items-start">  {/*THIS IS WHERE THE JUSTIFY/CENTERING HAPPENS*/}
+        {/* snap-x: the row stops at the start of a card when the finger lets go; scroll-px keeps the side margin */}
+        <div ref={rowRef} className="flex gap-4 overflow-x-auto scroll-smooth snap-x snap-mandatory scroll-px-4 px-4 pb-2 [scrollbar-width:none]">
           {items.map((item) => (
-              // a movie and a series can share the same id, so the key needs the kind too
-              <div key={`${item.kind}-${item.id}`} className="carousel-item">
-              <div className="card bg-base-200 w-60 sm:w-44 md:w-48">  {/*THIS IS THE CARD SIZE FOR EACH BREAKPOINT*/}
-                <figure className="bg-base-300 h-24 sm:h-28">
-                </figure>
-                <div className="card-body p-3">
-                  <span className={`badge badge-sm ${item.kind === 'series' ? 'badge-secondary' : 'badge-primary'}`}>
-                    {item.kind === 'series' ? 'Series' : 'Movie'}
-                  </span>
-                  <p className="text-sm font-bold">{item.title}</p>
-                  <p className="text-xs text-gray-400">{item.category}</p>
-                  <Link to={linkTo(item)} className="btn btn-primary btn-sm mt-1">See more</Link>
-                  </div>
-              </div>
+            // a movie and a series can share the same id, so the key needs the kind too
+            <div key={`${item.kind}-${item.id}`} className="snap-start shrink-0 w-56 sm:w-60 md:w-64">
+              <ContentCard item={item} />
             </div>
           ))}
         </div>
 
-        {/* Right arrow */}
         <button
-          onClick={scrollRight}
-          className="self-center right-0 top-1/2 -translate-y-1/2 z-10 btn btn-circle btn-sm opacity-0 group-hover:opacity-100 transition-opacity"
+          type="button"
+          onClick={() => scroll(1)}
+          aria-label={`Scroll ${title} right`}
+          className="hidden md:flex btn btn-circle btn-sm absolute right-1 top-[35%] z-10 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
         >
           ❯
         </button>
-
       </div>
-    </div>
+    </section>
   )
 }
 export default Section
-
-/*
-[NOTE]: Hide the left arrow when at the start of the page. Hide the right arrow when at the end of the page.
-*/

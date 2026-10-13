@@ -1,19 +1,20 @@
 import { describe, expect, it } from 'vitest';
 import type { CatalogItem } from '../types/index.ts';
 import {
-  NO_FILTERS, categoriesOf, filterCatalog, formatDuration, parseCatalogType,
+  NO_FILTERS, catalogItemPath, categoriesOf, featuredItem, filterCatalog, formatDuration, gradientFor,
+  parseCatalogType,
 } from './catalog.ts';
 
+function item(kind: CatalogItem['kind'], id: number, title: string, category: string): CatalogItem {
+  return {
+    kind, id, title, category, description: '', thumbnailPath: null, duration: null,
+  };
+}
+
 const ITEMS: CatalogItem[] = [
-  {
-    kind: 'movie', id: 1, title: 'Shrek 2', category: 'Comedy',
-  },
-  {
-    kind: 'series', id: 1, title: 'Strange Things', category: 'drama',
-  },
-  {
-    kind: 'movie', id: 2, title: 'The Notebook', category: 'Drama ',
-  },
+  item('movie', 1, 'Shrek 2', 'Comedy'),
+  item('series', 1, 'Strange Things', 'drama'),
+  item('movie', 2, 'The Notebook', 'Drama '),
 ];
 
 describe('catalog utilities', () => {
@@ -55,5 +56,24 @@ describe('formatDuration', () => {
   it('shows nothing when the duration is unknown', () => {
     expect(formatDuration(null)).toBe('');
     expect(formatDuration(0)).toBe('');
+  });
+});
+
+describe('landing page helpers', () => {
+  it('features the newest item that has a thumbnail', () => {
+    const withImage = { ...item('movie', 1, 'Old', ''), thumbnailPath: '/thumbnails/a.jpg' };
+    expect(featuredItem([withImage, item('movie', 5, 'New', '')])).toBe(withImage);
+    expect(featuredItem([item('movie', 1, 'A', ''), item('series', 3, 'B', '')])?.title).toBe('B');
+    expect(featuredItem([])).toBeNull();
+  });
+
+  it('links movies to the player and series to their seasons', () => {
+    expect(catalogItemPath(item('movie', 2, 'M', ''))).toBe('/watch/2');
+    expect(catalogItemPath(item('series', 2, 'S', ''))).toBe('/series/2/seasons');
+  });
+
+  it('gives the same title the same gradient', () => {
+    expect(gradientFor('Shrek 2')).toBe(gradientFor('Shrek 2'));
+    expect(gradientFor('Shrek 2')).toMatch(/^from-/);
   });
 });

@@ -6,6 +6,11 @@ export interface CatalogItem {
   id: number
   title: string
   category: string
+  description: string
+  // "/thumbnails/..." (for a series, its cover or first episode); null shows a gradient instead
+  thumbnailPath: string | null
+  // seconds, only for movies; null when unknown
+  duration: number | null
 }
 
 export type CatalogType = 'all' | CatalogItem['kind']
