@@ -18,6 +18,7 @@ import AppealPage from './pages/AppealPage.tsx'
 import ModerationCasePage from './pages/ModerationCasePage.tsx'
 import WatchLaterPage from './pages/WatchLaterPage.tsx'
 import MyVideosPage from './pages/MyVideosPage.tsx'
+import NotFoundPage from './pages/NotFoundPage.tsx'
 import ProtectedRoute from './components/ProtectedRoute.tsx'
 import useAuth from './hooks/useAuth.ts'
 
@@ -69,6 +70,9 @@ function App() {
             <Route element={<ProtectedRoute />}>
               <Route path="/profile" element={<ProfilePage />} />
             </Route>
+
+            {/* any other address */}
+            <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </main>
         <Footer />
