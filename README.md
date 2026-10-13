@@ -7,7 +7,7 @@ moderate reports and appeals. Course project for Desarrollo de Software (DSW).
 
 | Role | Member |
 |-----|-------------|
-| Design (draw.io) | Requelme, Candela M — [See the design](https://app.diagrams.net/#G1eFO_b5KQ9T8M1xZn47CeNbCgubCR8u94) |
+| Design (draw.io) / Frontend | Requelme, Candela M — [See the design](https://app.diagrams.net/#G1eFO_b5KQ9T8M1xZn47CeNbCgubCR8u94) |
 | Frontend | Lucca, Liam Santiago — [See the repository](https://github.com/liamlucca/cineweb-frontend) |
 | Backend | Marino, Eduardo — [See the repository](https://github.com/EduardoMarino73/TP-BackEnd) |
 

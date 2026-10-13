@@ -111,7 +111,8 @@ Decisions already taken (do not ask again):
 - Appeals: the frontend exposes a single `status` (`pending` / `approved` / `rejected`) derived
   from the backend's `decision`. The backend's appeals table is not changed for this.
 - Deleting audiovisual content is logical (`state = 'deleted'`), as sketch 8 asks.
-- Persistence: the backend keeps `mysql2` with repositories and SQL (no ORM), by team decision.
+- Persistence: the backend uses the MikroORM 6 ORM over MySQL (the course requires an ORM). The
+  entities map the tables of `init.sql` and are accessed through repositories.
 
 Open decisions (ask before assuming):
 - What "similar videos" means for reviews.
