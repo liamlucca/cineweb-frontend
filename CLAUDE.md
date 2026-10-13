@@ -32,7 +32,8 @@ Team of 3. This repo is the frontend only.
 - `src/components/` — reusable UI (includes `ProtectedRoute.tsx`).
 - `src/services/` — all HTTP calls (`authService.ts`, one service per entity).
 - `src/context/` — app-wide state (`AuthContext.ts` defines the context, `AuthProvider.tsx` provides it).
-- `src/hooks/` — custom hooks (`useAuth.ts`).
+- `src/hooks/` — custom hooks (`useAuth.ts`, `useCatalog.ts`).
+- `src/utils/` — pure functions with no React and no HTTP (`catalog.ts`).
 - `src/types/index.ts` — all domain models and request/response DTOs.
 
 Some of these files may not exist yet. Before creating a new file, check whether
@@ -100,11 +101,19 @@ Rules (the diagram does not say these):
 - Inheritance (e.g. `Administrator` and `Viewer` extend `User`) is modeled with
   interfaces plus a discriminator field (e.g. `role`), not with classes.
 
+Decisions already taken (do not ask again):
+- Report reasons are a catalog, `ReportType` (`id`, `name`, `requiresDetails`), managed by
+  administrators (it is the proposal's "CRUD Tipo Reporte" and the diagram's `ReportReason`).
+  Each report has ONE type plus an optional `details` text, required only when the type has
+  `requiresDetails` (e.g. "Other").
+- `Report.status` (the moderation case) uses the backend's values: `pending`, `appealed`,
+  `upheld`, `dismissed`.
+- Appeals: the frontend exposes a single `status` (`pending` / `approved` / `rejected`) derived
+  from the backend's `decision`. The backend's appeals table is not changed for this.
+- Deleting audiovisual content is logical (`state = 'deleted'`), as sketch 8 asks.
+- Persistence: the backend keeps `mysql2` with repositories and SQL (no ORM), by team decision.
+
 Open decisions (ask before assuming):
-- Values of `Report.status`.
-- Whether `Appeal.reviewed` becomes a `status` enum (pending / accepted / rejected,
-  as the admin sketches show).
-- Whether a report has one reason or several.
 - What "similar videos" means for reviews.
 
 ## Known diagram errors
@@ -115,24 +124,47 @@ literally: if a task touches any of them, ask me before picking an interpretatio
 - `Series` has no title, category or description.
 - `Season` uses `audiovisualId` to point to its series, and `Series` uses
   `idSerie` instead of `id`.
-- `Episode` and `Movie` lost fields that the sketches use.
+- `Episode` and `Movie` lost fields that the sketches use (`duration` is implemented;
+  director, subtitle and audio language are not).
 - The cardinalities of `Content` are read from the child side.
 - The `ReportReason`—`Audiovisual` line no longer makes sense.
-- `ReportReason` still has `count` and `otherReasonDescription`.
-- `Appeal.reviewed` is still a boolean.
+- `ReportReason` still has `count` and `otherReasonDescription`. Implemented as decided above:
+  the `ReportType` catalog, and `details` on each report. The diagram has to be updated.
+- `Appeal.reviewed` is still a boolean. The app uses a `status` derived from `decision` (see
+  the decisions above); the diagram has to be updated.
+- `WatchLater` has no type: the implementation adds `audiovisualType` (`movie` / `series`),
+  because a movie and a series can share an id.
 
 ## API contract
 
-Agreed or assumed so far. JSON is assumed to be camelCase (not yet confirmed
-with the backend).
+The backend's README lists its routes.
 
-- `POST /auth/login` — body `{ email, password }` → `{ token, user }`.
-- `POST /auth/register` — body `{ username, firstName, lastName, email, password, }`
-  → `{ token, user }`. Public registration creates viewers only.
-- Session: JWT stored in localStorage (`cineweb_token`, `cineweb_user`).
-  Authenticated requests send `Authorization: Bearer <token>` via `authHeader()`.
-- When uploading content, the backend takes `uploaderId` from the token:
-  never send it from the form.
+- Naming: the backend uses snake_case for users and content (`id_user`,
+  `id_serie`) and camelCase for reports and appeals (`targetType`). The
+  frontend keeps camelCase types: each service converts the backend's DTOs
+  (e.g. `toUser`, `toSeries`), so pages never see snake_case.
+- `POST /api/users/login` — body `{ login, password }` (`login` is the email or
+  the username) → `{ token, token_type, expires_in, user }`.
+- `POST /api/users/register` — body `{ user_name, first_name, last_name, email,
+  password }` → `{ data: user }`, no token, so the frontend logs in right after.
+  Public registration creates viewers only. Password: 8+ characters.
+- `POST /api/users/logout` revokes the token; `GET /api/users/me` → `{ data: user }`
+  or 401 when the token is no longer valid.
+- Session: an opaque token (not a JWT) that expires after 7 days, stored in
+  localStorage (`cineweb_token`, `cineweb_user`). Authenticated requests send
+  `Authorization: Bearer <token>` via `authHeader()`.
+- Writes on movies, series, seasons, episodes and reviews need the token. The
+  backend takes the uploader (`id_author`) and the reviewer (`viewerId`) from it,
+  so the frontend never sends them. Someone else's content answers 403. Edits only
+  accept title, category and description (plus season/episode numbers).
+- Uploads: videos only (415 otherwise), size limit (413), unique file names.
+  The backend sets `state` and `views`; the frontend never sends them.
+- Also available: `/api/report-types` (CRUD, writes for
+  administrators), `POST /api/reports` with `{ targetType, targetId, reportTypeId, details? }`,
+  `GET /api/reports` (administrators, filters `id`, `status`, `reportTypeId`),
+  `GET /api/viewers/me/reports`, `DELETE /api/appeals/:id`, `/api/watch-later`,
+  `uploader_user_name`, `thumbnail_path` and `duration` on content, and the `thumbnail` field
+  on uploads.
 
 ## Screens (from the sketches "Bosquejos TP DSW")
 
@@ -153,10 +185,11 @@ Administrator:
 - B. Pending appeals (accept / reject).
 - C. Appeal history (filter, change a verdict).
 
-Auth: login (email, password) and register (first name, last name, email,
+Auth: login (email or username, password) and register (first name, last name, email,
 username, password).
 
-Current priority: the user system (login, register, `AuthContext`, protected routes).
+Current priority: the regularity delivery (12/10–16/10). Every screen above exists; the
+appeal history with verdict changes (C) is still pending in the backend.
 
 ## Code manual
 

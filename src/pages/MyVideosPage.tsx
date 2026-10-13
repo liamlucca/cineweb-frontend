@@ -1,14 +1,24 @@
 import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
-import type { MovieDTO, MovieUpdate } from "../types/index.ts";
+import type { Movie, MovieUpdate, Series } from "../types/index.ts";
 import RequestStatus from "../components/RequestStatus.tsx";
-import {
-  deleteMovie, getMovies, updateMovie, videoUrl,
-} from "../services/movieService.ts";
+import { deleteMovie, getMovies, updateMovie } from "../services/movieService.ts";
+import { formatDuration } from "../utils/catalog.ts";
+import Thumbnail from "../components/Thumbnail.tsx";
+import { getAllSeries } from "../services/seriesService.ts";
 import { errorMessage } from "../services/api.ts";
+import useAuth from "../hooks/useAuth.ts";
+import MySeriesItem from "../components/MySeriesItem.tsx";
+import useToast from "../hooks/useToast.ts";
+import useConfirm from "../hooks/useConfirm.ts";
+import useDocumentTitle from "../hooks/useDocumentTitle.ts";
 
 function MyVideosPage() {
-  const [videos, setVideos] = useState<MovieDTO[]>([]);
+  const { user } = useAuth();
+  const { notify } = useToast();
+  const { confirm } = useConfirm();
+  const userId = user?.id;
+  const [videos, setVideos] = useState<Movie[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
 
@@ -25,17 +35,35 @@ function MyVideosPage() {
   const [editedCategory, setEditedCategory] = useState("");
   const [editedDescription, setEditedDescription] = useState("");
 
+  // Series uploaded by the logged-in user (each one can be edited or deleted)
+  const [mySeries, setMySeries] = useState<Series[]>([]);
+  const [loadingSeries, setLoadingSeries] = useState(true);
+  const [seriesError, setSeriesError] = useState("");
+
   useEffect(() => {
-    // Fetches the videos from the backend
+    // There is no "movies of a user" endpoint, so all movies are fetched and filtered here
     getMovies()
-      .then(setVideos)
+      .then((allMovies) => setVideos(allMovies.filter((movie) => movie.uploaderId === userId)))
       .catch((err: unknown) => setLoadError(errorMessage(err)))
       .finally(() => setLoading(false));
-  }, []);
+  }, [userId]);
 
-  // Deletes a video from the backend
-  const deleteVideo = async (video: MovieDTO) => {
-    if (!window.confirm(`Delete "${video.title}"? This cannot be undone.`)) return;
+  useEffect(() => {
+    // There is no "series of a user" endpoint, so all series are fetched and filtered here
+    getAllSeries()
+      .then((allSeries) => setMySeries(allSeries.filter((item) => item.uploaderId === userId)))
+      .catch((err: unknown) => setSeriesError(errorMessage(err)))
+      .finally(() => setLoadingSeries(false));
+  }, [userId]);
+
+  // Deletes a video. The backend only hides it (logical delete, sketch 8)
+  const deleteVideo = async (video: Movie) => {
+    if (!(await confirm({
+      title: `Delete "${video.title}"?`,
+      message: "It will no longer be shown on CineWeb.",
+      confirmLabel: "Delete",
+      danger: true,
+    }))) return;
 
     setBusyVideoId(video.id);
     setActionError("");
@@ -45,6 +73,7 @@ function MyVideosPage() {
       setVideos((currentVideos) =>
         currentVideos.filter((v) => v.id !== video.id)
       );
+      notify(`"${video.title}" was deleted.`);
     } catch (err) {
       setActionError(errorMessage(err));
     } finally {
@@ -53,7 +82,7 @@ function MyVideosPage() {
   };
 
   // Starts editing a video
-  const startEditing = (video: MovieDTO) => {
+  const startEditing = (video: Movie) => {
     setEditingVideoId(video.id);
     setEditedTitle(video.title);
     setEditedCategory(video.category);
@@ -96,12 +125,16 @@ function MyVideosPage() {
 
       // Exits edit mode
       cancelEditing();
+      notify("Your changes were saved.");
     } catch (err) {
       setActionError(errorMessage(err));
     } finally {
       setBusyVideoId(null);
     }
   };
+
+  // browser tab title
+  useDocumentTitle('My videos');
 
   return (
     <div className="min-h-screen p-4 sm:p-8">
@@ -112,18 +145,25 @@ function MyVideosPage() {
           My Videos
         </h1>
 
-        <Link
-          to="/upload"
-          className="btn btn-primary"
-        >
-          Upload videos
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            to="/upload"
+            className="btn btn-primary"
+          >
+            Upload videos
+          </Link>
+          <Link to="/upload-series" className="btn btn-primary">
+            Upload series
+          </Link>
+        </div>
       </div>
 
       {/* Horizontal line */}
       <hr className="mb-8" />
 
       {/* Video list */}
+      <h2 className="text-2xl font-bold mb-4">Movies</h2>
+
       {actionError && (
         <div role="alert" className="alert alert-error mb-6">{actionError}</div>
       )}
@@ -134,7 +174,8 @@ function MyVideosPage() {
           loading={loading}
           error={loadError}
           isEmpty={videos.length === 0}
-          emptyMessage="You have no uploaded videos."
+          emptyMessage="You have not uploaded any movie yet."
+          emptyAction={<Link to="/upload" className="btn btn-primary btn-sm">Upload your first movie</Link>}
         >
           {videos.map((video) => (
             <div
@@ -142,12 +183,17 @@ function MyVideosPage() {
               className="flex flex-col md:flex-row items-center gap-6 border-b pb-6"
             >
 
-              {/* Video */}
-              <video
-                src={videoUrl(video.path)}
-                controls
-                className="w-full max-w-64 h-36 object-cover rounded"
-              />
+              {/* Thumbnail, linking to the movie's page */}
+              <Link
+                to={`/watch/${video.id}`}
+                className="relative block w-full md:w-64 shrink-0 aspect-video rounded-box overflow-hidden bg-base-300"
+                aria-label={`Watch ${video.title}`}
+              >
+                <Thumbnail path={video.thumbnailPath} title={video.title} />
+                {formatDuration(video.duration) && (
+                  <span className="badge badge-sm badge-neutral absolute bottom-2 right-2">{formatDuration(video.duration)}</span>
+                )}
+              </Link>
 
               {/* Details */}
               <div className="flex-1 w-full">
@@ -280,6 +326,28 @@ function MyVideosPage() {
           ))}
         </RequestStatus>
 
+      </div>
+
+      {/* Series list */}
+      <h2 className="text-2xl font-bold mt-10 mb-4">Series</h2>
+
+      <div className="space-y-6">
+        <RequestStatus
+          loading={loadingSeries}
+          error={seriesError}
+          isEmpty={mySeries.length === 0}
+          emptyMessage="You have not uploaded any series yet."
+          emptyAction={<Link to="/upload-series" className="btn btn-primary btn-sm">Create your first series</Link>}
+        >
+          {mySeries.map((item) => (
+            <MySeriesItem
+              key={item.id}
+              series={item}
+              onUpdated={(updated) => setMySeries((current) => current.map((s) => (s.id === updated.id ? updated : s)))}
+              onDeleted={(id) => setMySeries((current) => current.filter((s) => s.id !== id))}
+            />
+          ))}
+        </RequestStatus>
       </div>
     </div>
   );

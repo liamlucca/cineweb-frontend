@@ -1,57 +1,65 @@
 # CineWeb — Frontend
 
-Plataforma de películas donde los usuarios pueden subir y reproducir contenido
+A movie and series platform: viewers upload, watch, rate and report content, and administrators
+moderate reports and appeals. Course project for Desarrollo de Software (DSW).
 
-## Equipo
+## Team
 
-| Rol | Responsable |
+| Role | Member |
 |-----|-------------|
-| Diseño (draw.io) | Requelme, Candela M — [Ver diseño](https://app.diagrams.net/#G1eFO_b5KQ9T8M1xZn47CeNbCgubCR8u94) |
-| Frontend | Lucca, Liam Santiago — [Ver repositorio](https://github.com/liamlucca/cineweb-frontend) |
-| Backend | Marino, Eduardo — [Ver repositorio](https://github.com/EduardoMarino73/TP-BackEnd) |
+| Design (draw.io) | Requelme, Candela M — [See the design](https://app.diagrams.net/#G1eFO_b5KQ9T8M1xZn47CeNbCgubCR8u94) |
+| Frontend | Lucca, Liam Santiago — [See the repository](https://github.com/liamlucca/cineweb-frontend) |
+| Backend | Marino, Eduardo — [See the repository](https://github.com/EduardoMarino73/TP-BackEnd) |
 
-> Los roles no son estrictos. Cualquier integrante puede contribuir en cualquier área del proyecto según lo necesite el equipo.
+> The roles are not strict. Any member can contribute to any area of the project when the team needs it.
 
-## Tecnologías
+## Technologies
 
-- **React** con **TypeScript**
-- **Vite 5** 
-- **Tailwind CSS**
-- **DaisyUI**
-- **React Router** — navegación entre páginas
-- **pnpm** — gestor de paquetes
+- **React 18** with **TypeScript** and **Vite 5**
+- **Tailwind CSS** + **DaisyUI** (`night` theme), mobile-first
+- **React Router** — navigation between pages
+- **Vitest** + **Testing Library** — unit tests
+- **pnpm** — package manager
 
-## Requisitos previos
+## Quick start
 
-- Node.js
-- pnpm instalado globalmente
+Requirements: Node.js 20+, pnpm and the [backend](https://github.com/EduardoMarino73/TP-BackEnd) running at `http://localhost:3000`.
 
 ```bash
-npm install -g pnpm
-```
-
-## Instalación
-
-```bash
-# Clonar el repositorio
 git clone https://github.com/liamlucca/cineweb-frontend
 cd cineweb-frontend
-
-# Instalar dependencias
 pnpm install
-
-# Iniciar en modo desarrollo
-pnpm dev
+cp .env.example .env    # VITE_API_URL and VITE_USE_MOCK_AUTH
+pnpm dev                # http://localhost:5173
 ```
 
-El frontend se inicia en `http://localhost:5173`
+| Command | What it does |
+|---|---|
+| `pnpm dev` | Development server |
+| `pnpm build` | Type check and production build |
+| `pnpm lint` | ESLint |
+| `pnpm test` | Unit tests |
 
-El backend debe iniciarse en `http://localhost:3000` ya que el frontend realiza llamadas a la API en esa dirección (por ahora).
+## Pages
 
-## Páginas actuales
+| Route | Page | Who |
+|------|--------|-------|
+| `/` | Home: featured item and carousels by category | everyone |
+| `/search` | Search by title, type and category | everyone |
+| `/watch/:id` | Movie: player, ratings, "Watch later", report | everyone |
+| `/series/:id/seasons` | Series: seasons and episodes | everyone |
+| `/series/:id/season/:seasonId/episodes` | Episodes of a season | everyone |
+| `/watch-series/:id/:seasonId/:episodeId` | Episode | everyone |
+| `/login` | Log in / sign up | everyone |
+| `/upload`, `/upload-series` | Upload a movie / series (with an automatic thumbnail) | viewer |
+| `/my-videos` | My videos: edit and delete movies, series, seasons and episodes | viewer |
+| `/watch-later` | "Watch later" list | viewer |
+| `/report/:type/:id` | Report a video | viewer |
+| `/appeal/:reportId` | Appeal a report about my content | viewer |
+| `/profile` | Profile, activity and reports about my content | logged-in user |
+| `/admin`, `/admin/reports/:id` | Appeals, reports, report reasons and accounts | administrator |
 
-| Ruta | Página | Descripción |
-|------|--------|-------------|
-| `/` | LandingPage | Listado de películas |
-| `/subir` | UploadPage | Formulario para subir una película |
+## Documentation
 
+All the documentation is in [docs/](docs/README.md): proposal, PRs, progress minutes, tracking, the
+code manual and the domain model.

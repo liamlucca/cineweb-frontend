@@ -20,7 +20,7 @@ function makeUser(role: UserRole): User {
 // Renders a viewer-only page at /upload, plus the pages the guard can redirect to
 function renderAt(path: string, user: User | null) {
   const value = {
-    user, login: vi.fn(), register: vi.fn(), logout: vi.fn(),
+    user, login: vi.fn(), register: vi.fn(), logout: vi.fn(), updateProfile: vi.fn(),
   };
 
   render(

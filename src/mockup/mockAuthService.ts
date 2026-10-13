@@ -1,13 +1,14 @@
 import type {
-  AuthResponse, LoginRequest, RegisterRequest, User,
+  AuthResponse, LoginRequest, ProfileUpdate, RegisterRequest, User,
 } from '../types/index.ts';
 import type { AuthService } from '../services/authService.ts';
 import { ApiError } from '../services/api.ts';
+import { getToken } from '../services/session.ts';
 
 /*
- * Development-only stand-in for the backend's /auth endpoints, which don't exist yet.
+ * Development-only stand-in for the backend's /api/users endpoints, for working without the backend.
  * Accounts live in localStorage with plain-text passwords: never use real credentials here.
- * Delete this file (and the switch in authService.ts) once the backend is ready.
+ * It can be deleted (with the switch in authService.ts) once nobody needs to work offline.
  */
 
 interface MockAccount {
@@ -71,12 +72,15 @@ function toResponse(user: User): AuthResponse {
 }
 
 export default class MockAuthService implements AuthService {
-  async login({ email, password }: LoginRequest): Promise<AuthResponse> {
+  async login({ login, password }: LoginRequest): Promise<AuthResponse> {
     await delay();
-    const normalizedEmail = email.trim().toLowerCase();
-    const account = loadAccounts().find((a) => a.user.email === normalizedEmail);
+    // like the backend, accept the email or the username
+    const value = login.trim().toLowerCase();
+    const account = loadAccounts().find(
+      (a) => a.user.email === value || a.user.username.toLowerCase() === value,
+    );
     if (!account || account.password !== password) {
-      throw new ApiError('Incorrect email or password.');
+      throw new ApiError('Incorrect email, username or password.');
     }
     return toResponse(account.user);
   }
@@ -101,5 +105,34 @@ export default class MockAuthService implements AuthService {
     };
     saveAccounts([...accounts, { user, password: request.password }]);
     return toResponse(user);
+  }
+
+  // mock tokens are not stored anywhere, so there is nothing to end
+  async logout(): Promise<void> {
+    await delay();
+  }
+
+  // mock tokens look like "mock-token-<id>", so the user is found by that id
+  async getCurrentUser(): Promise<User | null> {
+    await delay();
+    const id = Number(getToken()?.replace('mock-token-', ''));
+    return loadAccounts().find((a) => a.user.id === id)?.user ?? null;
+  }
+
+  async updateProfile(changes: ProfileUpdate): Promise<User> {
+    await delay();
+    const id = Number(getToken()?.replace('mock-token-', ''));
+    const accounts = loadAccounts();
+    const account = accounts.find((a) => a.user.id === id);
+    if (!account) throw new ApiError('Your session has expired. Please log in again.');
+
+    const email = changes.email?.trim().toLowerCase();
+    const taken = accounts.some((a) => a.user.id !== id
+      && ((email && a.user.email === email) || (changes.username && a.user.username === changes.username)));
+    if (taken) throw new ApiError('That email or username is already in use.');
+
+    const user: User = { ...account.user, ...changes, ...(email ? { email } : {}) };
+    saveAccounts(accounts.map((a) => (a.user.id === id ? { ...a, user } : a)));
+    return user;
   }
 }

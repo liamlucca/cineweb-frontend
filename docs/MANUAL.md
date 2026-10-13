@@ -14,9 +14,10 @@ Status labels used everywhere in this document:
 | ⏳ Pending | Planned, not built yet. |
 | ⚠️ Known issue | Built, but has a bug or a gap you should know about. |
 
-Every statement about the code points to a file, usually as `path:line`. Line numbers were checked
-against the working tree on 2026-10-05 (base commit `a7dba18` plus the user system, which was not
-committed yet). If the code changes, line numbers may drift: search for the function name instead.
+Every statement about the code points to a file, usually as `path:line` or as a function name.
+Sections 1.3–1.4, 2, 3.2–3.11, 4.8–4.9 and 5 were checked against the working tree on 2026-10-13
+(base commit `5c62b23`). Line numbers in 3.1 come from an earlier check and may have drifted: if a
+line number does not match, search for the function name instead.
 
 When something could not be verified by reading the code, it says so explicitly.
 
@@ -43,7 +44,8 @@ explains which of them exist today.
 | 7. See a received report and appeal it | |
 | 8. Upload video and "My videos" (edit, logical delete) | |
 
-Plus login (email, password) and sign-up (first name, last name, email, username, password).
+Plus login (email or username, password) and sign-up (first name, last name, email, username,
+password).
 
 ### 1.2 Frontend vs backend responsibilities
 
@@ -66,61 +68,124 @@ The base URL comes from `VITE_API_URL` in `.env` (`src/services/api.ts:3`, which
 `http://localhost:3000`). Every HTTP call goes through `src/services`, so all of them use that
 fallback.
 
-The "Backend status" column was checked by reading the backend's local copy (commit `d234e0a`,
-branch `Liam`) on 2026-10-05. The backend team may have newer code that was not available locally.
+The endpoints below are the ones the frontend calls, read from the service files on 2026-10-13.
+Whether each one exists comes from the backend's README and the contract agreed in `CLAUDE.md`.
+They were **not** re-checked against a running backend on that date: the older live checks are
+mentioned in 3.1 and in the notes of each walkthrough.
 
-**Endpoints the frontend uses**
+**Users and session** (`authService.ts`, `HttpAuthService`)
 
-| Endpoint | Used by | Backend status |
-|---|---|---|
-| `POST /auth/login` → `{ token, user }` | `src/services/authService.ts:26` | ⏳ Does not exist. Agreed with the backend team. |
-| `POST /auth/register` → `{ token, user }` | `src/services/authService.ts:32` | ⏳ Does not exist. Agreed with the backend team. |
-| `GET /api/movie` → array of movies | `getMovies` (`movieService.ts:42-46`), used by `LandingPage`, `SearchPage`, `MyVideosPage` | ✅ Available. |
-| `GET /api/movie/:id` → `{ movie }` | `getMovie` (`movieService.ts:48-53`), used by `WatchPage` | ✅ Available. |
-| `POST /api/movie` (multipart: `data` + `file`) | `uploadMovie` (`movieService.ts:68-97`), used by `UploadPage` | ✅ Available. Requires `id_author` (see below). |
-| `PATCH /api/movie/:id` | `updateMovie` (`movieService.ts:55-61`), used by `MyVideosPage` | ✅ Available. |
-| `DELETE /api/movie/:id` | `deleteMovie` (`movieService.ts:63-65`), used by `MyVideosPage` | ✅ Available. |
-| Static files under `/movies` and `/series` | `videoUrl` (`movieService.ts:28-30`) builds video URLs from `path` | ✅ Available. |
-
-**Endpoints available but not used by the frontend yet**
-
-| Endpoints | Notes |
+| Endpoint | Frontend function |
 |---|---|
-| `GET /api/movie/:id/stream` | Streams the video in chunks. `WatchPage` plays the static file instead (`WatchPage.tsx:61`); both work. |
-| `/api/series`, `/api/seasons` (also `/api/seasons/serie/:serieId`), `/api/episodes` (also `/api/episodes/season/:seasonId` and `/api/episodes/:id/stream`) | The series pages still use `MOCK_SERIES` (3.7). Episode upload expects the file field `archivo`, not `file`. |
-| `/api/reviews` (also `/api/reviews/viewer/:viewerId` and `/api/reviews/audiovisual/:type/:audiovisualId`) | Reviews (sketch 6) are not built in the frontend. |
+| `POST /api/users/login` with `{ login, password }` → `{ token, token_type, expires_in, user }` | `login` |
+| `POST /api/users/register` with `{ user_name, first_name, last_name, email, password }` → `{ data: user }` (no token, so the service logs in right after) | `register` |
+| `POST /api/users/logout` (with the token) → 204 | `logout` |
+| `GET /api/users/me` (with the token) → `{ data: user }`, or 401 when the token is no longer valid | `getCurrentUser` |
+| `PATCH /api/users/me` with the changed fields in snake_case → `{ data: user }` | `updateProfile` |
 
-**Not available**
+**Movies** (`movieService.ts`)
+
+| Endpoint | Frontend function |
+|---|---|
+| `GET /api/movie` → array of movies | `getMovies` (used by `useCatalog` and `MyVideosPage`) |
+| `GET /api/movie/:id` → `{ movie }` | `getMovie` (used by `WatchPage` and `ReportPage`) |
+| `POST /api/movie` (multipart: `data` + `file` + optional `thumbnail`) | `uploadMovie` (used by `UploadPage`) |
+| `PATCH /api/movie/:id` with `{ title, category, description }` | `updateMovie` |
+| `DELETE /api/movie/:id` (logical delete) | `deleteMovie` |
+| Static files under `/movies` and `/thumbnails` | `videoUrl` (`movieService.ts`) and `mediaUrl` (`api.ts`) |
+
+**Series, seasons and episodes** (`seriesService.ts`)
+
+| Endpoint | Frontend function |
+|---|---|
+| `GET /api/series`, `GET /api/series/:id` → `{ serie }` | `getAllSeries`, `getSeries` |
+| `POST /api/series` (JSON, or multipart `data` + `thumbnail` when there is a cover) | `createSeries` |
+| `PATCH /api/series/:id`, `DELETE /api/series/:id` (logical, hides its seasons and episodes) | `updateSeries`, `deleteSeries` |
+| `GET /api/seasons/serie/:serieId`, `GET /api/seasons/:id` → `{ season }` | `getSeasons`, `getSeason` |
+| `POST /api/seasons`, `PATCH /api/seasons/:id`, `DELETE /api/seasons/:id` (logical) | `createSeason`, `updateSeason`, `deleteSeason` |
+| `GET /api/episodes/season/:seasonId`, `GET /api/episodes/:id` → `{ episode }` | `getEpisodes`, `getEpisode` |
+| `POST /api/episodes` (multipart: `data` + `archivo` + optional `thumbnail`) | `uploadEpisode` |
+| `PATCH /api/episodes/:id`, `DELETE /api/episodes/:id` (logical) | `updateEpisode`, `deleteEpisode` |
+
+**Reviews** (`reviewService.ts`)
+
+| Endpoint | Frontend function |
+|---|---|
+| `GET /api/reviews/audiovisual/:type/:id` → `{ data: Review[] }` | `getReviews` |
+| `POST /api/reviews` with `{ rating, audiovisualId, audiovisualType }` (the backend takes `viewerId` from the token) | `createReview` |
+| `PATCH /api/reviews/:id` with `{ rating }`, `DELETE /api/reviews/:id` | `changeReview`, `deleteReview` |
+
+**Watch later** (`watchLaterService.ts`, viewers only)
+
+| Endpoint | Frontend function |
+|---|---|
+| `GET /api/watch-later` → `{ data: items }` | `getWatchLater` |
+| `POST /api/watch-later` with `{ audiovisualType, audiovisualId }` → `{ data: { id } }` | `addToWatchLater` |
+| `DELETE /api/watch-later/:id` | `removeFromWatchLater` |
+
+**Reports, report types and appeals**
+
+| Endpoint | Frontend function |
+|---|---|
+| `GET /api/report-types` (public) → `{ data: ReportType[] }` | `getReportTypes` (`reportTypeService.ts`) |
+| `POST`, `PATCH /:id`, `DELETE /:id` on `/api/report-types` (administrators; 409 for a repeated name or a type in use) | `createReportType`, `updateReportType`, `deleteReportType` |
+| `POST /api/reports` with `{ targetType, targetId, reportTypeId, details? }` (viewers) | `reportContent` (`reportService.ts`) |
+| `GET /api/reports` with optional `id`, `status`, `reportTypeId` (administrators) → `{ data: cases }` | `getModerationCases` (`adminService.ts`) |
+| `GET /api/reports/:id` (administrators) → `{ data: case, reportCount, reports }` | `getModerationCase` (`adminService.ts`) |
+| `GET /api/viewers/me` → `{ data: viewer }` with `reportsReceivedCount`, `appeals`, `uploadedAudiovisuals`, `reviews` | `getViewerProfile` (`viewerService.ts`) |
+| `GET /api/viewers/me/reports` → `{ data: cases }` (cases about the viewer's own content) | `getMyReports` (`viewerService.ts`) |
+| `POST /api/appeals` with `{ reportId, description }` (viewers, owner of the content) | `createAppeal` (`appealService.ts`) |
+| `DELETE /api/appeals/:id` (withdraw an appeal not reviewed yet; 409 once reviewed) | `withdrawAppeal` (`appealService.ts`) |
+| `GET /api/administrators/appeals` → `{ data: Appeal[] }` (pending only) | `getPendingAppeals` (`adminService.ts`) |
+| `PATCH /api/administrators/appeals/:id` with `{ decision }` → `{ data, contentSuspended, ... }` | `resolveAppeal` (`adminService.ts`) |
+
+**Accounts** (`adminService.ts`, administrators only)
+
+| Endpoint | Frontend function |
+|---|---|
+| `GET /api/administrators/users` → `{ data: users with active }` | `getAccounts` |
+| `PATCH /api/administrators/users/:id/active` with `{ active }` | `setAccountActive` |
+| `POST /api/administrators` with the sign-up fields in snake_case | `createAdministrator` |
+
+**Not available in the backend**
 
 | Feature | Notes |
 |---|---|
-| Authentication (`/auth/...`) | No routes. The frontend uses `MockAuthService` (4.1). |
-| Appeals, complaints, report types | The backend has routers for them, each with a single `GET /`, but they are not registered in `src/index.ts`, so no URL answers. |
+| Reviewed appeals and changing a verdict | Needed for the appeal history screen, sketch C (3.10). |
+| Director, subtitle and audio language | The sketches use them; content has no such fields, so search cannot filter by director. |
 
 Details:
 
-- **Response shape of `GET /api/movie/:id`.** `getMovie` (`movieService.ts:48-53`) expects
-  `{ movie: MovieDTO }`, which matches what the backend sends.
-- **`id_author` on upload.** The backend rejects a movie without `id_author`, so the frontend still
-  sends it, hardcoded (`UploadPage.tsx:42`). This goes against the agreed contract below.
-- **Agreed auth contract.** `POST /auth/login` receives `{ email, password }`.
-  `POST /auth/register` receives `{ username, firstName, lastName, email, password }` and
-  always creates a viewer. (`RegisterRequest` in the code still has an optional `phone`, which the
-  form never fills.) Both return `{ token, user }`. Authenticated requests must send
-  `Authorization: Bearer <token>`. When uploading content, the backend must take the uploader from
-  the token, so the frontend never sends it.
-- **Field naming.** The movie data uses snake_case (`id_author`), while the auth contract assumes
-  camelCase (`firstName`). Whether the backend will use camelCase is not confirmed.
+- **Errors.** Every service uses `request()` (`api.ts:48-68`). A network failure becomes "We
+  couldn't reach the server...", a 404 becomes the service's own "not found" sentence, a 409 shows
+  the backend's `message`, and 400, 401, 403, 413 and 415 get the friendly messages of
+  `statusMessage` (`api.ts:14-21`). Uploads use `uploadWithProgress` (`api.ts:77-100`) with the
+  same messages.
+- **Uploader.** The backend takes the uploader (`id_author`) and the reviewer (`viewerId`) from the
+  token, so the frontend never sends them (`UploadPage.tsx:44-50`, `ReviewButtons.tsx:55`). Someone
+  else's content answers 403, shown as "You do not have permission to do that.".
+- **Stored episode file name.** `data` is appended before the file because the backend names the
+  stored file after `data.title` (`seriesService.ts`, `uploadEpisode`).
+- **User endpoints.** The backend built authentication under `/api/users` instead of the `/auth`
+  URLs first agreed. The frontend adapts to it in `HttpAuthService` (see 3.1 and 4.1):
+  - Login receives `{ login, password }`, where `login` is the email **or** the username.
+  - The user comes in snake_case (`UserDTO`: `id_user`, `user_name`, `first_name`, `last_name`,
+    `email`, `role`, `active`). `toUser` (`authService.ts:36`) converts it into the app's `User`.
+  - The token is a random string that expires after 7 days. It is not a JWT. The frontend only
+    stores it and sends it as `Authorization: Bearer <token>` (`authHeader`, `api.ts`).
+- **Field naming.** The backend uses snake_case for movies, series and users (`id_author`,
+  `id_serie`, `user_name`), but camelCase for reports and appeals (`targetType`, `reportId`). The
+  frontend keeps camelCase types and converts in the services: `toUser` (`authService.ts`),
+  `toMovie` (`movieService.ts`), `toSeries`, `toSeason`, `toEpisode` (`seriesService.ts`), and
+  `getWatchLater` for `thumbnail_path` (`watchLaterService.ts`). Pages never see snake_case.
 
 ### 1.4 What the backend still needs (from the frontend's perspective)
 
-1. Register the appeal, complaint and report type routers in `src/index.ts`, and add the
-   endpoints the moderation screens need (report a video, appeal, accept / reject).
-2. Implement `POST /auth/login` and `POST /auth/register` with the agreed shape
-   (see 1.3), and a users table.
-3. Agree on error status codes. The frontend already maps 401 (wrong login), 400 (invalid data)
-   and 409 (email or username in use) to messages (`authService.ts:27-36`).
-4. Optional but useful: an endpoint such as `GET /auth/me` to check a stored token (see 4.3).
+1. **Appeal history (sketch C):** list reviewed appeals and allow changing a verdict.
+2. Content fields the sketches use: director, subtitle and audio language.
+3. Optional: return a token on sign-up (saves the extra login request), use one naming style
+   (snake_case or camelCase) everywhere, and offer "content of a user" endpoints, so "My Videos"
+   does not have to download every movie and series and filter them in the browser (3.6).
 
 ---
 
@@ -131,16 +196,16 @@ Details:
 | Folder | What lives there |
 |---|---|
 | `src/pages/` | One component per route (one screen each). |
-| `src/components/` | Reusable pieces of UI: navbar, search bar, carousel section, request status, route guard. |
-| `src/services/` | Code that talks to the outside world (HTTP, localStorage). Today: auth and movies. |
-| `src/context/` | App-wide state shared through React Context. Today: the session. |
-| `src/hooks/` | Custom hooks. Today: `useAuth`. |
+| `src/components/` | Reusable pieces of UI: navbar, footer, carousel section, request status, route guard, forms and managers used by the pages. |
+| `src/services/` | Code that talks to the outside world (HTTP, localStorage): `api.ts` and `session.ts` plus one service per entity (auth, movies, series, reviews, watch later, reports, report types, appeals, viewers, administrators). |
+| `src/context/` | App-wide state shared through React Context: the session (`AuthContext.ts`, `AuthProvider.tsx`) the toast messages (`ToastContext.ts`, `ToastProvider.tsx`) and the confirmation dialog (`ConfirmContext.ts`, `ConfirmProvider.tsx`). |
+| `src/hooks/` | Custom hooks: `useAuth`, `useCatalog`, `useToast`, `useConfirm`, `useDocumentTitle`. |
+| `src/utils/` | Pure functions with no React and no HTTP: `catalog.ts`, `moderation.ts`, and `videoThumbnail.ts` (reads a thumbnail and the duration from a video file in the browser). |
 | `src/types/` | All TypeScript types for domain data and DTOs, in a single file `index.ts`. |
-| `src/test/` | Test setup (`setup.ts`). Test files live next to the code they test, as `*.test.tsx`. |
-| `src/mockup/` | Hardcoded fake data used while the backend is missing (`mockSeries.ts`, `mockAuthService.ts`). |
-| `src/styles/` | Plain CSS for a few pages (`WatchPage.css`, `ReportPage.css`, ...). |
-| `public/` | Static files copied as-is (`vite.svg`). |
-| `docs/` | This manual and the domain diagram: `dnd_cineweb.drawio` (source of truth for names) and `dnd_cineweb.png` (visual reference). |
+| `src/test/` | Test setup (`setup.ts`). Test files live next to the code they test, as `*.test.ts(x)`. |
+| `src/mockup/` | `mockAuthService.ts`: fake accounts for working without a backend (`VITE_USE_MOCK_AUTH = true`). |
+| `public/` | Static files copied as-is. |
+| `docs/` | The course documentation (entry point `README.md`, progress minutes `progress.md` built from the git history, `tracking.md`), this manual, the domain diagram (`dnd_cineweb.drawio`, source of truth for names, and `dnd_cineweb.png`, visual reference) and the screen sketches (`frontend sketch by Cande.drawio.pdf`, 19 pages, in Spanish). |
 
 ### 2.2 Important files one by one
 
@@ -149,8 +214,8 @@ Details:
 | File | Role |
 |---|---|
 | `index.html` | The single HTML page. Has `<div id="root">` and loads `src/main.tsx`. |
-| `src/main.tsx` | Mounts React into `#root`, wrapping `<App />` in `<AuthProvider>` (`main.tsx:9-11`). |
-| `src/App.tsx` | Declares every route. Reads the session with `useAuth()` and passes it to the navbar (`App.tsx:20-24`). |
+| `src/main.tsx` | Mounts React into `#root`, wrapping `<App />` in the providers (session, toasts and the confirmation dialog, `main.tsx:10-16`). |
+| `src/App.tsx` | Declares every route, including the 404 page (`NotFoundPage`) for unknown addresses. Reads the session with `useAuth()` and passes it to the navbar. |
 | `src/index.css` | Loads Tailwind and DaisyUI, with the `night` theme as default. |
 
 **User system**
@@ -160,7 +225,7 @@ Details:
 | `src/services/authService.ts` | `AuthService` interface, `HttpAuthService` (real backend) and the exported `authService` that picks real or mock. |
 | `src/mockup/mockAuthService.ts` | `MockAuthService`: fake login and register using localStorage. |
 | `src/services/session.ts` | Saves, reads and clears the session in localStorage. `isUser` type guard. |
-| `src/services/api.ts` | `API_URL`, the shared error messages, the `ApiError` class, `errorMessage()` and `authHeader()`. |
+| `src/services/api.ts` | `API_URL`, the shared error messages, the `ApiError` class, `errorMessage()`, `authHeader()`, and the HTTP helpers every content service uses: `request()` (fetch + friendly errors), `readJson()` and `uploadWithProgress()`. |
 | `src/context/AuthContext.ts` | The context object and its type `AuthContextValue`. |
 | `src/context/AuthProvider.tsx` | The component that owns the session state and provides it. |
 | `src/hooks/useAuth.ts` | The hook every component uses to read the session. |
@@ -173,20 +238,50 @@ Details:
 | File | Role |
 |---|---|
 | `src/services/movieService.ts` | Every `/api/movie` call (`getMovies`, `getMovie`, `updateMovie`, `deleteMovie`, `uploadMovie`) plus `videoUrl` and `toMovie`. |
+| `src/services/seriesService.ts` | Every `/api/series`, `/api/seasons` and `/api/episodes` call. Converts the backend's snake_case DTOs into `Series`, `Season` and `Episode`. |
 | `src/components/RequestStatus.tsx` | Shows a spinner, a friendly error or an empty message, and its `children` only when there is data. |
-| `src/pages/LandingPage.tsx` | Home page. Fetches movies and shows them in two `Section` carousels. |
-| `src/pages/SearchPage.tsx` | Fetches movies and filters them by title using `?q=`. |
-| `src/pages/WatchPage.tsx` | Shows one movie and plays it. |
-| `src/pages/UploadPage.tsx` | Upload form with a progress bar. |
+| `src/context/ConfirmProvider.tsx` | Replaces `window.confirm`: shows one DaisyUI `modal` with a title, an optional message, "Cancel" and an accept button (red when `danger` is set). "Cancel", Escape or a click outside the box resolve `false`; a new question cancels an unanswered one. The focus starts on "Cancel". |
+| `src/hooks/useConfirm.ts` | The hook every delete, deactivate, withdraw or appeal decision uses: `if (!(await confirm({ title, message, confirmLabel, danger }))) return;`. Outside a `ConfirmProvider` it resolves `false` (`ConfirmContext.ts:20`). |
+| `src/hooks/useCatalog.ts` | Loads movies and series together as one list of `CatalogItem`. Used by the landing and search pages. |
+| `src/utils/catalog.ts` | Converts movies and series into `CatalogItem`, lists the categories and filters by text, type and category. |
+| `src/pages/LandingPage.tsx` | Home page: category links, an "All" carousel and one carousel per category. |
+| `src/pages/SearchPage.tsx` | Search by title, with type and category filters kept in the URL. |
+| `src/pages/WatchPage.tsx` | Shows one movie and plays it, with ratings, "Watch later" and "Report". |
+| `src/pages/UploadPage.tsx` | Upload form with a thumbnail preview and a progress bar. |
+| `src/components/VideoPicker.tsx` | File input for a video: captures a thumbnail and reads the duration with `utils/videoThumbnail.ts`. |
+| `src/components/Thumbnail.tsx` | Shows a content thumbnail, or a gradient when there is none. |
+| `src/pages/UploadSeriesPage.tsx` | Upload a series in three steps (`/upload-series`). Holds the list of series and passes it to the three forms below. |
+| `src/components/NewSeriesForm.tsx`, `NewSeasonForm.tsx`, `NewEpisodeForm.tsx` | The three forms of `UploadSeriesPage`: create a series, add a season, upload an episode. |
 | `src/pages/MyVideosPage.tsx` | List with edit and delete. |
-| `src/pages/SeasonSelectPage.tsx`, `EpisodeListPage.tsx`, `WatchSeriesPage.tsx` | Series screens, using `MOCK_SERIES`. |
-| `src/pages/ReportPage.tsx` | Report form (reasons + "Other"). |
-| `src/pages/ComplaintPage.tsx` | "Received Complaints" list with hardcoded data. |
-| `src/pages/AppealPage.tsx` | Placeholder: only renders the word "appeal". |
-| `src/components/Section.tsx` | Horizontal carousel of movie cards. Props: `title`, `movies`. |
-| `src/components/SearchBar.tsx` | Search input that navigates to `/search?q=...`. Also links to `/complaint`. |
-| `src/components/LanguagePanel.tsx` | Collapsible panel of language toggles. Currently not used: its imports are commented out in `WatchPage.tsx:4` and `WatchSeriesPage.tsx:2`. |
-| `src/types/index.ts` | All types: `Movie`, `MovieDTO`, `Series`, `Season`, `Episode`, `Report`, `Complaint`, `User`, `LoginRequest`, ... |
+| `src/pages/SeasonSelectPage.tsx`, `EpisodeListPage.tsx`, `WatchSeriesPage.tsx` | Series screens: seasons of a series, episodes of a season, and the episode player. |
+| `src/pages/ReportPage.tsx` | Report a movie or a series (`/report/:type/:id`): one reason from the `ReportType` catalog plus optional details, confirmation, sends the report. |
+| `src/components/WatchLaterButton.tsx` | "＋ Watch later" toggle for a movie or a series. Props: `type`, `id`. |
+| `src/pages/WatchLaterPage.tsx` | `/watch-later`: the viewer's saved movies and series, with "Remove". |
+| `src/services/watchLaterService.ts` | `getWatchLater`, `addToWatchLater`, `removeFromWatchLater` (`/api/watch-later`). |
+| `src/components/SeasonsManager.tsx`, `EpisodesManager.tsx` | Inside `MySeriesItem`: edit and delete the seasons of a series and the episodes of a season. |
+| `src/components/ReviewButtons.tsx` | Like / dislike buttons with counts for one movie or episode. Props: `type`, `id`. |
+| `src/services/reviewService.ts` | `getReviews`, `createReview`, `changeReview`, `deleteReview` (`/api/reviews`). |
+| `src/services/reportService.ts` | `reportContent` (`POST /api/reports`), `isReportTargetType`, and `toModerationCase` / `toCaseReport`, which convert the moderation cases. |
+| `src/services/reportTypeService.ts` | CRUD of the report reasons catalog (`/api/report-types`). |
+| `src/pages/AdminPage.tsx` | `/admin` (administrators only): tabs for pending appeals, reports, report reasons, users and a new administrator. |
+| `src/components/AppealReviewCard.tsx` | One pending appeal: shows the reported case and its reasons, accepts or rejects. Output prop `onResolved`. |
+| `src/components/ModerationCasesPanel.tsx` | "Reports" tab: list of moderation cases with filters by case number, status and reason. |
+| `src/pages/ModerationCasePage.tsx` | `/admin/reports/:id`: detail of one case (content, reported user, every report, the appeal). |
+| `src/components/CaseSummary.tsx` | Summary of one case (content, status, grouped reasons, appeal), shared by the admin and viewer screens. |
+| `src/components/ReportTypesManager.tsx` | "Report reasons" tab: create, edit and delete reasons. Output props `onSaved`, `onDeleted`. |
+| `src/components/MyReportsList.tsx` | "Reports about my content" in the profile: appeal a case or withdraw a pending appeal. |
+| `src/components/MySeriesItem.tsx` | One of the user's series in "My Videos": view, edit, delete. Output props `onUpdated`, `onDeleted`. |
+| `src/components/AccountsTable.tsx` | Table of accounts with activate / deactivate. Output prop `onChanged`. |
+| `src/components/NewAdministratorForm.tsx` | Form to create an administrator. Output prop `onCreated`. |
+| `src/services/adminService.ts` | Every administrator call: appeals, moderation cases, accounts, new administrators. |
+| `src/pages/ProfilePage.tsx` | `/profile`: edit your account; viewers also see their activity and their appeals. |
+| `src/pages/AppealPage.tsx` | `/appeal/:reportId`: appeal a moderation case against your content. |
+| `src/services/viewerService.ts` | `getViewerProfile` (`GET /api/viewers/me`) and `getMyReports` (`GET /api/viewers/me/reports`). |
+| `src/services/appealService.ts` | `createAppeal` (`POST /api/appeals`), `withdrawAppeal` (`DELETE /api/appeals/:id`) and `toAppeal`, which turns `decision` into one `status`. |
+| `src/components/Section.tsx` | Horizontal carousel of `CatalogItem` cards, each with a "Movie" or "Series" badge. Props: `title`, `items`. |
+| `src/components/SearchBar.tsx` | Search form that navigates to `/search?q=...`. |
+| `src/components/LanguagePanel.tsx` | Collapsible panel of language toggles. Currently not imported by any page. |
+| `src/types/index.ts` | All types: `Movie`, `MovieDTO`, `Series`, `Season`, `Episode` and their DTOs, `ReportType`, `ReportRequest`, `ModerationCase`, `Review`, `Appeal`, `WatchLaterItem`, `ViewerProfile`, `User`, `LoginRequest`, ... |
 
 ### 2.3 How the pieces connect
 
@@ -194,17 +289,25 @@ Details:
 index.html
 └── src/main.tsx
     └── <AuthProvider>                     session state (context/AuthProvider.tsx)
-        └── <App>                           routes (App.tsx)
-            ├── <MainNavbar user onLogout>  reads session through props
-            └── <Routes>
-                ├── public pages            LandingPage, SearchPage, WatchPage, series pages, AuthPage
-                └── <ProtectedRoute allowedRoles={['viewer']}>
-                    └── UploadPage, MyVideosPage, ReportPage, ComplaintPage, AppealPage
+        └── <ToastProvider>                 short messages after an action (context/ToastProvider.tsx)
+            └── <ConfirmProvider>           "Are you sure?" dialog (context/ConfirmProvider.tsx)
+                └── <App>                   routes (App.tsx)
+                    ├── <MainNavbar user onLogout>  reads session through props
+                    └── <Routes>
+                        ├── public pages        LandingPage, SearchPage, WatchPage, series pages, AuthPage
+                        ├── <ProtectedRoute allowedRoles={['viewer']}>
+                        │   └── UploadPage, UploadSeriesPage, MyVideosPage, ReportPage, AppealPage, WatchLaterPage
+                        ├── <ProtectedRoute allowedRoles={['administrator']}>
+                        │   └── AdminPage, ModerationCasePage
+                        ├── <ProtectedRoute> (any logged-in user)
+                        │   └── ProfilePage
+                        └── * → NotFoundPage
 
 Pages / components ──useAuth()──▶ AuthContext ◀── AuthProvider
-AuthProvider ──▶ authService (Http or Mock) ──▶ backend /auth or localStorage
+AuthProvider ──▶ authService (Http or Mock) ──▶ backend /api/users or localStorage
 AuthProvider ──▶ session.ts ──▶ localStorage (cineweb_token, cineweb_user)
-Content pages ──▶ movieService.ts ──fetch / XMLHttpRequest──▶ backend /api/movie
+Pages ──▶ one service per entity (src/services) ──fetch / XMLHttpRequest──▶ backend /api/...
+(every service uses request(), readJson() and, for uploads, uploadWithProgress() from api.ts)
 ```
 
 ### 2.4 Configuration files
@@ -225,23 +328,33 @@ Content pages ──▶ movieService.ts ──fetch / XMLHttpRequest──▶ ba
 
 ### 3.1 User system ✅ 🧪
 
-Works end to end in the browser using the **mock** backend (`VITE_USE_MOCK_AUTH = true`).
-The real HTTP version is written but has never run against a real backend, because the
-endpoints do not exist yet.
+By default (`VITE_USE_MOCK_AUTH = false` in `.env.example`) the app uses `HttpAuthService`, which
+talks to the backend's `/api/users` endpoints. It is covered by unit tests with a fake `fetch`
+(`authService.test.ts`). With `VITE_USE_MOCK_AUTH = true` it uses the **mock** accounts below
+instead, for working without a backend.
 
-Mock accounts (`src/mockup/mockAuthService.ts:21-46`):
+**Checked against the running backend (2026-10-09, commit `9d30d59`)**, by sending the same HTTP
+requests the frontend sends (with `curl`, not by clicking through the browser): sign-up (201
+`{ data: user }`), login with the email and with the username (200
+`{ token, token_type, expires_in, user }`), `GET /api/users/me` (200), logout (204), `/me` after
+logout (401), duplicated sign-up (409), invalid sign-up (400), wrong password (401) and empty login
+(400). Every answer had the shape and status code `HttpAuthService` and its tests expect. The CORS
+preflight from `http://localhost:5173` allows the `authorization` and `content-type` headers.
 
-| Email | Password | Role |
-|---|---|---|
-| `admin@cineweb.com` | `admin123` | administrator |
-| `viewer@cineweb.com` | `viewer123` | viewer |
+Mock accounts (`src/mockup/mockAuthService.ts:21-46`). You can log in with the email or the
+username:
+
+| Email | Username | Password | Role |
+|---|---|---|---|
+| `admin@cineweb.com` | `admin` | `admin123` | administrator |
+| `viewer@cineweb.com` | `viewer` | `viewer123` | viewer |
 
 #### Logging in: from the form to the protected page
 
 Example: a guest clicks "Upload Video", which leads to `/upload`.
 
 1. **The guard stops the guest.** `/upload` is inside `<ProtectedRoute allowedRoles={['viewer']}>`
-   (`App.tsx:35-36`). `ProtectedRoute` reads `user` from `useAuth()`. It is `null`, so it renders
+   (`App.tsx:36-37`). `ProtectedRoute` reads `user` from `useAuth()`. It is `null`, so it renders
    `<Navigate to="/login" ... state={{ from: "/upload" }} />` (`ProtectedRoute.tsx:16-17`).
    The `from` value remembers where the guest wanted to go.
 2. **The form is shown.** `AuthPage` renders the login form. The inputs are *uncontrolled*: they
@@ -252,21 +365,25 @@ Example: a guest clicks "Upload Video", which leads to `/upload`.
    - `new FormData(event.currentTarget)` reads the input values by their `name`.
    - It sets `submitting` to `true`, which disables the button and shows a spinner, and clears
      old errors.
-   - It calls `login({ email, password })` from the context (`AuthPage.tsx:42`).
-4. **The context delegates.** `login` in `AuthProvider.tsx:26` calls `authService.login(request)`.
+   - It calls `login({ login, password })` from the context (`AuthPage.tsx:42`). The login input
+     is named `login` because it accepts the email or the username (`AuthPage.tsx:81`).
+4. **The context delegates.** `login` in `AuthProvider.tsx:54` calls `authService.login(request)`.
    `authService` is either `MockAuthService` or `HttpAuthService`, chosen once at
-   `authService.ts:66` from `VITE_USE_MOCK_AUTH`.
+   `authService.ts:134` from `VITE_USE_MOCK_AUTH`.
 5. **The service answers.**
-   - Mock (`mockAuthService.ts:74-81`): waits 500 ms, finds the account by email (trimmed and
-     lowercased), compares the password, and returns `{ token: "mock-token-<id>", user }`.
-   - Real (`authService.ts:26-30`, `39-62`): `POST {API_URL}/auth/login` with a JSON body. It
-     checks that the response really is `{ token, user }` with `isAuthResponse` before trusting it.
-6. **The session starts.** `startSession` (`AuthProvider.tsx:19-22`) calls `saveSession`, which
+   - Mock (`mockAuthService.ts:74-84`): waits 500 ms, finds the account by email or username
+     (trimmed, ignoring case), compares the password, and returns
+     `{ token: "mock-token-<id>", user }`.
+   - Real (`authService.ts:52-62`): `POST {API_URL}/api/users/login` with `{ login, password }`.
+     It checks that the answer has a string `token` and a user with the backend's shape
+     (`isUserDTO`, `authService.ts:24-31`) before trusting it, and converts that user with
+     `toUser`.
+6. **The session starts.** `startSession` (`AuthProvider.tsx:47-50`) calls `saveSession`, which
    writes `cineweb_token` and `cineweb_user` to localStorage (`session.ts:20-23`), and then
    `setUser(user)`.
 7. **React re-renders.** Because `user` changed, `useMemo` builds a new context value
-   (`AuthProvider.tsx:18-33`), and every component that uses `useAuth()` re-renders:
-   - `MainNavbar` now shows "Hi, viewer" and the dropdown with "Log Out" (`MainNavbar.tsx:35-69`).
+   (`AuthProvider.tsx:46-63`), and every component that uses `useAuth()` re-renders:
+   - `MainNavbar` now shows "Hi, viewer" and the dropdown with "Log Out" (`MainNavbar.tsx:35-70`).
    - `AuthPage` now has a `user`, so it renders `<Navigate to={from} replace />` with
      `from = "/upload"` (`AuthPage.tsx:19-22`). The page never calls `navigate()` itself: the
      redirect happens because the state changed.
@@ -283,27 +400,44 @@ From there it follows the same path as login (steps 4–8).
 - Mock (`mockAuthService.ts:84-104`): rejects the request if the email or username is taken, creates
   a user with the next free `id` and always `role: 'viewer'`, and saves the account under
   `cineweb_mock_accounts`.
-- Real: `POST /auth/register` (`authService.ts:32-37`). The contract says public sign-up creates
-  viewers only, so `RegisterRequest` has no `role` field (`types/index.ts:111-119`).
-- The phone field exists in `RegisterRequest` as optional, but the form does not ask for it.
+- Real (`authService.ts:64-78`): `POST /api/users/register` with the fields renamed to snake_case
+  (`user_name`, `first_name`, `last_name`). The backend answers without a token, so the service
+  then calls its own `login` with the new email and password and returns that session. Public
+  sign-up creates viewers only, so `RegisterRequest` has no `role` field
+  (`types/index.ts:196-203`).
+- The backend requires a username of 3 to 50 characters and a password of at least 8. The form
+  asks for the same with `minLength` and shows "At least 8 characters." (`AuthPage.tsx:91`).
+- The phone field exists in `RegisterRequest` as optional, but the form does not ask for it and the
+  backend does not store it.
 
 #### How the session is saved and restored
 
 - **Saved:** on login or sign-up, in localStorage under `cineweb_token` and `cineweb_user`
   (`session.ts:3-4`, `20-23`). localStorage survives reloads and closing the browser.
 - **Restored:** when the app starts, `AuthProvider` sets the initial `user` state with
-  `getStoredSession()` (`AuthProvider.tsx:16`). This happens **synchronously**, before the first
+  `getStoredSession()` (`AuthProvider.tsx:18`). This happens **synchronously**, before the first
   render, so a protected page does not flash to `/login` on reload.
 - **Validated:** `getStoredSession` (`session.ts:31-44`) returns `null` if the token or user is
   missing. If the saved user is not valid JSON, or does not look like a `User` (checked by `isUser`,
   `session.ts:7-14`), it clears the session and also returns `null`.
-- **Not validated:** the token itself. Nothing checks whether it expired or was revoked, because
-  there is no backend endpoint for that (see 4.3).
+- **Checked with the backend:** right after the first render, a `useEffect` in `AuthProvider`
+  (`AuthProvider.tsx:21-44`) calls `authService.getCurrentUser()`, which asks
+  `GET /api/users/me` with the saved token (`authService.ts:90-107`). Then:
+
+  | Answer | What happens |
+  |---|---|
+  | The user (200) | The token is still valid. The saved user is replaced with the fresh data, in case the profile changed. |
+  | `null` (401: token expired, revoked, or account deactivated) | `clearSession()` and `setUser(null)`: the user is logged out. |
+  | Error (server unreachable) | Nothing: the saved session is kept, so a server problem does not log anyone out. |
+
+  If the user logs in or out while the request is on its way, the answer is ignored, because the
+  token it was asked for is no longer the saved one (`AuthProvider.tsx:29`). With the mock, the
+  user is found from the id inside `mock-token-<id>`.
 
 #### How a route is protected by role
 
 `ProtectedRoute` (`ProtectedRoute.tsx`) is a *layout route*: it has no `path` of its own, and it
-wraps child routes (`App.tsx:35-41`). For each visit it decides one of three outcomes:
+wraps child routes (`App.tsx:36-42`). For each visit it decides one of three outcomes:
 
 | Situation | Result | Code |
 |---|---|---|
@@ -311,41 +445,61 @@ wraps child routes (`App.tsx:35-41`). For each visit it decides one of three out
 | User, but role not in `allowedRoles` | Redirect to `/` | `ProtectedRoute.tsx:20-22` |
 | User with an allowed role (or no `allowedRoles` given) | Render the child page through `<Outlet />` | `ProtectedRoute.tsx:24` |
 
-Today only one group exists: `allowedRoles={['viewer']}` for `/upload`, `/my-videos`, `/report`,
-`/complaint` and `/appeal`. No administrator screens exist yet, so an administrator who logs in can
-only see the public pages.
+Groups today (`App.tsx:54-72`): `allowedRoles={['viewer']}` for `/upload`, `/upload-series`,
+`/my-videos`, `/report/:type/:id`, `/appeal/:reportId` and `/watch-later`;
+`allowedRoles={['administrator']}` for `/admin` and `/admin/reports/:id`; and a group with no
+`allowedRoles` (any logged-in user) for `/profile`. A viewer who opens `/admin` is sent to `/`, and
+so is an administrator who opens a viewer screen.
 
 #### Logging out
 
 The "Log Out" button calls `handleLogout` (`MainNavbar.tsx:13-16`). It calls the `onLogout` prop,
-which `App` connects to `logout` from the context (`App.tsx:24`), and then navigates to `/`.
-`logout` (`AuthProvider.tsx:28-31`) removes both localStorage keys and sets `user` to `null`.
+which `App` connects to `logout` from the context (`App.tsx:25`), and then navigates to `/`.
+`logout` (`AuthProvider.tsx:56-61`) does three things, in this order:
+
+1. Calls `authService.logout()` (`AuthProvider.tsx:58`). With the real backend this sends
+   `POST /api/users/logout` with the token (`authService.ts:80-88`), so the server deletes that
+   session and the token stops working at once. The mock does nothing. It does not wait for the
+   answer, and `HttpAuthService.logout` never fails: if the server is unreachable, the user is
+   still logged out locally, and the token expires on its own after 7 days.
+2. Removes both localStorage keys with `clearSession()`.
+3. Sets `user` to `null`, so the navbar and the guards react.
+
+The order matters: `HttpAuthService.logout` reads the token with `authHeader()` before its first
+`await`, so it still finds it even though `clearSession()` runs right after.
 
 #### What happens when something fails
 
 | Failure | Where it is handled | What the user sees |
 |---|---|---|
-| Wrong email or password | Mock: `mockAuthService.ts:78-80`. Real: status 401 → `authService.ts:28` | "Incorrect email or password." |
-| Email or username already used | Mock: `mockAuthService.ts:90-91`. Real: status 409 | "That email or username is already in use." |
-| Invalid data (real backend) | Status 400 → `authService.ts:34` | "Please check the information you entered." |
-| Server unreachable / network down | `fetch` throws → `authService.ts:51-53` | "We couldn't reach the server. Please try again later." |
-| Any other HTTP error | `authService.ts:55-57` | "Something went wrong. Please try again." |
-| Response is not `{ token, user }` | `isAuthResponse` → `authService.ts:59-60` | "Something went wrong. Please try again." |
+| Wrong credentials, or an account deactivated by an administrator | Mock: `mockAuthService.ts:82`. Real: status 401 → `authService.ts:55` | "Incorrect email, username or password." |
+| Email or username already used | Mock: `mockAuthService.ts:94`. Real: status 409 → `authService.ts:73` | "That email or username is already in use." |
+| Invalid sign-up data (real backend) | Status 400 → `authService.ts:72` | "Please check your details: the username needs 3 to 50 characters and the password at least 8." |
+| Empty login fields (real backend) | Status 400 → `authService.ts:54` | "Please enter your email or username and your password." |
+| Server unreachable / network down | `fetch` throws → `authService.ts:122` | "We couldn't reach the server. Please try again later." |
+| Any other HTTP error | `authService.ts:126` | "Something went wrong. Please try again." |
+| Login answer without a token or a valid user | `authService.ts:60` | "Something went wrong. Please try again." |
 | Unexpected error (a bug, not an `ApiError`) | `AuthPage.tsx:45` | "Something went wrong. Please try again." |
 | Corrupted session in localStorage | `session.ts:36-43` | Nothing visible: they are treated as logged out. |
 | `useAuth()` used outside `AuthProvider` | `useAuth.ts:7` | Developer error, thrown on purpose to catch the bug early. |
-| Empty fields, invalid email format | HTML `required` and `type="email"` in `AuthPage.tsx` | The browser's own validation message. |
+| Empty fields, invalid email format, short password or username | HTML `required`, `type="email"` and `minLength` in `AuthPage.tsx` | The browser's own validation message. |
 
-The error appears in a DaisyUI `alert` with `role="alert"` (`AuthPage.tsx:89-93`), and
+The error appears in a DaisyUI `alert` with `role="alert"` (`AuthPage.tsx:97`), and
 `submitting` goes back to `false` so they can try again (`AuthPage.tsx:46`).
 
-How the messages travel: services throw `ApiError` (`api.ts:9-14`), an `Error` whose message is
-already friendly. The page shows `err.message` only when the error is an `ApiError`. Anything else
+How the messages travel: services throw `ApiError` (`api.ts:24-29`), an `Error` whose message is
+already friendly. For content requests, `statusMessage` (`api.ts:14-21`) turns 400, 401, 403, 413
+and 415 into "Please check the information you entered.", "Your session has expired. Please log in
+again.", "You do not have permission to do that.", "The file is too large..." and "That file is not
+a video...". A 409 (conflict) shows the backend's own `message` (`api.ts:61-65`), because those are
+already readable sentences such as "You have already reported this content". The page shows `err.message` only when the error is an `ApiError`. Anything else
 gets the generic message, so technical details never reach the user.
 
 #### Switching from the mock to the real backend
 
-1. The backend implements `/auth/login` and `/auth/register` with the agreed shape.
+1. Start the backend with the updated `init.sql` (it creates the `users` and `user_sessions`
+   tables). Register an account from the app; an administrator has to be promoted by hand in SQL,
+   as the backend README explains.
 2. In `.env`, set `VITE_USE_MOCK_AUTH = false` (or remove it) and restart `pnpm dev`, because Vite
    reads `.env` only at startup.
 3. Nothing else changes: the rest of the app depends on the `AuthService` interface, not on
@@ -355,145 +509,345 @@ gets the generic message, so technical details never reach the user.
 
 ### 3.2 Landing page ✅
 
-1. `LandingPage` starts with an empty `movies` array, `loading = true` and no `error`
-   (`LandingPage.tsx:11-13`).
-2. A `useEffect` with `[]` runs once when the page mounts and calls `getMovies()`, which does
-   `GET {API_URL}/api/movie` (`LandingPage.tsx:15-20`, `movieService.ts:42-46`).
-3. Each `MovieDTO` is converted into the simpler `Movie` type by `toMovie`: `category` becomes
-   `platform`, and `path` becomes a full URL in `file` (`movieService.ts:33-40`).
-4. `RequestStatus` shows a spinner while loading, a friendly error if the call fails, or
-   "There are no videos yet." when the list is empty (`LandingPage.tsx:26-34`).
-5. Otherwise, the same list is shown twice, in "Uploaded" and "More Videos", by `Section`, a
-   carousel with left and right arrows that use `scrollBy` (`Section.tsx:12-20`).
-6. Each card links to `/watch/:id` (`Section.tsx:66`).
+1. `LandingPage` gets `{ items, loading, error }` from the custom hook `useCatalog`
+   (`LandingPage.tsx:12`).
+2. `useCatalog` (`useCatalog.ts:16-41`) runs once on mount. It asks for movies and series at the
+   same time with `Promise.allSettled` (`useCatalog.ts:23`), which do `GET /api/movie` and
+   `GET /api/series`. Each one is converted into a `CatalogItem`
+   (`{ kind, id, title, category, description, thumbnailPath, duration }`) by
+   `movieToCatalogItem` or `seriesToCatalogItem` (`catalog.ts`). `allSettled` (instead of
+   `Promise.all`) means that if one list fails, the other one is still shown, with a warning
+   (`LandingPage.tsx:59-63`).
+3. While loading it shows grey skeletons with the shape of the page (`LandingPage.tsx:24-34`). If
+   nothing loaded it shows the error, and with no content at all it invites the visitor to upload
+   (`LandingPage.tsx:41-52`).
+4. `Hero` shows a banner with `featuredItem` (`catalog.ts:37-40`): the newest item with a thumbnail.
+5. `categoriesOf` (`catalog.ts:72`) lists the categories found in the data, once each:
+   "Drama", "drama " and "DRAMA" are the same category, because `categoryKey` (`catalog.ts:61`)
+   trims and lowercases them. There is no categories table in the backend: categories are whatever
+   uploaders typed.
+6. The page shows one link per category, which opens the search filtered by it
+   (`LandingPage.tsx:66-78`), then the carousels "New movies", "Series" and one per category
+   (`LandingPage.tsx:80-90`).
+7. `Section` is a carousel with left and right arrows that use `scrollBy` (`Section.tsx:22`). Each
+   card is a `ContentCard`, which links to `/watch/:id` for a movie or `/series/:id/seasons` for a
+   series (`catalogItemPath`, `catalog.ts:32-34`). The React `key` includes the kind, because a
+   movie and a series can have the same `id` (`Section.tsx:48`).
 
 ### 3.3 Search ✅ ⚠️
 
-1. `SearchBar` keeps the typed text in state. Pressing Enter or clicking the button runs
-   `handleSearch`, which ignores empty text and navigates to `/search?q=<text>`, encoded with
-   `encodeURIComponent` (`SearchBar.tsx:15-20`, `41-46`).
-2. `SearchPage` reads `q` with `useSearchParams` (`SearchPage.tsx:12-13`) and passes it to
-   `SearchBar` as `initialText`, so the input keeps showing the search (`SearchPage.tsx:45`).
-3. Its `useEffect` depends on `[query]`, so it runs again whenever the search changes. It fetches
-   **all** movies with `getMovies()` and filters them in the browser by title, ignoring case
-   (`SearchPage.tsx:19-41`). A `cancelled` flag ignores the answer of an older search that arrives
-   after a newer one (`SearchPage.tsx:21`, `40`).
-4. `RequestStatus` handles loading, error and "No videos match ..." (`SearchPage.tsx:46-53`).
+1. `SearchBar` is a `<form>`: Enter and the button both run its submit handler, which navigates to
+   `/search?q=<text>` (encoded with `encodeURIComponent`), or to `/search` when the text is empty.
+2. `SearchPage` keeps every filter in the URL: `q` (title text), `type` (`movie` or `series`) and
+   `category` (a category key). A search can be shared as a link, and "Back" returns to the
+   previous filters. `parseCatalogType` (`catalog.ts:93`) ignores an invalid `type` in the URL.
+3. It uses the same `useCatalog` hook as the landing page and filters in the browser with
+   `filterCatalog` (`SearchPage.tsx:23`, `catalog.ts:83`): type, category and title text, all
+   ignoring case. The backend has no search endpoint.
+4. The two `<select>` (type and category) call `setFilter` (`SearchPage.tsx:27`), which changes one
+   URL parameter and keeps the others. The page re-renders because the URL changed.
+5. The `SearchBar` gets `key={filters.query}` (`SearchPage.tsx:42`), so it starts again with the
+   new text when the URL changes.
+6. Loading, error, and "No videos match this search." with a "See all videos" link are handled.
 
-⚠️ The filter checkboxes ("CATEGORY 1/2/3", `SearchBar.tsx:51-60`) are visual only: they are not
-read anywhere. Filtering by category, type or director (sketch 2) is ⏳ pending.
+The filtering functions have unit tests (`catalog.test.ts`).
 
-### 3.4 Watching a movie ✅ ⚠️
+⚠️ Filtering by director (sketch 2) is not possible: the backend has no director field.
 
-1. The route `/watch/:id` gives `WatchPage` the `id` through `useParams` (`WatchPage.tsx:12`).
-2. A `useEffect` on `[id]` calls `getMovie(id)`. It handles **loading**, **error** and success,
-   and ignores answers for an old `id` (`WatchPage.tsx:18-36`). It shows a spinner or a friendly
-   error (`WatchPage.tsx:39-48`).
-3. The video plays from the backend's static folder, `videoUrl(movie.path)` (`WatchPage.tsx:61`).
-   The backend also offers `/api/movie/:id/stream` (1.3), which is not used.
-4. If the description is longer than 100 characters, a "See more / See less" button appears.
-   `showMoreBtn` is computed from the data, not kept in state (`WatchPage.tsx:51`).
-5. "Report" links to `/report` (`WatchPage.tsx:64`).
+### 3.4 Watching a movie ✅
 
-⚠️ "Add to Watch later" (sketch 3) is ⏳ pending. The report page does not know which video it is
-reporting yet (3.8).
+1. The route `/watch/:id` gives `WatchPage` the `id` through `useParams`.
+2. A `useEffect` on `[id]` calls `getMovie(id)`. It handles **loading** (a skeleton with the shape
+   of the page), **error** (a friendly message and a link to search) and success, and ignores
+   answers for an old `id` (`WatchPage.tsx:23-66`).
+3. `getMovie` converts the backend's snake_case movie into `Movie` with `toMovie`
+   (`movieService.ts`), so the page reads `uploaderId`, `uploaderUsername` and `thumbnailPath`.
+4. The video plays from the backend's static folder, `videoUrl(movie.path)`, with the thumbnail as
+   `poster` (`WatchPage.tsx:76-81`).
+5. Badges show the type, category, duration (`formatDuration`) and views. "Uploaded by @user"
+   appears when the backend sends the username (`WatchPage.tsx:86-93`).
+6. `ReviewButtons` (3.11) and `WatchLaterButton` (3.12) are under the title (`WatchPage.tsx:96-99`).
+7. Descriptions longer than 180 characters get a "See more / See less" button
+   (`SHORT_DESCRIPTION`, `WatchPage.tsx:13`, `69`).
+8. "⚑ Report" links to `/report/movie/:id`. It is hidden when the logged-in user uploaded the
+   movie, because nobody can report their own content (`WatchPage.tsx:112-115`).
 
-### 3.5 Uploading a movie ✅ ⚠️
+### 3.5 Uploading a movie ✅
 
-1. The user picks a file. `handleFileSelect` stores it and uses the file name as the default title
-   (`UploadPage.tsx:18-25`).
-2. On "Save Movie", `handleSubmit` checks that the title is not empty, then builds `movieData`
-   (`UploadPage.tsx:27-49`).
-3. It calls `uploadMovie` (`UploadPage.tsx:52`, `movieService.ts:68-97`). The service builds a
-   `FormData` with two parts, `data` (the JSON text) and `file` (the video), and sends it with
-   `XMLHttpRequest` instead of `fetch`, because `fetch` cannot report upload progress. Each
-   `progress` event updates the progress bar (`UploadPage.tsx:109`). The request carries
-   `authHeader()` (`movieService.ts:94`).
-4. On success it shows "Your video was uploaded." with a link to "My Videos". On failure it shows a
-   friendly error (`UploadPage.tsx:111-118`).
-
-⚠️ `id_author: 2` is still hardcoded (`UploadPage.tsx:42`). The agreed contract says the backend
-must take the uploader from the token and the form must never send it (1.3), but the backend still
-requires `id_author` today. Remove it once the backend reads the token.
+1. The page is a real `<form>` (`UploadPage.tsx:74`): every field is `required`, so the browser
+   checks empty fields and Enter submits.
+2. `VideoPicker` is the file input. When a file is chosen, `utils/videoThumbnail.ts` reads it in
+   the browser: it captures a frame near second 2 as a JPEG thumbnail and reads the duration, and
+   the picker shows them as a preview. A file the browser cannot play still uploads, without them.
+   The file name, without its extension, becomes the default title (`UploadPage.tsx:30`).
+3. On submit, `handleSubmit` (`UploadPage.tsx:33-67`) builds `movieData` with title, category,
+   description and the duration. It does not send the uploader: the backend takes it from the
+   token (`UploadPage.tsx:44`).
+4. It calls `uploadMovie` (`movieService.ts`). The service builds a `FormData` with `data` (the
+   JSON text), `file` (the video) and, if there is one, `thumbnail`, and passes it to
+   `uploadWithProgress` (`api.ts:77-100`). That helper sends it with `XMLHttpRequest` instead of
+   `fetch`, because `fetch` cannot report upload progress. The request carries `authHeader()`.
+5. On success it clears the form, including the file input with `form.reset()`
+   (`UploadPage.tsx:61`), and shows a success message. On failure it shows a friendly error: a file
+   that is too large (413) or not a video (415) has its own message (`api.ts:18-19`).
 
 ### 3.6 My Videos ✅ ⚠️
 
-1. On mount, it calls `getMovies()` (`MyVideosPage.tsx:28-34`), meaning **all** movies,
-   not only the user's own. `RequestStatus` handles loading, error and "You have no uploaded
-   videos." (`MyVideosPage.tsx:133-137`).
-2. **Delete:** `deleteVideo` asks for confirmation with `window.confirm`, then calls `deleteMovie`
-   and removes the video from the list on success (`MyVideosPage.tsx:37-53`). This is a real
-   delete request, while the planned design describes a logical delete (an `active` flag). Whether
-   the backend deletes the row or marks it inactive was not checked.
-3. **Edit:** `startEditing` copies the video into the edit fields (`MyVideosPage.tsx:56-62`).
-   `saveEdit` rejects an empty title, calls `updateMovie` and updates the list locally
-   (`MyVideosPage.tsx:73-104`). `cancelEditing` clears the fields (`MyVideosPage.tsx:65-70`).
-4. Errors from edit or delete are shown above the list (`MyVideosPage.tsx:127-129`). While a video
-   is being saved or deleted, its buttons are disabled (`busyVideoId`).
+1. On mount, it calls `getMovies()` and keeps only the movies whose `uploaderId` is the logged-in
+   user's `id` (`MyVideosPage.tsx:46`). `RequestStatus` handles loading, error and "You have not
+   uploaded any movie yet." with a link to upload one (`MyVideosPage.tsx:176-178`). Each movie shows
+   its thumbnail.
+2. **Delete:** `deleteVideo` asks for confirmation with `useConfirm`, then calls `deleteMovie`
+   and removes the video from the list on success (`MyVideosPage.tsx:60-82`). The delete is logical:
+   the backend sets `state = 'deleted'` and stops listing it.
+3. **Edit:** `startEditing` copies the video into the edit fields. `saveEdit` rejects an empty
+   title, calls `updateMovie` (`MyVideosPage.tsx:117`) and updates the list locally.
+4. Errors from edit or delete are shown above the list. While a video is being saved or deleted,
+   its buttons are disabled (`busyVideoId`).
+5. **Series:** a second block lists the series uploaded by the logged-in user, filtered the same
+   way by `uploaderId` (`MyVideosPage.tsx:53-54`). It has its own loading, error and empty state
+   (`MyVideosPage.tsx:338-340`), so a failure in one block does not hide the other. Each series is
+   a `MySeriesItem` with "Edit" (`PATCH /api/series/:id`), "Delete" (after a confirmation, a logical
+   delete that also hides its seasons and episodes) and "Manage seasons". It tells the
+   page with its output props `onUpdated` and `onDeleted`.
+6. **Seasons and episodes:** `SeasonsManager` (`MySeriesItem.tsx:143`) lists the seasons of the
+   series. Each row can change the season number and description (`updateSeason`), be deleted
+   after a confirmation (`deleteSeason`), and open an `EpisodesManager` (`SeasonsManager.tsx:114`)
+   that does the same for episodes (`updateEpisode`, `deleteEpisode`). A number that is already
+   used answers 409, and its message is shown.
+7. The header has "Upload videos" and "Upload series" buttons (`MyVideosPage.tsx:150-155`).
 
-⚠️ It lists every movie, because there is no "my movies" endpoint yet.
+⚠️ Movies and series are filtered in the browser, because the backend has no "content of a user"
+endpoint. `uploaderId` comes from the backend's `id_author`; the diagram calls it `upladerId`, a typo.
 
-### 3.7 Series: seasons, episodes, watching an episode 🧪 ⚠️
+### 3.7 Series: seasons, episodes, watching and uploading ✅ ⚠️
 
-All three pages read `MOCK_SERIES` from `src/mockup/mockSeries.ts` (one series, two seasons,
-three episodes). There is no backend call.
+The series pages read from the backend through `seriesService.ts`. Each one follows the same
+pattern as `WatchPage`: a `useEffect` that depends on the route params, a `cancelled` flag that
+ignores answers for old params, and `RequestStatus` for loading and errors. When a page needs
+several things, it asks for them at the same time with `Promise.all`; if any request fails, the
+page shows that request's friendly error.
 
-- `SeasonSelectPage` (`/series/:id/seasons`): starts with the first season. Two `<select>` inputs
-  choose the active season and show its description. "View Episodes" navigates to that season's
-  episode list (`SeasonSelectPage.tsx:15-16`).
-- `EpisodeListPage` (`/series/:id/season/:seasonId/episodes`): finds the season by `seasonId`
-  (`EpisodeListPage.tsx:11`). If it does not exist, it shows an error with a link back to the
-  seasons (`EpisodeListPage.tsx:13-20`). Otherwise it lists the episodes with "Watch" links.
-- `WatchSeriesPage` (`/watch-series/:id/:seasonId/:episodeId`): reads `seasonId` and `episodeId`,
-  the same names as the route in `App.tsx:30`, and finds the season and episode by id
-  (`WatchSeriesPage.tsx:12-19`). If either is missing, it shows an error (`WatchSeriesPage.tsx:21-28`).
-  Otherwise it plays the episode and links back to seasons and episodes.
+Series are reached from the landing page carousels and the search, where they appear next to the
+movies with a "Series" badge (3.2).
 
-⚠️ The `:id` of the series is not checked, because there is only one mock series. The mock
-episodes have `path: "/"`, so no real video plays. Nothing links to the series pages from the
-landing page: they can only be reached by typing the URL.
+**Types.** `Series`, `Season` and `Episode` (`types/index.ts`) are the shapes the pages use. Their
+names follow the domain diagram except where it is known to be wrong: `Series` uses `id` (the
+diagram says `idSerie`) and `Season` points to its series with `seriesId` (the diagram says
+`audiovisualId`). There are no `seasons` / `episodes` arrays: the diagram's arrays are
+relationships, and the backend serves them from separate endpoints.
 
-### 3.8 Report a video 🧪
+- `SeasonSelectPage` (`/series/:id/seasons`): loads the series and its seasons together
+  (`SeasonSelectPage.tsx:37`). The active season is the one picked in the `<select>`, or the first
+  one until the user picks. The episodes of the active season are loaded by a second `useEffect`
+  each time the season changes, and shown with `EpisodeList` (`SeasonSelectPage.tsx:130`). The
+  page also has `WatchLaterButton` and "⚑ Report series" (hidden for the uploader). With no seasons
+  it shows "This series has no seasons yet."
+- `EpisodeListPage` (`/series/:id/season/:seasonId/episodes`): loads the series, the season and its
+  episodes (`EpisodeListPage.tsx:26`).
+- `WatchSeriesPage` (`/watch-series/:id/:seasonId/:episodeId`): loads the series, the season, the
+  episode and the other episodes of the season (`WatchSeriesPage.tsx:32`), plays
+  `videoUrl(episode.path)` (`WatchSeriesPage.tsx:64`), shows `ReviewButtons` for the episode
+  (`WatchSeriesPage.tsx:79`) and "⚑ Report series" for anyone but the uploader
+  (`WatchSeriesPage.tsx:82-83`).
 
-`ReportPage` (`/report`, viewers only) shows a radio button for each reason in `REPORT_REASONS`
-(`types/index.ts`) and a text area when "Other" is selected (`ReportPage.tsx:60-70`). "Save" stays
-disabled until a reason is chosen, and "Other" also needs text (`ReportPage.tsx:19-20`). It opens
-a confirmation box where "Cancel" only closes the box (`ReportPage.tsx:105`).
+⚠️ The pages do not check that the season belongs to the series in the URL, or that the episode
+belongs to the season: they trust the links.
 
-🧪 Confirming does **not** send anything: `confirmSaveReport` only does `console.log` of the
-selection (`ReportPage.tsx:27-34`), because no report endpoint exists yet. The "Report" buttons on
-`WatchPage` and `WatchSeriesPage` link here, but the page does not receive which video is reported.
+#### Uploading a series ✅
 
-### 3.9 Received complaints and appeals 🧪 ⏳
+`UploadSeriesPage` (`/upload-series`, viewers only, "Upload → Series" in the navbar) shows three
+forms. The order matters, because each step needs the one before it.
 
-- `ComplaintPage` (`/complaint`, viewers only) shows "Received Complaints" from an array hardcoded
-  in the component (`ComplaintPage.tsx:13-34`). Each "Appeal" button just navigates to `/`
-  (`ComplaintPage.tsx:74`). It can be reached from the flag button in `SearchBar`
-  (`SearchBar.tsx:56`).
-- `AppealPage` (`/appeal`) is a placeholder that renders the text "appeal" (`AppealPage.tsx`). ⏳
+1. **Loading.** On mount the page calls `getAllSeries()` and keeps only the series whose
+   `uploaderId` is the logged-in user's `id` (`UploadSeriesPage.tsx:25-26`). The season and episode
+   forms only offer those. The backend also answers 403 for someone else's series.
+2. **New series.** `NewSeriesForm` sends title, category and description with `createSeries`
+   (`NewSeriesForm.tsx:43-47`), plus an optional cover image. Without a cover the series shows a
+   frame of its first episode. On success it calls its `onCreated` output prop
+   (`NewSeriesForm.tsx:55`), and the page adds the series to its list, so it appears at once in the
+   other two forms.
+3. **New season.** `NewSeasonForm` receives the list through its `series` prop and sends the chosen
+   series, the season number and a description with `createSeason`. On success it suggests the
+   next season number and calls `onCreated`.
+4. **New episode.** `NewEpisodeForm` loads the seasons of the chosen series, so a season added in
+   step 3 shows up without reloading. It uses `VideoPicker` and `uploadEpisode` with a progress
+   bar, the same way as movies (3.5).
 
-### 3.10 Administrator screens ⏳
+All three are real `<form>` elements with `required` inputs, so Enter submits and the browser
+checks empty fields. Each form has its own submitting, error and success state.
 
-None of them exist yet: admin landing page, pending appeals and appeal history (sketches A, B, C).
-When they are built, they should go in a new route group wrapped in
-`<ProtectedRoute allowedRoles={['administrator']}>`.
+### 3.8 Report a video ✅
 
----
+`ReportPage` (`/report/:type/:id`, viewers only) reports a movie (`/report/movie/3`) or a series
+(`/report/series/1`). Episodes are reported through their series. Every "Report" button is hidden
+for the content's own uploader.
+
+1. The `type` in the URL is checked with `isReportTargetType`; anything else shows "We couldn't
+   find that video." (`ReportPage.tsx:93-95`).
+2. A `useEffect` loads, at the same time, the title of the content (`getMovie` or `getSeries`) and
+   the reasons catalog with `getReportTypes` (`ReportPage.tsx:37-58`). The reasons are the
+   `ReportType` records that administrators manage (3.10), not a fixed list in the code. With no
+   reasons it says reporting is not available.
+3. One radio button per reason (`ReportPage.tsx:121-133`). When a reason is chosen a text area
+   appears: optional, or required when the type has `requiresDetails` (for example "Other")
+   (`ReportPage.tsx:136-150`). "Report" stays disabled until the form is valid (`canSave`,
+   `ReportPage.tsx:62-63`).
+4. Submitting the form only opens a DaisyUI confirmation modal (`ReportPage.tsx:66-69`, `166`).
+   "Cancel" closes it and keeps the choices.
+5. "Send report" runs `confirmReport` (`ReportPage.tsx:71-88`), which calls `reportContent`
+   (`reportService.ts`): `POST /api/reports` with `{ targetType, targetId, reportTypeId, details? }`
+   and the token. The backend takes the reporter from the token.
+6. On success it shows "Thanks for your report" and a link back. On failure it shows the error; a
+   409 shows the backend's reason (for example "You have already reported this content").
+
+`ReportPage.test.tsx` checks the page with fake services, including the "Other" type with its
+explanation, the backend's 409 message and an invalid type in the URL.
+
+### 3.9 Profile, reports received and appeals ✅
+
+**`ProfilePage`** (`/profile`, any logged-in user, "My Profile" in the avatar menu):
+
+1. A form with username, email, first and last name, filled with the current `user`. There is no
+   password field. On submit it sends only the fields that changed through `updateProfile` from
+   `AuthContext` (`ProfilePage.tsx:91`). With nothing changed it says "There is nothing to change."
+   (`ProfilePage.tsx:85`) and sends nothing.
+2. `updateProfile` in `AuthProvider` calls `authService.updateProfile`, saves the returned user in
+   localStorage and updates the state, so the navbar greeting changes at once.
+   `HttpAuthService.updateProfile` (`authService.ts:111`) sends `PATCH /api/users/me` with the
+   fields in snake_case. A 409 shows the backend's message ("Email is already in use").
+3. For viewers only, `ViewerActivity` (`ProfilePage.tsx:14`) loads `GET /api/viewers/me` with
+   `getViewerProfile` and shows: uploaded videos, ratings given, and **reports received** on their
+   content (a count computed by the backend). Below it shows `MyReportsList`
+   (`ProfilePage.tsx:48`).
+
+**`MyReportsList`** ("Reports about my content", sketch 7) loads `GET /api/viewers/me/reports` with
+`getMyReports` and shows each moderation case with `CaseSummary`. A case still `pending` and
+without an appeal has an "Appeal" button that opens `/appeal/:caseId` (`MyReportsList.tsx:76-80`).
+A pending appeal has "Withdraw appeal", which asks for confirmation, calls `withdrawAppeal`
+(`DELETE /api/appeals/:id`) and loads the cases again (`MyReportsList.tsx:34-53`). The empty state
+says "Nobody has reported your videos."
+
+**Appeal status.** The backend sends `reviewed` and `decision`, which say the same thing twice.
+`toAppeal` (`appealService.ts`) and `toCaseAppeal` (`reportService.ts`) keep one `status`:
+`'pending'` while `decision` is `null`, else `'approved'` or `'rejected'`.
+
+**`AppealPage`** (`/appeal/:reportId`, viewers only) finds the case among the user's own cases
+(`getMyReports`, `AppealPage.tsx:37-43`), so another user's case shows "We couldn't find that report
+about your content.". If the case can still be appealed (`canAppeal`, `AppealPage.tsx:68`) it shows
+a text area (required, max 2000 characters, with a counter); otherwise it explains that the case
+was already appealed or decided. It sends `POST /api/appeals` with `{ reportId, description }`
+through `createAppeal`. A 409 shows its reason. On success it links to the profile.
+
+### 3.10 Administrator screens ✅ ⚠️
+
+`AdminPage` (`/admin`, administrators only, "Administration" in the navbar) is the administrator
+landing page (sketch A). On mount it loads the pending appeals, the accounts and the report reasons
+at the same time (`AdminPage.tsx:48-63`). It has five tabs (`AdminPage.tsx:20-26`), which scroll
+sideways on phones.
+
+**Pending appeals (sketch B).** One `AppealReviewCard` per appeal, with its description and case
+number. "See the reports" loads `GET /api/reports/:caseId` and shows the reasons grouped and
+counted. "Accept appeal" / "Reject appeal" ask for confirmation and send
+`PATCH /api/administrators/appeals/:id` with `decision`. Accepting keeps the content online;
+rejecting makes the backend suspend it. The card calls its output prop `onResolved`, and
+`handleResolved` (`AdminPage.tsx:65-70`) removes the appeal from the list and shows a toast.
+
+**Reports.** `ModerationCasesPanel` lists the moderation cases with three filters: case number,
+status (`pending`, `appealed`, `upheld`, `dismissed`) and reason (`ModerationCasesPanel.tsx:21-26`).
+"Search" sends them as query parameters to `GET /api/reports` (`getModerationCases`,
+`adminService.ts`). Each case shows the reported user, the content and the grouped reasons, and
+opens its detail page.
+
+**Case detail.** `ModerationCasePage` (`/admin/reports/:id`) loads `GET /api/reports/:id` and shows
+the content, the reported user, the total of reports, the appeal (with "Accept" / "Reject" while it
+is pending, `ModerationCasePage.tsx:47-69`) and a table with every report, its reason and details
+(`ModerationCasePage.tsx:115-140`).
+
+**Report reasons.** `ReportTypesManager` is the CRUD of the `ReportType` catalog: create, rename,
+switch `requiresDetails`, and delete after a confirmation. A repeated name or a reason that reports
+already use answers 409, and its message is shown (`ReportTypesManager.tsx:47-65`). It tells the
+page with the output props `onSaved` and `onDeleted`.
+
+**Users.** `AccountsTable` lists every viewer and administrator with an "Active" / "Inactive" badge
+and a button to deactivate or activate the account. A deactivated account cannot log in. The
+administrator's own row has no button, because the backend does not allow deactivating yourself.
+
+**New administrator.** `NewAdministratorForm` creates an administrator with
+`POST /api/administrators`. Like the login form, its inputs are uncontrolled, so the password is
+never kept in React state. The new account is added to the users table through `onCreated`.
+
+Tests: `AppealReviewCard.test.tsx` and `ReportTypesManager.test.tsx`.
+
+⚠️ **Appeal history (sketch C) is not built:** the backend can only list pending appeals and
+cannot change a verdict (1.4, point 1). Decided appeals can still be seen in the detail of their
+case.
+
+### 3.11 Reviews: like / dislike ✅
+
+`ReviewButtons` (`ReviewButtons.tsx`) is shown under the title in `WatchPage` (`type="movie"`) and
+for each episode in `WatchSeriesPage` (`type="episode"`, `WatchSeriesPage.tsx:79`). The backend has
+reviews for movies and episodes only, not for whole series.
+
+1. A `useEffect` on `[type, id]` loads the reviews with `getReviews` (`GET
+   /api/reviews/audiovisual/:type/:id`) and keeps them in state. Likes and dislikes are counted
+   from that list; nothing is stored twice.
+2. `myReview` is the review whose `viewerId` is the logged-in user's `id`
+   (`ReviewButtons.tsx:44`). The button of that vote is highlighted and has `aria-pressed="true"`.
+3. Only viewers can vote (`canVote`, `ReviewButtons.tsx:46`). Guests see the counts and a "Log in
+   to rate" link; administrators only see the counts.
+4. `vote(rating)` decides what to send (`ReviewButtons.tsx:53-61`):
+
+   | Situation | Request | Result |
+   |---|---|---|
+   | No vote yet | `POST /api/reviews` with `rating`, `audiovisualId`, `audiovisualType` | New vote |
+   | Clicking the same vote again | `DELETE /api/reviews/:id` | Vote withdrawn (sketch 6) |
+   | Clicking the other vote | `PATCH /api/reviews/:id` with the new `rating` | Like ↔ dislike |
+
+   After each answer it updates the list locally, so the counts change without reloading.
+5. The request carries the token and no `viewerId`: the backend takes the reviewer from the token
+   (`ReviewRequest` omits it, `types/index.ts:193`). Errors are shown under the buttons; a 409
+   shows the backend's message.
+
+`ReviewButtons.test.tsx` checks the counts, voting, withdrawing, changing and the guest view.
+
+### 3.12 Watch later ✅
+
+1. `WatchLaterButton` (props `type`, `id`) is on `WatchPage` (movies) and `SeasonSelectPage`
+   (series). For a viewer it loads the list with `getWatchLater` and checks whether this content is
+   in it (`WatchLaterButton.tsx:25-42`). The item is identified by `audiovisualType` and
+   `audiovisualId`, because a movie and a series can share an id.
+2. Clicking it adds the content (`addToWatchLater`) or removes it (`removeFromWatchLater`), and a
+   toast confirms it (`WatchLaterButton.tsx:44-60`). The button shows "＋ Watch later" or
+   "✓ In Watch later" and has `aria-pressed`.
+3. Guests see a link to log in; administrators do not see the button (`WatchLaterButton.tsx:62-67`).
+4. `WatchLaterPage` (`/watch-later`, viewers only, "Watch later" in the navbar) lists the saved
+   items with their thumbnail and a "Remove" button (`WatchLaterPage.tsx:29-40`). The empty state
+   says "Your list is empty." with a link to search.
+
+`WatchLaterButton.test.tsx` checks saving and removing, content already in the list, the guest
+link and that administrators see nothing.
 
 ## 4. Design decisions and trade-offs
 
 ### 4.1 Fake backend behind an interface (Strategy pattern)
 
 **What:** `AuthService` is an interface with two implementations, `HttpAuthService` and
-`MockAuthService`. A single line chooses one from `.env` (`authService.ts:66-68`).
+`MockAuthService`. A single line chooses one from `.env` (`authService.ts:155-157`).
 
-**Why:** the backend has no auth yet, and frontend work should not be blocked. The rest of the app
+**Why:** the backend had no auth when this was built, and frontend work should not be blocked. The rest of the app
 (context, pages) only knows the interface, so switching to the real backend changes one variable,
 not the components. It is also the OOP design pattern that the course requires.
 
 **Trade-offs:**
 - The mock is not the backend. It can drift from what the backend really does (status codes, field
-  names, validation rules). `HttpAuthService` has **never run against a real server**.
+  names, validation rules). `HttpAuthService` is tested with a fake `fetch`, and its requests were
+  checked against the running backend with `curl` (3.1).
+
+**Adapter.** `HttpAuthService` is also an Adapter: the backend's user API has its own URLs and
+snake_case fields, and the class translates both ways (`toUser`, the snake_case sign-up body), so
+`AuthProvider`, the pages and the `User` type do not depend on how the backend names things. If
+the backend changes its shape, only `authService.ts` changes.
 - The mock stores passwords in plain text in localStorage. It is only acceptable because it is fake
   data for development.
 - If someone forgets to set `VITE_USE_MOCK_AUTH = false` in production, users would log in against
@@ -510,7 +864,7 @@ so no extra library is needed.
 
 **Trade-offs:**
 - Every component that uses `useAuth()` re-renders when the session changes. That is fine for
-  something that changes rarely, like login and logout. `useMemo` (`AuthProvider.tsx:18-33`) makes
+  something that changes rarely, like login and logout. `useMemo` (`AuthProvider.tsx:46-69`) makes
   sure the value only changes when `user` changes.
 - The context, the provider and the hook are in three files (`AuthContext.ts`, `AuthProvider.tsx`,
   `useAuth.ts`). This keeps the project's ESLint `react-refresh` rule happy, because that rule wants
@@ -522,7 +876,7 @@ so no extra library is needed.
 the backend team.
 
 **Why:** it is simple, survives reloads, and works with a `Bearer` header (`authHeader()`,
-`api.ts:22-25`).
+`api.ts:42-45`).
 
 **Trade-offs and risks:**
 - **XSS:** any JavaScript running on the page can read localStorage. If an attacker manages to
@@ -531,23 +885,25 @@ the backend team.
 - **The stored user is trusted.** Anyone can open the browser tools and change `role` to
   `"administrator"` in `cineweb_user`. The frontend would then show admin screens. This is why the
   backend must check the token on every request: the frontend check is not security.
-- **No expiry check:** the frontend does not decode the token or check when it expires. A user
-  could look logged in with a token the backend already rejects. There is no endpoint to verify
-  the token (`GET /auth/me` does not exist).
+- **Expiry checked only on startup:** the token is checked with `GET /api/users/me` when the app
+  starts (3.1). If it expires while the app is open, the user still looks logged in until a
+  request fails or the page is reloaded.
 - **No sync between tabs:** logging out in one tab does not update other open tabs until they
   reload.
 
 ### 4.4 Session restored synchronously
 
-`useState(() => getStoredSession()?.user ?? null)` (`AuthProvider.tsx:16`) reads localStorage
+`useState(() => getStoredSession()?.user ?? null)` (`AuthProvider.tsx:18`) reads localStorage
 **before** the first render. If it were done in a `useEffect`, the first render would have
 `user = null`, and `ProtectedRoute` would send a logged-in user to `/login` for a moment.
-Trade-off: it only works because localStorage is synchronous. A check against the server would
-need a real "loading" state.
+Trade-off: it only works because localStorage is synchronous. The check against the server
+(`GET /api/users/me`, 3.1) runs **after** that first render instead of blocking it, so for a moment
+the app trusts the saved session. That avoids a loading screen on every visit; if the token turns
+out to be invalid, the user is logged out as soon as the answer arrives.
 
 ### 4.5 Uncontrolled inputs for the password
 
-The login form reads its values with `FormData` on submit (`AuthPage.tsx:27-28`) instead of
+The login form reads its values with `FormData` on submit (`AuthPage.tsx:31`) instead of
 keeping every keystroke in `useState`. This follows the project rule that the password only
 exists in `LoginRequest` / `RegisterRequest`, never in state.
 Trade-off: there is no live validation as the user types (for example "password too short"). It
@@ -555,7 +911,7 @@ relies on HTML validation (`required`, `type="email"`).
 
 ### 4.6 Route protection with a layout route
 
-`ProtectedRoute` renders `<Outlet />` and wraps a group of routes (`App.tsx:35-41`), instead of
+`ProtectedRoute` renders `<Outlet />` and wraps a group of routes (`App.tsx:54-72`), instead of
 wrapping each page separately. Adding a protected page means adding one line inside the group.
 Trade-off: everything in a group shares the same roles. A page that needs other roles needs its
 own group.
@@ -564,47 +920,47 @@ own group.
 
 All types live in `src/types/index.ts`, because that is how the project already worked.
 Trade-off: the file grows with every entity. Some types do not match the domain diagram yet
-(for example `Report`, `Complaint`, `Series`). The domain diagram
+(for example `Series`, `Season` and the report / moderation case split). The domain diagram
 (`docs/dnd_cineweb.drawio`) is the source of truth for names.
 
 ### 4.8 Honest limits
 
 **What is mock or hardcoded today**
-- Authentication (`mockAuthService.ts`), while `VITE_USE_MOCK_AUTH = true`.
-- Series, seasons and episodes (`src/mockup/mockSeries.ts`).
-- Received complaints (`ComplaintPage.tsx:13-34`).
-- Report submission (only `console.log`).
-- Uploader id (`id_author: 2` in `UploadPage.tsx:42`).
-- Navbar avatar: a fixed DaisyUI sample image (`MainNavbar.tsx:49-51`).
+- Authentication uses `mockAuthService.ts` only while `VITE_USE_MOCK_AUTH = true`. The default in
+  `.env.example` is `false` (real backend).
+- Categories are free text typed by the uploader; there is no categories table (3.2).
 
-**What is not tested**
-- Unit tests cover only `ProtectedRoute` and `AuthPage` (5.2). There is no end-to-end test yet.
-- The user system was checked with `tsc -b` and `pnpm build`, both passing. It was **not**
-  tested by clicking through the browser before this manual was written.
-- `HttpAuthService` has never talked to a real backend.
-- The movie pages were not tested against the backend. The local backend copy now exposes the
-  movie endpoints (1.3), so they can be tested by running it.
+**What is tested**
+- On 2026-10-13, `pnpm lint`, `pnpm test` (18 test files, 74 tests) and `pnpm build` all passed.
+- Unit tests (Vitest + Testing Library) cover components (`ProtectedRoute`, `MainNavbar`,
+  `AppealReviewCard`, `MyReportsList`, `ReportTypesManager`, `ReviewButtons`, `SeasonsManager`,
+  `WatchLaterButton`), pages (`AuthPage`, `ReportPage`, `NotFoundPage`), providers (`AuthProvider`,
+  `ToastProvider`, `ConfirmProvider`), services (`authService`, `movieService`, `reportService`) and `utils/catalog.ts`.
+  They use fake services or a fake `fetch`, never the real backend.
+- There is no end-to-end test yet (5.2).
+- This manual does not record which screens were clicked through in a browser against the running
+  backend; that could not be verified by reading the code.
 
 **Known security risks**
 - Token in localStorage, readable by any script on the page (4.3).
-- The role shown in the frontend can be changed by the user. The backend must enforce permissions.
-- No token expiry or revocation check.
-- Mock passwords in plain text in localStorage (development only).
-- Upload, edit and delete requests send the token (`movieService.ts:58`, `64`, `94`), but the
-  backend does not check it yet, so today it cannot know who makes them.
-- No backend authorization exists yet on any endpoint.
+- The role shown in the frontend can be changed by the user. Hiding screens is a convenience; the
+  backend must enforce permissions, and per the API contract it checks the token and the owner on
+  writes (403 otherwise).
+- A token that expires while the app is open is only noticed on the next reload or the next request
+  that answers 401 (4.3). Logging out revokes the token on the server (3.1).
+- Mock passwords in plain text in localStorage (development only, `VITE_USE_MOCK_AUTH = true`).
 
 ### 4.9 Known issues and technical debt
 
 | Issue | Where |
 |---|---|
-| Hardcoded `id_author: 2`, because the backend still requires it. | `UploadPage.tsx:42` |
-| "My Videos" lists every movie, not only the user's own. | `MyVideosPage.tsx:28-34` |
-| The report page does not know which video is reported, and sends nothing. | `ReportPage.tsx:27-34` |
-| The flag button that opens received complaints is shown to everyone; guests go to login and administrators are sent home. | `SearchBar.tsx:63` |
-| Custom CSS files instead of DaisyUI classes in several pages. | `src/styles/` |
-| Both `pnpm-lock.yaml` and `package-lock.json` exist, but the project uses pnpm only. | repo root |
-| `.env` has a `VITE_API_URL_HOST` variable that no code reads and `vite-env.d.ts` does not declare. | `.env` |
+| Appeal history with verdict changes (sketch C) is not built: the backend has no endpoint for it yet. | `AdminPage.tsx` (1.4) |
+| Search cannot filter by director, and content has no subtitle or audio language: the backend has no such fields. | `SearchPage.tsx` (3.3) |
+| "My Videos" and "Upload series" download every movie and series and filter them by `uploaderId` in the browser, because there is no "content of a user" endpoint. | `MyVideosPage.tsx:46`, `51-52`, `UploadSeriesPage.tsx:25-26` |
+| The series pages do not check that the season belongs to the series in the URL, or the episode to the season. | `EpisodeListPage.tsx`, `WatchSeriesPage.tsx` |
+| Episodes cannot be reported on their own: the button reports the whole series. | `WatchSeriesPage.tsx:82-83` |
+| `LanguagePanel` is not used by any page. | `src/components/LanguagePanel.tsx` |
+| There is no end-to-end test (required for approval). | 5.2 |
 
 ---
 
@@ -616,23 +972,24 @@ Requirements set by the course for regularity and approval. Status: ✅ Met · �
 
 | Requirement | Where in the code | Status |
 |---|---|---|
-| Handle user events (click, input...) | `AuthPage.tsx` (`onSubmit`, `toggleMode`), `SearchBar.tsx:41-46` (`onChange`, `onKeyDown`, `onClick`), `UploadPage.tsx:68-107`, `MyVideosPage.tsx` (edit/delete buttons) | ✅ |
-| Handle errors in a user-friendly way | `AuthPage` + `authService.ts`; content pages through `movieService.ts` (`ApiError`) + `errorMessage()` (`api.ts:17-19`), shown by `RequestStatus` or alerts in `WatchPage`, `UploadPage`, `MyVideosPage` | ✅ |
-| React to state changes | `SearchPage.tsx:33` (effect on `[query]`), `WatchPage.tsx:30` (`[id]`), `AuthPage.tsx:19-22` (redirect when `user` changes), `MainNavbar` (guest vs user) | ✅ |
-| Use input props | `Section` (`title`, `movies`), `MainNavbar` (`user`), `ProtectedRoute` (`allowedRoles`), `AuthProvider` (`children`), `RequestStatus`, `SearchBar` (`initialText`) | ✅ |
-| Use output props | `MainNavbar` `onLogout` (`MainNavbar.tsx:7`, `App.tsx:24`). It is the only one so far | ✅ |
-| At least one service | `src/services/authService.ts`, `src/services/movieService.ts` (+ `session.ts`, `api.ts`) | ✅ |
-| Model API data with interfaces/types | `src/types/index.ts` (`MovieDTO`, `MovieUpdate`, `MovieUploadData`, `User`, `LoginRequest`, `AuthResponse`, ...) | ✅ |
-| Apply an OOP design pattern | Strategy: `AuthService` interface with `HttpAuthService` and `MockAuthService` classes (`authService.ts`, `mockAuthService.ts`) | ✅ |
-| Dependencies registered in `package.json` | `package.json` lists React, React Router, Tailwind, DaisyUI, Vite, TypeScript, ESLint. A stray `package-lock.json` exists next to `pnpm-lock.yaml` | ✅ |
+| Handle user events (click, input...) | `AuthPage.tsx` (`onSubmit`, `toggleMode`), `SearchBar.tsx` and `SearchPage.tsx` filters (`onSubmit`, `onChange`), `UploadPage.tsx`, `ReportPage.tsx` (radio buttons, text area, confirmation modal), `ReviewButtons` and `WatchLaterButton` (`onClick`), `MyVideosPage.tsx` and the managers (edit / delete), `ModerationCasesPanel` filters | ✅ |
+| Handle errors in a user-friendly way | `ApiError`, `request()` and `statusMessage` in `api.ts` turn network and HTTP failures (400, 401, 403, 404, 409, 413, 415) into friendly English sentences; pages show them with `errorMessage()` through `RequestStatus`, alerts or toasts (3.1, 1.3) | ✅ |
+| React to state changes | `SearchPage.tsx` (re-filters when the URL changes), `WatchPage.tsx` (`[id]`), `SeasonSelectPage.tsx` (loads the episodes when the active season changes), `AuthPage.tsx` (redirect when `user` changes), `MainNavbar` (guest / viewer / administrator), `ReviewButtons` (counts from the reviews state) | ✅ |
+| Use input props | `Section` (`title`, `items`, `seeAllTo`), `MainNavbar` (`user`), `ProtectedRoute` (`allowedRoles`), `ReviewButtons` and `WatchLaterButton` (`type`, `id`), `CaseSummary` (`moderationCase`, `showOwner`), `RequestStatus`, `SearchBar` (`initialText`) | ✅ |
+| Use output props | `MainNavbar` `onLogout` (`App.tsx`), `AppealReviewCard` `onResolved`, `AccountsTable` `onChanged`, `NewAdministratorForm` `onCreated`, `ReportTypesManager` `onSaved` / `onDeleted` (`AdminPage.tsx`); `MySeriesItem` `onUpdated` / `onDeleted` (`MyVideosPage.tsx`); `NewSeriesForm` / `NewSeasonForm` `onCreated` (`UploadSeriesPage.tsx`); `VideoPicker` `onPicked` | ✅ |
+| At least one service | `src/services/`: `api.ts`, `session.ts` and one service per entity (`authService`, `movieService`, `seriesService`, `reviewService`, `watchLaterService`, `reportService`, `reportTypeService`, `appealService`, `viewerService`, `adminService`) | ✅ |
+| Model API data with interfaces/types | `src/types/index.ts`: backend DTOs (`MovieDTO`, `SeriesDTO`, `SeasonDTO`, `EpisodeDTO`, `UserDTO`, `AppealDTO`) and the app's types (`Movie`, `Series`, `Season`, `Episode`, `User`, `ReportType`, `ModerationCase`, `Appeal`, `Review`, `WatchLaterItem`, `LoginRequest`, `RegisterRequest`, ...) | ✅ |
+| Apply an OOP design pattern | Strategy: `AuthService` interface with `HttpAuthService` and `MockAuthService` classes (`authService.ts`, `mockAuthService.ts`). Adapter: `HttpAuthService` translates the backend's user API into the app's types (4.1) | ✅ |
+| Dependencies registered in `package.json` | `package.json` lists every runtime, development and test dependency; `pnpm-lock.yaml` locks them (pnpm only) | ✅ |
+| Mobile-first, SM / MD / LG | Unprefixed Tailwind classes for phones and `sm:` / `md:` / `lg:` for larger screens in every page (for example `WatchPage.tsx:73`, `AdminPage.tsx:94`). Not verified by reading alone: check each page in the browser at the three widths | 🟡 |
 
 ### 5.2 Approval
 
 | Requirement | Where in the code | Status |
 |---|---|---|
-| At least one component unit test | Vitest + Testing Library, run with `pnpm test`. `ProtectedRoute.test.tsx` (guest → `/login`, wrong role → `/`, allowed role sees the page) and `AuthPage.test.tsx` (sends the login request, friendly and generic error messages, switch to sign up). Both give the component a fake `AuthContext` value, so they do not use the mock service or localStorage | ✅ |
+| At least one component unit test | Vitest + Testing Library, run with `pnpm test`: 17 test files (4.8). Component tests give the component a fake context or fake services, so they do not need the backend | ✅ |
 | At least one end-to-end test | None | ❌ |
-| Login, with access protected by the backend's user levels via `ProtectedRoute` | Frontend side done: `ProtectedRoute.tsx`, `AuthPage.tsx`, `AuthProvider.tsx`, roles `administrator` / `viewer` in `types/index.ts:92`. But the user levels come from the **mock**, because the backend has no auth, and no admin routes exist yet | 🟡 |
+| Login, with access protected by the backend's user levels via `ProtectedRoute` | `ProtectedRoute.tsx`, `AuthPage.tsx`, `AuthProvider.tsx`, roles `administrator` / `viewer` in `types/index.ts`. Viewer screens use `allowedRoles={['viewer']}` and the administration screens `allowedRoles={['administrator']}` (`App.tsx:54-72`). The roles come from the backend's `/api/users/login` | ✅ |
 | Environments defined with `.env` | `.env` (git-ignored), `.env.example`, `VITE_API_URL`, `VITE_USE_MOCK_AUTH`, typed in `vite-env.d.ts`. There is one environment, with no separate development/production files | ✅ |
 
 ---
@@ -640,14 +997,14 @@ Requirements set by the course for regularity and approval. Status: ✅ Met · �
 ## 6. Glossary
 
 **API / endpoint** — The set of URLs a server answers. An endpoint is one of them, such as
-`POST /auth/login`.
+`POST /api/users/login`.
 
 **Async / await, Promise** — A Promise is a value that will be ready later, like a server
 response. `await` pauses an `async` function until the Promise is ready. `.then()` does the same
 with callbacks (`LandingPage.tsx` explains it in its bottom comment).
 
 **Bearer token / Authorization header** — How a request proves who is sending it: the header
-`Authorization: Bearer <token>`. Built by `authHeader()` (`api.ts:22`).
+`Authorization: Bearer <token>`. Built by `authHeader()` (`api.ts:42`).
 
 **Component** — A function that returns UI (JSX). Example: `Section`, `AuthPage`.
 
@@ -697,8 +1054,7 @@ where the matching child renders. `ProtectedRoute` uses it.
 **localStorage** — Key-value storage in the browser that survives reloads. Only the same site can
 read it, but any script running on that site can.
 
-**Mock** — A fake stand-in for something not available yet. Here: `MockAuthService` and
-`MOCK_SERIES`.
+**Mock** — A fake stand-in for something not available yet. Here: `MockAuthService`.
 
 **Mobile-first** — Styles without a prefix apply to phones, and `sm:`, `md:`, `lg:` add rules for
 bigger screens.
@@ -735,7 +1091,7 @@ the code using them does not care which one it gets. Here: `HttpAuthService` and
 `text-xl`).
 
 **Type guard** — A function that checks at runtime that a value has a type and tells TypeScript
-so (`value is User`). Examples: `isUser`, `isAuthResponse`. Needed because data from the network
+so (`value is User`). Examples: `isUser`, `isUserDTO`. Needed because data from the network
 or storage could be anything.
 
 **`useEffect`** — Runs code after rendering, such as fetching data. The dependency array decides
