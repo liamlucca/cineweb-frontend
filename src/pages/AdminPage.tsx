@@ -13,6 +13,7 @@ import NewAdministratorForm from '../components/NewAdministratorForm.tsx';
 import ReportTypesManager from '../components/ReportTypesManager.tsx';
 import ModerationCasesPanel from '../components/ModerationCasesPanel.tsx';
 import useDocumentTitle from '../hooks/useDocumentTitle.ts';
+import useToast from '../hooks/useToast.ts';
 
 type Tab = 'appeals' | 'cases' | 'reportTypes' | 'users' | 'administrators';
 
@@ -28,13 +29,12 @@ const TABS: { id: Tab, label: string }[] = [
 // the report reasons catalog and user management
 function AdminPage() {
   const { user } = useAuth();
+  const { notify } = useToast();
   const [tab, setTab] = useState<Tab>('appeals');
 
   const [appeals, setAppeals] = useState<Appeal[]>([]);
   const [loadingAppeals, setLoadingAppeals] = useState(true);
   const [appealsError, setAppealsError] = useState('');
-  // result of the last decision, shown above the list
-  const [lastResult, setLastResult] = useState('');
 
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loadingAccounts, setLoadingAccounts] = useState(true);
@@ -64,7 +64,7 @@ function AdminPage() {
 
   function handleResolved(appeal: Appeal, decision: AppealDecision, contentSuspended: boolean) {
     setAppeals((current) => current.filter((item) => item.id !== appeal.id));
-    setLastResult(decision === 'approved'
+    notify(decision === 'approved'
       ? `Appeal #${appeal.id} accepted: the content stays online.`
       : `Appeal #${appeal.id} rejected${contentSuspended ? ': the content was suspended.' : '.'}`);
   }
@@ -114,7 +114,6 @@ function AdminPage() {
 
       {tab === 'appeals' && (
         <section>
-          {lastResult && <div role="status" className="alert alert-success text-sm mb-4">{lastResult}</div>}
           <RequestStatus
             loading={loadingAppeals}
             error={appealsError}

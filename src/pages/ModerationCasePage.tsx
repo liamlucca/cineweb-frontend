@@ -6,10 +6,12 @@ import { errorMessage } from '../services/api.ts';
 import RequestStatus from '../components/RequestStatus.tsx';
 import CaseSummary from '../components/CaseSummary.tsx';
 import useDocumentTitle from '../hooks/useDocumentTitle.ts';
+import useToast from '../hooks/useToast.ts';
 
 // Detail of a moderation case for administrators: the reported content and user,
 // every report with its reason and details, and the appeal (which can be decided here)
 function ModerationCasePage() {
+  const { notify } = useToast();
   const { id = '' } = useParams();
   const caseId = Number(id);
   const validId = Number.isInteger(caseId) && caseId > 0;
@@ -19,7 +21,6 @@ function ModerationCasePage() {
   const [error, setError] = useState(validId ? '' : 'We couldn\'t find that report.');
   const [deciding, setDeciding] = useState(false);
   const [decisionError, setDecisionError] = useState('');
-  const [message, setMessage] = useState('');
 
   const load = useCallback(() => {
     if (!validId) return () => undefined;
@@ -53,7 +54,7 @@ function ModerationCasePage() {
     setDecisionError('');
     try {
       const suspended = await resolveAppeal(appeal.id, decision);
-      setMessage(decision === 'approved'
+      notify(decision === 'approved'
         ? 'Appeal accepted: the content stays online.'
         : `Appeal rejected${suspended ? ': the content was suspended.' : '.'}`);
       load();
@@ -82,8 +83,6 @@ function ModerationCasePage() {
                 </p>
               </div>
             </div>
-
-            {message && <div role="status" className="alert alert-success text-sm">{message}</div>}
 
             <section className="card bg-base-200">
               <div className="card-body p-4 md:p-6 gap-3">

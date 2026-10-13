@@ -7,6 +7,7 @@ import { getViewerProfile } from '../services/viewerService.ts';
 import { errorMessage } from '../services/api.ts';
 import RequestStatus from '../components/RequestStatus.tsx';
 import MyReportsList from '../components/MyReportsList.tsx';
+import useToast from '../hooks/useToast.ts';
 import useDocumentTitle from '../hooks/useDocumentTitle.ts';
 
 // Viewer activity from GET /api/viewers/me (administrators do not have it)
@@ -53,6 +54,7 @@ function ViewerActivity() {
 
 function ProfilePage() {
   const { user, updateProfile } = useAuth();
+  const { notify } = useToast();
   // the form starts with the current data (no password: it is never kept in state)
   const [username, setUsername] = useState(user?.username ?? '');
   const [firstName, setFirstName] = useState(user?.firstName ?? '');
@@ -60,7 +62,6 @@ function ProfilePage() {
   const [email, setEmail] = useState(user?.email ?? '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [message, setMessage] = useState('');
 
   // browser tab title
   useDocumentTitle('My profile');
@@ -80,16 +81,15 @@ function ProfilePage() {
     if (email.trim().toLowerCase() !== user.email) changes.email = email.trim();
 
     setError('');
-    setMessage('');
     if (Object.keys(changes).length === 0) {
-      setMessage('There is nothing to change.');
+      notify('There is nothing to change.', 'info');
       return;
     }
 
     setSaving(true);
     try {
       await updateProfile(changes);
-      setMessage('Your profile was saved.');
+      notify('Your profile was saved.');
     } catch (err) {
       setError(errorMessage(err));
     }
@@ -127,7 +127,6 @@ function ProfilePage() {
               {saving && <span className="loading loading-spinner loading-sm" />}
               Save changes
             </button>
-            {message && <span role="status" className="text-sm text-success">{message}</span>}
           </div>
           {error && <div role="alert" className="alert alert-error text-sm md:col-span-2">{error}</div>}
         </div>

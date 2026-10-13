@@ -5,6 +5,7 @@ import type { Series } from '../types/index.ts';
 import { deleteSeries, updateSeries } from '../services/seriesService.ts';
 import { errorMessage } from '../services/api.ts';
 import SeasonsManager from './SeasonsManager.tsx';
+import useToast from '../hooks/useToast.ts';
 
 interface MySeriesItemProps {
   series: Series
@@ -14,6 +15,7 @@ interface MySeriesItemProps {
 
 // One of the user's series in "My Videos": view, edit or delete it, and manage its seasons and episodes
 function MySeriesItem({ series, onUpdated, onDeleted }: MySeriesItemProps) {
+  const { notify } = useToast();
   const [editing, setEditing] = useState(false);
   const [managing, setManaging] = useState(false);
   const [title, setTitle] = useState(series.title);
@@ -41,6 +43,7 @@ function MySeriesItem({ series, onUpdated, onDeleted }: MySeriesItemProps) {
         description: description.trim(),
       }));
       setEditing(false);
+      notify('Your changes were saved.');
     } catch (err) {
       setError(errorMessage(err));
     }
@@ -54,6 +57,7 @@ function MySeriesItem({ series, onUpdated, onDeleted }: MySeriesItemProps) {
     setError('');
     try {
       await deleteSeries(series.id);
+      notify(`"${series.title}" was deleted.`);
       onDeleted(series.id);
     } catch (err) {
       setError(errorMessage(err));

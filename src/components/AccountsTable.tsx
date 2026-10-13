@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { Account } from '../types/index.ts';
 import { setAccountActive } from '../services/adminService.ts';
 import { errorMessage } from '../services/api.ts';
+import useToast from '../hooks/useToast.ts';
 
 interface AccountsTableProps {
   accounts: Account[]
@@ -13,6 +14,7 @@ interface AccountsTableProps {
 
 // Viewers and administrators, with a button to activate or deactivate each account
 function AccountsTable({ accounts, currentUserId, onChanged }: AccountsTableProps) {
+  const { notify } = useToast();
   const [busyId, setBusyId] = useState<number | null>(null);
   const [error, setError] = useState('');
 
@@ -24,6 +26,7 @@ function AccountsTable({ accounts, currentUserId, onChanged }: AccountsTableProp
     setError('');
     try {
       onChanged(await setAccountActive(account.id, !account.active));
+      notify(`The account "${account.username}" was ${account.active ? 'deactivated' : 'activated'}.`);
     } catch (err) {
       setError(errorMessage(err));
     }

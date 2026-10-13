@@ -6,16 +6,17 @@ import { withdrawAppeal } from '../services/appealService.ts';
 import { errorMessage } from '../services/api.ts';
 import RequestStatus from './RequestStatus.tsx';
 import CaseSummary from './CaseSummary.tsx';
+import useToast from '../hooks/useToast.ts';
 
 // "Reports about my content" (sketch 7): the cases opened against the viewer's videos,
 // with a button to appeal an open case or to withdraw an appeal that is still pending
 function MyReportsList() {
+  const { notify } = useToast();
   const [cases, setCases] = useState<ModerationCase[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [busyId, setBusyId] = useState<number | null>(null);
   const [actionError, setActionError] = useState('');
-  const [message, setMessage] = useState('');
 
   function load() {
     return getMyReports()
@@ -34,10 +35,9 @@ function MyReportsList() {
 
     setBusyId(moderationCase.id);
     setActionError('');
-    setMessage('');
     try {
       await withdrawAppeal(moderationCase.appeal.id);
-      setMessage(`Your appeal for case #${moderationCase.id} was withdrawn.`);
+      notify(`Your appeal for case #${moderationCase.id} was withdrawn.`);
       await load();
     } catch (err) {
       // a 409 explains it was already reviewed
@@ -52,7 +52,6 @@ function MyReportsList() {
       <p className="text-sm opacity-70 mb-3">
         When a video gets 3 reports, a case opens. You can appeal it, and an administrator decides.
       </p>
-      {message && <div role="status" className="alert alert-success text-sm mb-3">{message}</div>}
       {actionError && <div role="alert" className="alert alert-error text-sm mb-3">{actionError}</div>}
 
       <RequestStatus

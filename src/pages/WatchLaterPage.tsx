@@ -6,9 +6,11 @@ import { errorMessage } from '../services/api.ts';
 import { contentPath } from '../utils/moderation.ts';
 import RequestStatus from '../components/RequestStatus.tsx';
 import useDocumentTitle from '../hooks/useDocumentTitle.ts';
+import useToast from '../hooks/useToast.ts';
 
 // The viewer's "Watch later" list (sketch 3): movies and series saved from their detail page
 function WatchLaterPage() {
+  const { notify } = useToast();
   const [items, setItems] = useState<WatchLaterItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -28,6 +30,7 @@ function WatchLaterPage() {
     try {
       await removeFromWatchLater(item.id);
       setItems((current) => current.filter((saved) => saved.id !== item.id));
+      notify(`"${item.title}" was removed from your list.`, 'info');
     } catch (err) {
       setRemoveError(errorMessage(err));
     }

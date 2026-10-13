@@ -4,6 +4,7 @@ import type { WatchLaterType } from '../types/index.ts';
 import { addToWatchLater, getWatchLater, removeFromWatchLater } from '../services/watchLaterService.ts';
 import { errorMessage } from '../services/api.ts';
 import useAuth from '../hooks/useAuth.ts';
+import useToast from '../hooks/useToast.ts';
 
 interface WatchLaterButtonProps {
   type: WatchLaterType
@@ -13,6 +14,7 @@ interface WatchLaterButtonProps {
 // "Add to Watch later" (sketch 3). Viewers can save or remove the content; guests are invited to log in.
 function WatchLaterButton({ type, id }: WatchLaterButtonProps) {
   const { user } = useAuth();
+  const { notify } = useToast();
   const isViewer = user?.role === 'viewer';
   // id of the list item when the content is saved, null when it is not
   const [itemId, setItemId] = useState<number | null>(null);
@@ -45,9 +47,11 @@ function WatchLaterButton({ type, id }: WatchLaterButtonProps) {
     try {
       if (itemId === null) {
         setItemId(await addToWatchLater(type, id));
+        notify('Added to your Watch later list.');
       } else {
         await removeFromWatchLater(itemId);
         setItemId(null);
+        notify('Removed from your Watch later list.', 'info');
       }
     } catch (err) {
       setError(errorMessage(err));

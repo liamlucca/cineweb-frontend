@@ -3,6 +3,7 @@ import type { FormEvent } from 'react';
 import type { ReportType } from '../types/index.ts';
 import { createReportType, deleteReportType, updateReportType } from '../services/reportTypeService.ts';
 import { errorMessage } from '../services/api.ts';
+import useToast from '../hooks/useToast.ts';
 
 interface ReportTypesManagerProps {
   reportTypes: ReportType[]
@@ -19,6 +20,7 @@ interface ReportTypeRowProps {
 
 // One reason of the catalog: shows it, or edits it in place
 function ReportTypeRow({ reportType, onSaved, onDeleted }: ReportTypeRowProps) {
+  const { notify } = useToast();
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(reportType.name);
   const [requiresDetails, setRequiresDetails] = useState(reportType.requiresDetails);
@@ -39,6 +41,7 @@ function ReportTypeRow({ reportType, onSaved, onDeleted }: ReportTypeRowProps) {
     try {
       onSaved(await updateReportType(reportType.id, { name: name.trim(), requiresDetails }));
       setEditing(false);
+      notify('The reason was saved.');
     } catch (err) {
       // a 409 explains it: "A report type with that name already exists"
       setError(errorMessage(err));
@@ -52,6 +55,7 @@ function ReportTypeRow({ reportType, onSaved, onDeleted }: ReportTypeRowProps) {
     setError('');
     try {
       await deleteReportType(reportType.id);
+      notify(`The reason "${reportType.name}" was deleted.`);
       onDeleted(reportType.id);
     } catch (err) {
       // a 409 explains that reports already use it
@@ -110,6 +114,7 @@ function ReportTypeRow({ reportType, onSaved, onDeleted }: ReportTypeRowProps) {
 
 // CRUD of the report reasons that viewers choose from in the report form
 function ReportTypesManager({ reportTypes, onSaved, onDeleted }: ReportTypesManagerProps) {
+  const { notify } = useToast();
   const [name, setName] = useState('');
   const [requiresDetails, setRequiresDetails] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -121,6 +126,7 @@ function ReportTypesManager({ reportTypes, onSaved, onDeleted }: ReportTypesMana
     setError('');
     try {
       onSaved(await createReportType({ name: name.trim(), requiresDetails }));
+      notify(`The reason "${name.trim()}" was added.`);
       setName('');
       setRequiresDetails(false);
     } catch (err) {

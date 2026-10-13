@@ -9,10 +9,12 @@ import { getAllSeries } from "../services/seriesService.ts";
 import { errorMessage } from "../services/api.ts";
 import useAuth from "../hooks/useAuth.ts";
 import MySeriesItem from "../components/MySeriesItem.tsx";
+import useToast from "../hooks/useToast.ts";
 import useDocumentTitle from "../hooks/useDocumentTitle.ts";
 
 function MyVideosPage() {
   const { user } = useAuth();
+  const { notify } = useToast();
   const userId = user?.id;
   const [videos, setVideos] = useState<MovieDTO[]>([]);
   const [loading, setLoading] = useState(true);
@@ -64,6 +66,7 @@ function MyVideosPage() {
       setVideos((currentVideos) =>
         currentVideos.filter((v) => v.id !== video.id)
       );
+      notify(`"${video.title}" was deleted.`);
     } catch (err) {
       setActionError(errorMessage(err));
     } finally {
@@ -115,6 +118,7 @@ function MyVideosPage() {
 
       // Exits edit mode
       cancelEditing();
+      notify("Your changes were saved.");
     } catch (err) {
       setActionError(errorMessage(err));
     } finally {

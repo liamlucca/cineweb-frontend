@@ -4,6 +4,7 @@ import type { Episode } from '../types/index.ts';
 import { deleteEpisode, getEpisodes, updateEpisode } from '../services/seriesService.ts';
 import { errorMessage } from '../services/api.ts';
 import RequestStatus from './RequestStatus.tsx';
+import useToast from '../hooks/useToast.ts';
 
 interface EpisodeRowProps {
   episode: Episode
@@ -13,6 +14,7 @@ interface EpisodeRowProps {
 
 // One episode: shows it, or edits its number, title and description in place
 function EpisodeRow({ episode, onUpdated, onDeleted }: EpisodeRowProps) {
+  const { notify } = useToast();
   const [editing, setEditing] = useState(false);
   const [number, setNumber] = useState(String(episode.number));
   const [title, setTitle] = useState(episode.title);
@@ -39,6 +41,7 @@ function EpisodeRow({ episode, onUpdated, onDeleted }: EpisodeRowProps) {
         description: description.trim(),
       }));
       setEditing(false);
+      notify('The episode was saved.');
     } catch (err) {
       // a 409 explains that the number is already used in this season
       setError(errorMessage(err));
@@ -52,6 +55,7 @@ function EpisodeRow({ episode, onUpdated, onDeleted }: EpisodeRowProps) {
     setError('');
     try {
       await deleteEpisode(episode.id);
+      notify('The episode was deleted.');
       onDeleted(episode.id);
     } catch (err) {
       setError(errorMessage(err));
