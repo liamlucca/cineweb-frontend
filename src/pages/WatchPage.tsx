@@ -1,6 +1,6 @@
 import { Link, useParams } from "react-router-dom"
 import { useEffect, useState } from "react"
-import type { MovieDTO } from "../types/index.ts"
+import type { Movie } from "../types/index.ts"
 import { getMovie, videoUrl } from "../services/movieService.ts"
 import { errorMessage, mediaUrl } from "../services/api.ts"
 import { formatDuration } from "../utils/catalog.ts"
@@ -15,7 +15,7 @@ const SHORT_DESCRIPTION = 180
 function WatchPage() {
   const { id = '' } = useParams()
   const { user } = useAuth()
-  const [movie, setMovie] = useState<MovieDTO | null>(null)
+  const [movie, setMovie] = useState<Movie | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [descriptionExpanded, setDescriptionExpanded] = useState(false)
@@ -75,7 +75,7 @@ function WatchPage() {
       <div className="lg:col-span-2">
         <video
           src={videoUrl(movie.path)}
-          poster={mediaUrl(movie.thumbnail_path) ?? undefined}
+          poster={mediaUrl(movie.thumbnailPath) ?? undefined}
           controls
           className="w-full aspect-video bg-black rounded-box shadow-lg"
         />
@@ -90,7 +90,7 @@ function WatchPage() {
             {duration && <span className="badge badge-ghost">{duration}</span>}
             <span className="opacity-70">{movie.views} views</span>
           </div>
-          {movie.uploader_user_name && <p className="text-sm opacity-70 mt-2">Uploaded by @{movie.uploader_user_name}</p>}
+          {movie.uploaderUsername && <p className="text-sm opacity-70 mt-2">Uploaded by @{movie.uploaderUsername}</p>}
         </div>
 
         <div className="flex flex-col gap-2">
@@ -110,7 +110,7 @@ function WatchPage() {
         )}
 
         {/* nobody can report their own movie (the backend rejects it too) */}
-        {movie.id_author !== user?.id && (
+        {movie.uploaderId !== user?.id && (
           <Link to={`/report/movie/${movie.id}`} className="btn btn-ghost btn-sm text-error">⚑ Report</Link>
         )}
       </section>

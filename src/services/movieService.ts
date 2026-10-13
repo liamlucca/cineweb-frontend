@@ -1,26 +1,44 @@
-import type { MovieDTO, MovieUpdate, MovieUploadData } from '../types/index.ts';
+import type {
+  Movie, MovieDTO, MovieUpdate, MovieUploadData,
+} from '../types/index.ts';
 import {
   API_URL, ApiError, GENERIC_ERROR, authHeader, readJson, request, uploadWithProgress,
 } from './api.ts';
 
 const NOT_FOUND_ERROR = 'We couldn\'t find that video.';
 
+// The backend sends snake_case; the pages use the camelCase type
+export function toMovie(dto: MovieDTO): Movie {
+  return {
+    id: dto.id,
+    title: dto.title,
+    category: dto.category ?? '',
+    description: dto.description ?? '',
+    path: dto.path,
+    views: dto.views ?? 0,
+    uploaderId: dto.id_author,
+    uploaderUsername: dto.uploader_user_name ?? null,
+    thumbnailPath: dto.thumbnail_path ?? null,
+    duration: dto.duration ?? null,
+  };
+}
+
 // Full URL of a video file served by the backend (path looks like "/movies/123-name.mp4")
 export function videoUrl(path: string): string {
   return `${API_URL}${path}`;
 }
 
-export async function getMovies(): Promise<MovieDTO[]> {
+export async function getMovies(): Promise<Movie[]> {
   const data = await readJson(await request('/api/movie', NOT_FOUND_ERROR));
   if (!Array.isArray(data)) throw new ApiError(GENERIC_ERROR);
-  return data as MovieDTO[];
+  return (data as MovieDTO[]).map(toMovie);
 }
 
-export async function getMovie(id: string): Promise<MovieDTO> {
+export async function getMovie(id: string): Promise<Movie> {
   const data = await readJson(await request(`/api/movie/${encodeURIComponent(id)}`, NOT_FOUND_ERROR));
   const movie = (data as { movie?: MovieDTO } | null)?.movie;
   if (!movie) throw new ApiError(GENERIC_ERROR);
-  return movie;
+  return toMovie(movie);
 }
 
 export async function updateMovie(id: number, changes: MovieUpdate): Promise<void> {

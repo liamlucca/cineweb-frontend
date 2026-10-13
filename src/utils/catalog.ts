@@ -1,18 +1,18 @@
 import type {
-  CatalogFilters, CatalogItem, CatalogType, MovieDTO, Series,
+  CatalogFilters, CatalogItem, CatalogType, Movie, Series,
 } from '../types/index.ts';
 
 export const NO_FILTERS: CatalogFilters = { query: '', type: 'all', category: '' };
 
-export function movieToCatalogItem(movie: MovieDTO): CatalogItem {
+export function movieToCatalogItem(movie: Movie): CatalogItem {
   return {
     kind: 'movie',
     id: movie.id,
     title: movie.title,
-    category: movie.category ?? '',
-    description: movie.description ?? '',
-    thumbnailPath: movie.thumbnail_path ?? null,
-    duration: movie.duration ?? null,
+    category: movie.category,
+    description: movie.description,
+    thumbnailPath: movie.thumbnailPath,
+    duration: movie.duration,
   };
 }
 

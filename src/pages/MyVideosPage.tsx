@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
-import type { MovieDTO, MovieUpdate, Series } from "../types/index.ts";
+import type { Movie, MovieUpdate, Series } from "../types/index.ts";
 import RequestStatus from "../components/RequestStatus.tsx";
 import { deleteMovie, getMovies, updateMovie } from "../services/movieService.ts";
 import { formatDuration } from "../utils/catalog.ts";
@@ -16,7 +16,7 @@ function MyVideosPage() {
   const { user } = useAuth();
   const { notify } = useToast();
   const userId = user?.id;
-  const [videos, setVideos] = useState<MovieDTO[]>([]);
+  const [videos, setVideos] = useState<Movie[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
 
@@ -41,7 +41,7 @@ function MyVideosPage() {
   useEffect(() => {
     // There is no "movies of a user" endpoint, so all movies are fetched and filtered here
     getMovies()
-      .then((allMovies) => setVideos(allMovies.filter((movie) => movie.id_author === userId)))
+      .then((allMovies) => setVideos(allMovies.filter((movie) => movie.uploaderId === userId)))
       .catch((err: unknown) => setLoadError(errorMessage(err)))
       .finally(() => setLoading(false));
   }, [userId]);
@@ -55,7 +55,7 @@ function MyVideosPage() {
   }, [userId]);
 
   // Deletes a video. The backend only hides it (logical delete, sketch 8)
-  const deleteVideo = async (video: MovieDTO) => {
+  const deleteVideo = async (video: Movie) => {
     if (!window.confirm(`Delete "${video.title}"? It will no longer be shown on CineWeb.`)) return;
 
     setBusyVideoId(video.id);
@@ -75,7 +75,7 @@ function MyVideosPage() {
   };
 
   // Starts editing a video
-  const startEditing = (video: MovieDTO) => {
+  const startEditing = (video: Movie) => {
     setEditingVideoId(video.id);
     setEditedTitle(video.title);
     setEditedCategory(video.category);
@@ -182,7 +182,7 @@ function MyVideosPage() {
                 className="relative block w-full md:w-64 shrink-0 aspect-video rounded-box overflow-hidden bg-base-300"
                 aria-label={`Watch ${video.title}`}
               >
-                <Thumbnail path={video.thumbnail_path} title={video.title} />
+                <Thumbnail path={video.thumbnailPath} title={video.title} />
                 {formatDuration(video.duration) && (
                   <span className="badge badge-sm badge-neutral absolute bottom-2 right-2">{formatDuration(video.duration)}</span>
                 )}

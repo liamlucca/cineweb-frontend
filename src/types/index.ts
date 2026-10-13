@@ -24,7 +24,26 @@ export interface CatalogFilters {
 
 // MOVIES
 
-// shape coming from the backend (only 'active' movies are listed by it)
+// Shape the pages use (camelCase, like Series)
+export interface Movie {
+  id: number
+  title: string
+  category: string
+  description: string
+  // "/movies/..." video file served by the backend
+  path: string
+  views: number
+  // id of the user who uploaded it
+  uploaderId: number
+  // username of that user, or null if the backend did not send it
+  uploaderUsername: string | null
+  // "/thumbnails/..." captured when it was uploaded; null for old movies
+  thumbnailPath: string | null
+  // length in seconds; null for old movies
+  duration: number | null
+}
+
+// shape coming from the backend (snake_case, converted by movieService; only 'active' movies are listed)
 export interface MovieDTO {
   id: number
   id_author: number
@@ -43,7 +62,7 @@ export interface MovieDTO {
 }
 
 // fields a viewer can change from "My Videos"
-export type MovieUpdate = Pick<MovieDTO, 'title' | 'category' | 'description'>
+export type MovieUpdate = Pick<Movie, 'title' | 'category' | 'description'>
 
 // JSON sent in the "data" part of the upload request.
 // The backend takes the uploader from the token and sets views and state itself.
