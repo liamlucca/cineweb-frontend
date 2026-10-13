@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import { toCaseReport, toModerationCase } from './reportService.ts';
 import { ApiError } from './api.ts';
 
-// Shape copied from a real answer of GET /api/reports/:id (backend branch regularidad, test data)
 const CASE_FROM_BACKEND = {
   id: 1,
   targetType: 'movie',

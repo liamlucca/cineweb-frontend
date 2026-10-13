@@ -101,11 +101,19 @@ Rules (the diagram does not say these):
 - Inheritance (e.g. `Administrator` and `Viewer` extend `User`) is modeled with
   interfaces plus a discriminator field (e.g. `role`), not with classes.
 
+Decisions already taken (do not ask again):
+- Report reasons are a catalog, `ReportType` (`id`, `name`, `requiresDetails`), managed by
+  administrators (it is the proposal's "CRUD Tipo Reporte" and the diagram's `ReportReason`).
+  Each report has ONE type plus an optional `details` text, required only when the type has
+  `requiresDetails` (e.g. "Other").
+- `Report.status` (the moderation case) uses the backend's values: `pending`, `appealed`,
+  `upheld`, `dismissed`.
+- Appeals: the frontend exposes a single `status` (`pending` / `approved` / `rejected`) derived
+  from the backend's `decision`. The backend's appeals table is not changed for this.
+- Deleting audiovisual content is logical (`state = 'deleted'`), as sketch 8 asks.
+- Persistence: the backend keeps `mysql2` with repositories and SQL (no ORM), by team decision.
+
 Open decisions (ask before assuming):
-- Values of `Report.status`.
-- Whether `Appeal.reviewed` becomes a `status` enum (pending / accepted / rejected,
-  as the admin sketches show).
-- Whether a report has one reason or several.
 - What "similar videos" means for reviews.
 
 ## Known diagram errors
@@ -116,16 +124,20 @@ literally: if a task touches any of them, ask me before picking an interpretatio
 - `Series` has no title, category or description.
 - `Season` uses `audiovisualId` to point to its series, and `Series` uses
   `idSerie` instead of `id`.
-- `Episode` and `Movie` lost fields that the sketches use.
+- `Episode` and `Movie` lost fields that the sketches use (`duration` is implemented;
+  director, subtitle and audio language are not).
 - The cardinalities of `Content` are read from the child side.
 - The `ReportReason`—`Audiovisual` line no longer makes sense.
-- `ReportReason` still has `count` and `otherReasonDescription`.
-- `Appeal.reviewed` is still a boolean.
+- `ReportReason` still has `count` and `otherReasonDescription`. Implemented as decided above:
+  the `ReportType` catalog, and `details` on each report. The diagram has to be updated.
+- `Appeal.reviewed` is still a boolean. The app uses a `status` derived from `decision` (see
+  the decisions above); the diagram has to be updated.
+- `WatchLater` has no type: the implementation adds `audiovisualType` (`movie` / `series`),
+  because a movie and a series can share an id.
 
 ## API contract
 
-What the backend actually does (checked in its code, commit `9d30d59`).
-`docs/MANUAL.md` section 1.3 has the full endpoint list.
+The backend's README lists its routes.
 
 - Naming: the backend uses snake_case for users and content (`id_user`,
   `id_serie`) and camelCase for reports and appeals (`targetType`). The
@@ -147,7 +159,12 @@ What the backend actually does (checked in its code, commit `9d30d59`).
   accept title, category and description (plus season/episode numbers).
 - Uploads: videos only (415 otherwise), size limit (413), unique file names.
   The backend sets `state` and `views`; the frontend never sends them.
-- Backend branch with these changes: `regularidad` (created from `Liam`).
+- Also available: `/api/report-types` (CRUD, writes for
+  administrators), `POST /api/reports` with `{ targetType, targetId, reportTypeId, details? }`,
+  `GET /api/reports` (administrators, filters `id`, `status`, `reportTypeId`),
+  `GET /api/viewers/me/reports`, `DELETE /api/appeals/:id`, `/api/watch-later`,
+  `uploader_user_name`, `thumbnail_path` and `duration` on content, and the `thumbnail` field
+  on uploads.
 
 ## Screens (from the sketches "Bosquejos TP DSW")
 
@@ -171,7 +188,8 @@ Administrator:
 Auth: login (email or username, password) and register (first name, last name, email,
 username, password).
 
-Current priority: the user system (login, register, `AuthContext`, protected routes).
+Current priority: the regularity delivery (12/10–16/10). Every screen above exists; the
+appeal history with verdict changes (C) is still pending in the backend.
 
 ## Code manual
 
