@@ -4,6 +4,7 @@ import type { ReportType } from '../types/index.ts';
 import { createReportType, deleteReportType, updateReportType } from '../services/reportTypeService.ts';
 import { errorMessage } from '../services/api.ts';
 import useToast from '../hooks/useToast.ts';
+import useConfirm from '../hooks/useConfirm.ts';
 
 interface ReportTypesManagerProps {
   reportTypes: ReportType[]
@@ -21,6 +22,7 @@ interface ReportTypeRowProps {
 // One reason of the catalog: shows it, or edits it in place
 function ReportTypeRow({ reportType, onSaved, onDeleted }: ReportTypeRowProps) {
   const { notify } = useToast();
+  const { confirm } = useConfirm();
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(reportType.name);
   const [requiresDetails, setRequiresDetails] = useState(reportType.requiresDetails);
@@ -50,7 +52,7 @@ function ReportTypeRow({ reportType, onSaved, onDeleted }: ReportTypeRowProps) {
   }
 
   async function remove() {
-    if (!window.confirm(`Delete the reason "${reportType.name}"?`)) return;
+    if (!(await confirm({ title: `Delete the reason "${reportType.name}"?`, confirmLabel: 'Delete', danger: true }))) return;
     setBusy(true);
     setError('');
     try {

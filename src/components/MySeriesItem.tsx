@@ -7,6 +7,7 @@ import { errorMessage } from '../services/api.ts';
 import SeasonsManager from './SeasonsManager.tsx';
 import Thumbnail from './Thumbnail.tsx';
 import useToast from '../hooks/useToast.ts';
+import useConfirm from '../hooks/useConfirm.ts';
 
 interface MySeriesItemProps {
   series: Series
@@ -17,6 +18,7 @@ interface MySeriesItemProps {
 // One of the user's series in "My Videos": view, edit or delete it, and manage its seasons and episodes
 function MySeriesItem({ series, onUpdated, onDeleted }: MySeriesItemProps) {
   const { notify } = useToast();
+  const { confirm } = useConfirm();
   const [editing, setEditing] = useState(false);
   const [managing, setManaging] = useState(false);
   const [title, setTitle] = useState(series.title);
@@ -53,7 +55,12 @@ function MySeriesItem({ series, onUpdated, onDeleted }: MySeriesItemProps) {
 
   async function remove() {
     // logical delete: the backend hides the series with its seasons and episodes
-    if (!window.confirm(`Delete "${series.title}" with all its seasons and episodes? They will no longer be shown on CineWeb.`)) return;
+    if (!(await confirm({
+      title: `Delete "${series.title}"?`,
+      message: 'Its seasons and episodes will be deleted too. They will no longer be shown on CineWeb.',
+      confirmLabel: 'Delete',
+      danger: true,
+    }))) return;
     setBusy(true);
     setError('');
     try {

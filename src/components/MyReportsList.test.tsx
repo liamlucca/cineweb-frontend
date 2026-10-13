@@ -1,10 +1,11 @@
 import {
   afterEach, beforeEach, describe, expect, it, vi,
 } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import MyReportsList from './MyReportsList.tsx';
+import ConfirmProvider from '../context/ConfirmProvider.tsx';
 import type { ModerationCase } from '../types/index.ts';
 
 const { getMyReports, withdrawAppeal } = vi.hoisted(() => ({
@@ -34,7 +35,9 @@ function moderationCase(id: number, changes: Partial<ModerationCase>): Moderatio
 function renderList() {
   render(
     <MemoryRouter>
-      <MyReportsList />
+      <ConfirmProvider>
+        <MyReportsList />
+      </ConfirmProvider>
     </MemoryRouter>,
   );
 }
@@ -42,7 +45,6 @@ function renderList() {
 describe('MyReportsList', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
   });
 
   afterEach(() => {
@@ -66,7 +68,10 @@ describe('MyReportsList', () => {
     withdrawAppeal.mockResolvedValue(undefined);
     renderList();
 
-    await userEvent.setup().click(await screen.findByRole('button', { name: 'Withdraw appeal' }));
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole('button', { name: 'Withdraw appeal' }));
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Withdraw' }));
 
     expect(withdrawAppeal).toHaveBeenCalledWith(20);
     expect(await screen.findByRole('link', { name: 'Appeal' })).toBeInTheDocument();

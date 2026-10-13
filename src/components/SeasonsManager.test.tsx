@@ -1,9 +1,10 @@
 import {
   afterEach, beforeEach, describe, expect, it, vi,
 } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import SeasonsManager from './SeasonsManager.tsx';
+import ConfirmProvider from '../context/ConfirmProvider.tsx';
 
 const {
   getSeasons, updateSeason, deleteSeason, getEpisodes,
@@ -24,7 +25,6 @@ const SEASON = {
 describe('SeasonsManager', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
     getSeasons.mockResolvedValue([SEASON]);
   });
 
@@ -50,9 +50,11 @@ describe('SeasonsManager', () => {
 
   it('deletes a season after the confirmation', async () => {
     deleteSeason.mockResolvedValue(undefined);
-    render(<SeasonsManager seriesId={1} />);
+    render(<ConfirmProvider><SeasonsManager seriesId={1} /></ConfirmProvider>);
+    const user = userEvent.setup();
 
-    await userEvent.setup().click(await screen.findByRole('button', { name: 'Delete' }));
+    await user.click(await screen.findByRole('button', { name: 'Delete' }));
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Delete' }));
 
     expect(deleteSeason).toHaveBeenCalledWith(3);
     expect(await screen.findByText('This series has no seasons yet.')).toBeInTheDocument();

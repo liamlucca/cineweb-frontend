@@ -7,11 +7,13 @@ import RequestStatus from '../components/RequestStatus.tsx';
 import CaseSummary from '../components/CaseSummary.tsx';
 import useDocumentTitle from '../hooks/useDocumentTitle.ts';
 import useToast from '../hooks/useToast.ts';
+import useConfirm from '../hooks/useConfirm.ts';
 
 // Detail of a moderation case for administrators: the reported content and user,
 // every report with its reason and details, and the appeal (which can be decided here)
 function ModerationCasePage() {
   const { notify } = useToast();
+  const { confirm } = useConfirm();
   const { id = '' } = useParams();
   const caseId = Number(id);
   const validId = Number.isInteger(caseId) && caseId > 0;
@@ -45,10 +47,12 @@ function ModerationCasePage() {
   async function decide(decision: AppealDecision) {
     const appeal = moderationCase?.appeal;
     if (!appeal) return;
-    const question = decision === 'approved'
-      ? 'Accept this appeal? The content will stay online.'
-      : 'Reject this appeal? The content will be suspended.';
-    if (!window.confirm(question)) return;
+    const accepted = await confirm(decision === 'approved'
+      ? { title: 'Accept this appeal?', message: 'The content will stay online.', confirmLabel: 'Accept' }
+      : {
+        title: 'Reject this appeal?', message: 'The content will be suspended.', confirmLabel: 'Reject', danger: true,
+      });
+    if (!accepted) return;
 
     setDeciding(true);
     setDecisionError('');

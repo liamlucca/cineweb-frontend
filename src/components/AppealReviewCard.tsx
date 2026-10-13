@@ -4,6 +4,7 @@ import type { Appeal, AppealDecision, ModerationCase } from '../types/index.ts';
 import { getModerationCase, resolveAppeal } from '../services/adminService.ts';
 import { errorMessage } from '../services/api.ts';
 import CaseSummary from './CaseSummary.tsx';
+import useConfirm from '../hooks/useConfirm.ts';
 
 interface AppealReviewCardProps {
   appeal: Appeal
@@ -13,6 +14,7 @@ interface AppealReviewCardProps {
 
 // One pending appeal (sketch B): see the reported case, then accept or reject the appeal
 function AppealReviewCard({ appeal, onResolved }: AppealReviewCardProps) {
+  const { confirm } = useConfirm();
   const [moderationCase, setModerationCase] = useState<ModerationCase | null>(null);
   const [loadingCase, setLoadingCase] = useState(false);
   const [deciding, setDeciding] = useState(false);
@@ -30,10 +32,12 @@ function AppealReviewCard({ appeal, onResolved }: AppealReviewCardProps) {
   }
 
   async function decide(decision: AppealDecision) {
-    const question = decision === 'approved'
-      ? 'Accept this appeal? The content will stay online.'
-      : 'Reject this appeal? The content will be suspended.';
-    if (!window.confirm(question)) return;
+    const accepted = await confirm(decision === 'approved'
+      ? { title: 'Accept this appeal?', message: 'The content will stay online.', confirmLabel: 'Accept' }
+      : {
+        title: 'Reject this appeal?', message: 'The content will be suspended.', confirmLabel: 'Reject', danger: true,
+      });
+    if (!accepted) return;
 
     setDeciding(true);
     setError('');

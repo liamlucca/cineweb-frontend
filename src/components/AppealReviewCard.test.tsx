@@ -1,10 +1,11 @@
 import {
   afterEach, beforeEach, describe, expect, it, vi,
 } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import AppealReviewCard from './AppealReviewCard.tsx';
+import ConfirmProvider from '../context/ConfirmProvider.tsx';
 import type { Appeal } from '../types/index.ts';
 
 const { getModerationCase, resolveAppeal } = vi.hoisted(() => ({
@@ -20,7 +21,9 @@ const APPEAL: Appeal = {
 function renderCard(onResolved = vi.fn()) {
   render(
     <MemoryRouter>
-      <AppealReviewCard appeal={APPEAL} onResolved={onResolved} />
+      <ConfirmProvider>
+        <AppealReviewCard appeal={APPEAL} onResolved={onResolved} />
+      </ConfirmProvider>
     </MemoryRouter>,
   );
   return onResolved;
@@ -29,7 +32,6 @@ function renderCard(onResolved = vi.fn()) {
 describe('AppealReviewCard', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
   });
 
   afterEach(() => {
@@ -69,18 +71,23 @@ describe('AppealReviewCard', () => {
     resolveAppeal.mockResolvedValue(true);
     const onResolved = renderCard();
 
-    await userEvent.setup().click(screen.getByRole('button', { name: 'Reject appeal' }));
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole('button', { name: 'Reject appeal' }));
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Reject' }));
 
     expect(resolveAppeal).toHaveBeenCalledWith(4, 'rejected');
     expect(onResolved).toHaveBeenCalledWith(APPEAL, 'rejected', true);
   });
 
   it('does nothing if the administrator cancels the confirmation', async () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(false);
     renderCard();
+    const user = userEvent.setup();
 
-    await userEvent.setup().click(screen.getByRole('button', { name: 'Accept appeal' }));
+    await user.click(screen.getByRole('button', { name: 'Accept appeal' }));
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Cancel' }));
 
     expect(resolveAppeal).not.toHaveBeenCalled();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 });

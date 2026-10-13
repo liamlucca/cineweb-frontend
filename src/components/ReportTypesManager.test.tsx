@@ -1,9 +1,10 @@
 import {
   afterEach, beforeEach, describe, expect, it, vi,
 } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import ReportTypesManager from './ReportTypesManager.tsx';
+import ConfirmProvider from '../context/ConfirmProvider.tsx';
 import { ApiError } from '../services/api.ts';
 
 const { createReportType, updateReportType, deleteReportType } = vi.hoisted(() => ({
@@ -21,14 +22,17 @@ const TYPES = [
 function renderManager() {
   const onSaved = vi.fn();
   const onDeleted = vi.fn();
-  render(<ReportTypesManager reportTypes={TYPES} onSaved={onSaved} onDeleted={onDeleted} />);
+  render(
+    <ConfirmProvider>
+      <ReportTypesManager reportTypes={TYPES} onSaved={onSaved} onDeleted={onDeleted} />
+    </ConfirmProvider>,
+  );
   return { onSaved, onDeleted };
 }
 
 describe('ReportTypesManager', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
   });
 
   afterEach(() => {
@@ -62,7 +66,10 @@ describe('ReportTypesManager', () => {
     );
     const { onDeleted } = renderManager();
 
-    await userEvent.setup().click(screen.getAllByRole('button', { name: 'Delete' })[0]);
+    const user = userEvent.setup();
+
+    await user.click(screen.getAllByRole('button', { name: 'Delete' })[0]);
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Delete' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent('used by existing reports');
     expect(onDeleted).not.toHaveBeenCalled();

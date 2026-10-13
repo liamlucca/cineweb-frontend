@@ -5,6 +5,7 @@ import { deleteSeason, getSeasons, updateSeason } from '../services/seriesServic
 import { errorMessage } from '../services/api.ts';
 import RequestStatus from './RequestStatus.tsx';
 import useToast from '../hooks/useToast.ts';
+import useConfirm from '../hooks/useConfirm.ts';
 import EpisodesManager from './EpisodesManager.tsx';
 
 interface SeasonRowProps {
@@ -16,6 +17,7 @@ interface SeasonRowProps {
 // One season: edit its number and description, delete it, or open its episodes
 function SeasonRow({ season, onUpdated, onDeleted }: SeasonRowProps) {
   const { notify } = useToast();
+  const { confirm } = useConfirm();
   const [editing, setEditing] = useState(false);
   const [showEpisodes, setShowEpisodes] = useState(false);
   const [number, setNumber] = useState(String(season.seasonNumber));
@@ -46,7 +48,12 @@ function SeasonRow({ season, onUpdated, onDeleted }: SeasonRowProps) {
   }
 
   async function remove() {
-    if (!window.confirm(`Delete season ${season.seasonNumber} and all its episodes? They will no longer be shown on CineWeb.`)) return;
+    if (!(await confirm({
+      title: `Delete season ${season.seasonNumber}?`,
+      message: 'Its episodes will be deleted too. They will no longer be shown on CineWeb.',
+      confirmLabel: 'Delete',
+      danger: true,
+    }))) return;
     setBusy(true);
     setError('');
     try {

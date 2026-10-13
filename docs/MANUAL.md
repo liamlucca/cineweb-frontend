@@ -198,8 +198,8 @@ Details:
 | `src/pages/` | One component per route (one screen each). |
 | `src/components/` | Reusable pieces of UI: navbar, footer, carousel section, request status, route guard, forms and managers used by the pages. |
 | `src/services/` | Code that talks to the outside world (HTTP, localStorage): `api.ts` and `session.ts` plus one service per entity (auth, movies, series, reviews, watch later, reports, report types, appeals, viewers, administrators). |
-| `src/context/` | App-wide state shared through React Context: the session (`AuthContext.ts`, `AuthProvider.tsx`) and the toast messages (`ToastContext.ts`, `ToastProvider.tsx`). |
-| `src/hooks/` | Custom hooks: `useAuth`, `useCatalog`, `useToast`, `useDocumentTitle`. |
+| `src/context/` | App-wide state shared through React Context: the session (`AuthContext.ts`, `AuthProvider.tsx`) the toast messages (`ToastContext.ts`, `ToastProvider.tsx`) and the confirmation dialog (`ConfirmContext.ts`, `ConfirmProvider.tsx`). |
+| `src/hooks/` | Custom hooks: `useAuth`, `useCatalog`, `useToast`, `useConfirm`, `useDocumentTitle`. |
 | `src/utils/` | Pure functions with no React and no HTTP: `catalog.ts`, `moderation.ts`, and `videoThumbnail.ts` (reads a thumbnail and the duration from a video file in the browser). |
 | `src/types/` | All TypeScript types for domain data and DTOs, in a single file `index.ts`. |
 | `src/test/` | Test setup (`setup.ts`). Test files live next to the code they test, as `*.test.ts(x)`. |
@@ -214,7 +214,7 @@ Details:
 | File | Role |
 |---|---|
 | `index.html` | The single HTML page. Has `<div id="root">` and loads `src/main.tsx`. |
-| `src/main.tsx` | Mounts React into `#root`, wrapping `<App />` in the providers (session and toasts). |
+| `src/main.tsx` | Mounts React into `#root`, wrapping `<App />` in the providers (session, toasts and the confirmation dialog, `main.tsx:10-16`). |
 | `src/App.tsx` | Declares every route, including the 404 page (`NotFoundPage`) for unknown addresses. Reads the session with `useAuth()` and passes it to the navbar. |
 | `src/index.css` | Loads Tailwind and DaisyUI, with the `night` theme as default. |
 
@@ -240,6 +240,8 @@ Details:
 | `src/services/movieService.ts` | Every `/api/movie` call (`getMovies`, `getMovie`, `updateMovie`, `deleteMovie`, `uploadMovie`) plus `videoUrl` and `toMovie`. |
 | `src/services/seriesService.ts` | Every `/api/series`, `/api/seasons` and `/api/episodes` call. Converts the backend's snake_case DTOs into `Series`, `Season` and `Episode`. |
 | `src/components/RequestStatus.tsx` | Shows a spinner, a friendly error or an empty message, and its `children` only when there is data. |
+| `src/context/ConfirmProvider.tsx` | Replaces `window.confirm`: shows one DaisyUI `modal` with a title, an optional message, "Cancel" and an accept button (red when `danger` is set). "Cancel", Escape or a click outside the box resolve `false`; a new question cancels an unanswered one. The focus starts on "Cancel". |
+| `src/hooks/useConfirm.ts` | The hook every delete, deactivate, withdraw or appeal decision uses: `if (!(await confirm({ title, message, confirmLabel, danger }))) return;`. Outside a `ConfirmProvider` it resolves `false` (`ConfirmContext.ts:20`). |
 | `src/hooks/useCatalog.ts` | Loads movies and series together as one list of `CatalogItem`. Used by the landing and search pages. |
 | `src/utils/catalog.ts` | Converts movies and series into `CatalogItem`, lists the categories and filters by text, type and category. |
 | `src/pages/LandingPage.tsx` | Home page: category links, an "All" carousel and one carousel per category. |
@@ -288,17 +290,18 @@ index.html
 └── src/main.tsx
     └── <AuthProvider>                     session state (context/AuthProvider.tsx)
         └── <ToastProvider>                 short messages after an action (context/ToastProvider.tsx)
-            └── <App>                       routes (App.tsx)
-                ├── <MainNavbar user onLogout>  reads session through props
-                └── <Routes>
-                    ├── public pages        LandingPage, SearchPage, WatchPage, series pages, AuthPage
-                    ├── <ProtectedRoute allowedRoles={['viewer']}>
-                    │   └── UploadPage, UploadSeriesPage, MyVideosPage, ReportPage, AppealPage, WatchLaterPage
-                    ├── <ProtectedRoute allowedRoles={['administrator']}>
-                    │   └── AdminPage, ModerationCasePage
-                    ├── <ProtectedRoute> (any logged-in user)
-                    │   └── ProfilePage
-                    └── * → NotFoundPage
+            └── <ConfirmProvider>           "Are you sure?" dialog (context/ConfirmProvider.tsx)
+                └── <App>                   routes (App.tsx)
+                    ├── <MainNavbar user onLogout>  reads session through props
+                    └── <Routes>
+                        ├── public pages        LandingPage, SearchPage, WatchPage, series pages, AuthPage
+                        ├── <ProtectedRoute allowedRoles={['viewer']}>
+                        │   └── UploadPage, UploadSeriesPage, MyVideosPage, ReportPage, AppealPage, WatchLaterPage
+                        ├── <ProtectedRoute allowedRoles={['administrator']}>
+                        │   └── AdminPage, ModerationCasePage
+                        ├── <ProtectedRoute> (any logged-in user)
+                        │   └── ProfilePage
+                        └── * → NotFoundPage
 
 Pages / components ──useAuth()──▶ AuthContext ◀── AuthProvider
 AuthProvider ──▶ authService (Http or Mock) ──▶ backend /api/users or localStorage
@@ -591,28 +594,28 @@ The filtering functions have unit tests (`catalog.test.ts`).
 ### 3.6 My Videos ✅ ⚠️
 
 1. On mount, it calls `getMovies()` and keeps only the movies whose `uploaderId` is the logged-in
-   user's `id` (`MyVideosPage.tsx:44`). `RequestStatus` handles loading, error and "You have not
-   uploaded any movie yet." with a link to upload one (`MyVideosPage.tsx:169-171`). Each movie shows
+   user's `id` (`MyVideosPage.tsx:46`). `RequestStatus` handles loading, error and "You have not
+   uploaded any movie yet." with a link to upload one (`MyVideosPage.tsx:176-178`). Each movie shows
    its thumbnail.
-2. **Delete:** `deleteVideo` asks for confirmation with `window.confirm`, then calls `deleteMovie`
-   and removes the video from the list on success (`MyVideosPage.tsx:58-64`). The delete is logical:
+2. **Delete:** `deleteVideo` asks for confirmation with `useConfirm`, then calls `deleteMovie`
+   and removes the video from the list on success (`MyVideosPage.tsx:60-82`). The delete is logical:
    the backend sets `state = 'deleted'` and stops listing it.
 3. **Edit:** `startEditing` copies the video into the edit fields. `saveEdit` rejects an empty
-   title, calls `updateMovie` (`MyVideosPage.tsx:110`) and updates the list locally.
+   title, calls `updateMovie` (`MyVideosPage.tsx:117`) and updates the list locally.
 4. Errors from edit or delete are shown above the list. While a video is being saved or deleted,
    its buttons are disabled (`busyVideoId`).
 5. **Series:** a second block lists the series uploaded by the logged-in user, filtered the same
-   way by `uploaderId` (`MyVideosPage.tsx:51-52`). It has its own loading, error and empty state
-   (`MyVideosPage.tsx:331-333`), so a failure in one block does not hide the other. Each series is
+   way by `uploaderId` (`MyVideosPage.tsx:53-54`). It has its own loading, error and empty state
+   (`MyVideosPage.tsx:338-340`), so a failure in one block does not hide the other. Each series is
    a `MySeriesItem` with "Edit" (`PATCH /api/series/:id`), "Delete" (after a confirmation, a logical
    delete that also hides its seasons and episodes) and "Manage seasons". It tells the
    page with its output props `onUpdated` and `onDeleted`.
-6. **Seasons and episodes:** `SeasonsManager` (`MySeriesItem.tsx:136`) lists the seasons of the
+6. **Seasons and episodes:** `SeasonsManager` (`MySeriesItem.tsx:143`) lists the seasons of the
    series. Each row can change the season number and description (`updateSeason`), be deleted
-   after a confirmation (`deleteSeason`), and open an `EpisodesManager` (`SeasonsManager.tsx:107`)
+   after a confirmation (`deleteSeason`), and open an `EpisodesManager` (`SeasonsManager.tsx:114`)
    that does the same for episodes (`updateEpisode`, `deleteEpisode`). A number that is already
    used answers 409, and its message is shown.
-7. The header has "Upload videos" and "Upload series" buttons (`MyVideosPage.tsx:143-148`).
+7. The header has "Upload videos" and "Upload series" buttons (`MyVideosPage.tsx:150-155`).
 
 ⚠️ Movies and series are filtered in the browser, because the backend has no "content of a user"
 endpoint. `uploaderId` comes from the backend's `id_author`; the diagram calls it `upladerId`, a typo.
@@ -720,9 +723,9 @@ explanation, the backend's 409 message and an invalid type in the URL.
 
 **`MyReportsList`** ("Reports about my content", sketch 7) loads `GET /api/viewers/me/reports` with
 `getMyReports` and shows each moderation case with `CaseSummary`. A case still `pending` and
-without an appeal has an "Appeal" button that opens `/appeal/:caseId` (`MyReportsList.tsx:70-74`).
+without an appeal has an "Appeal" button that opens `/appeal/:caseId` (`MyReportsList.tsx:76-80`).
 A pending appeal has "Withdraw appeal", which asks for confirmation, calls `withdrawAppeal`
-(`DELETE /api/appeals/:id`) and loads the cases again (`MyReportsList.tsx:32-47`). The empty state
+(`DELETE /api/appeals/:id`) and loads the cases again (`MyReportsList.tsx:34-53`). The empty state
 says "Nobody has reported your videos."
 
 **Appeal status.** The backend sends `reviewed` and `decision`, which say the same thing twice.
@@ -758,12 +761,12 @@ opens its detail page.
 
 **Case detail.** `ModerationCasePage` (`/admin/reports/:id`) loads `GET /api/reports/:id` and shows
 the content, the reported user, the total of reports, the appeal (with "Accept" / "Reject" while it
-is pending, `ModerationCasePage.tsx:45-65`) and a table with every report, its reason and details
-(`ModerationCasePage.tsx:111-136`).
+is pending, `ModerationCasePage.tsx:47-69`) and a table with every report, its reason and details
+(`ModerationCasePage.tsx:115-140`).
 
 **Report reasons.** `ReportTypesManager` is the CRUD of the `ReportType` catalog: create, rename,
 switch `requiresDetails`, and delete after a confirmation. A repeated name or a reason that reports
-already use answers 409, and its message is shown (`ReportTypesManager.tsx:45-63`). It tells the
+already use answers 409, and its message is shown (`ReportTypesManager.tsx:47-65`). It tells the
 page with the output props `onSaved` and `onDeleted`.
 
 **Users.** `AccountsTable` lists every viewer and administrator with an "Active" / "Inactive" badge
@@ -928,11 +931,11 @@ Trade-off: the file grows with every entity. Some types do not match the domain 
 - Categories are free text typed by the uploader; there is no categories table (3.2).
 
 **What is tested**
-- On 2026-10-13, `pnpm lint`, `pnpm test` (17 test files, 70 tests) and `pnpm build` all passed.
+- On 2026-10-13, `pnpm lint`, `pnpm test` (18 test files, 74 tests) and `pnpm build` all passed.
 - Unit tests (Vitest + Testing Library) cover components (`ProtectedRoute`, `MainNavbar`,
   `AppealReviewCard`, `MyReportsList`, `ReportTypesManager`, `ReviewButtons`, `SeasonsManager`,
   `WatchLaterButton`), pages (`AuthPage`, `ReportPage`, `NotFoundPage`), providers (`AuthProvider`,
-  `ToastProvider`), services (`authService`, `movieService`, `reportService`) and `utils/catalog.ts`.
+  `ToastProvider`, `ConfirmProvider`), services (`authService`, `movieService`, `reportService`) and `utils/catalog.ts`.
   They use fake services or a fake `fetch`, never the real backend.
 - There is no end-to-end test yet (5.2).
 - This manual does not record which screens were clicked through in a browser against the running
@@ -953,7 +956,7 @@ Trade-off: the file grows with every entity. Some types do not match the domain 
 |---|---|
 | Appeal history with verdict changes (sketch C) is not built: the backend has no endpoint for it yet. | `AdminPage.tsx` (1.4) |
 | Search cannot filter by director, and content has no subtitle or audio language: the backend has no such fields. | `SearchPage.tsx` (3.3) |
-| "My Videos" and "Upload series" download every movie and series and filter them by `uploaderId` in the browser, because there is no "content of a user" endpoint. | `MyVideosPage.tsx:44`, `51-52`, `UploadSeriesPage.tsx:25-26` |
+| "My Videos" and "Upload series" download every movie and series and filter them by `uploaderId` in the browser, because there is no "content of a user" endpoint. | `MyVideosPage.tsx:46`, `51-52`, `UploadSeriesPage.tsx:25-26` |
 | The series pages do not check that the season belongs to the series in the URL, or the episode to the season. | `EpisodeListPage.tsx`, `WatchSeriesPage.tsx` |
 | Episodes cannot be reported on their own: the button reports the whole series. | `WatchSeriesPage.tsx:82-83` |
 | `LanguagePanel` is not used by any page. | `src/components/LanguagePanel.tsx` |

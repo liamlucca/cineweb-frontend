@@ -3,6 +3,7 @@ import type { Account } from '../types/index.ts';
 import { setAccountActive } from '../services/adminService.ts';
 import { errorMessage } from '../services/api.ts';
 import useToast from '../hooks/useToast.ts';
+import useConfirm from '../hooks/useConfirm.ts';
 
 interface AccountsTableProps {
   accounts: Account[]
@@ -15,12 +16,17 @@ interface AccountsTableProps {
 // Viewers and administrators, with a button to activate or deactivate each account
 function AccountsTable({ accounts, currentUserId, onChanged }: AccountsTableProps) {
   const { notify } = useToast();
+  const { confirm } = useConfirm();
   const [busyId, setBusyId] = useState<number | null>(null);
   const [error, setError] = useState('');
 
   async function toggle(account: Account) {
     const action = account.active ? 'Deactivate' : 'Activate';
-    if (!window.confirm(`${action} the account "${account.username}"?`)) return;
+    if (!(await confirm({
+      title: `${action} the account "${account.username}"?`,
+      confirmLabel: action,
+      danger: account.active,
+    }))) return;
 
     setBusyId(account.id);
     setError('');

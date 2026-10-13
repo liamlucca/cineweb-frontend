@@ -5,6 +5,7 @@ import { deleteEpisode, getEpisodes, updateEpisode } from '../services/seriesSer
 import { errorMessage } from '../services/api.ts';
 import RequestStatus from './RequestStatus.tsx';
 import useToast from '../hooks/useToast.ts';
+import useConfirm from '../hooks/useConfirm.ts';
 
 interface EpisodeRowProps {
   episode: Episode
@@ -15,6 +16,7 @@ interface EpisodeRowProps {
 // One episode: shows it, or edits its number, title and description in place
 function EpisodeRow({ episode, onUpdated, onDeleted }: EpisodeRowProps) {
   const { notify } = useToast();
+  const { confirm } = useConfirm();
   const [editing, setEditing] = useState(false);
   const [number, setNumber] = useState(String(episode.number));
   const [title, setTitle] = useState(episode.title);
@@ -50,7 +52,12 @@ function EpisodeRow({ episode, onUpdated, onDeleted }: EpisodeRowProps) {
   }
 
   async function remove() {
-    if (!window.confirm(`Delete episode ${episode.number}, "${episode.title}"? It will no longer be shown on CineWeb.`)) return;
+    if (!(await confirm({
+      title: `Delete episode ${episode.number}, "${episode.title}"?`,
+      message: 'It will no longer be shown on CineWeb.',
+      confirmLabel: 'Delete',
+      danger: true,
+    }))) return;
     setBusy(true);
     setError('');
     try {

@@ -10,11 +10,13 @@ import { errorMessage } from "../services/api.ts";
 import useAuth from "../hooks/useAuth.ts";
 import MySeriesItem from "../components/MySeriesItem.tsx";
 import useToast from "../hooks/useToast.ts";
+import useConfirm from "../hooks/useConfirm.ts";
 import useDocumentTitle from "../hooks/useDocumentTitle.ts";
 
 function MyVideosPage() {
   const { user } = useAuth();
   const { notify } = useToast();
+  const { confirm } = useConfirm();
   const userId = user?.id;
   const [videos, setVideos] = useState<Movie[]>([]);
   const [loading, setLoading] = useState(true);
@@ -56,7 +58,12 @@ function MyVideosPage() {
 
   // Deletes a video. The backend only hides it (logical delete, sketch 8)
   const deleteVideo = async (video: Movie) => {
-    if (!window.confirm(`Delete "${video.title}"? It will no longer be shown on CineWeb.`)) return;
+    if (!(await confirm({
+      title: `Delete "${video.title}"?`,
+      message: "It will no longer be shown on CineWeb.",
+      confirmLabel: "Delete",
+      danger: true,
+    }))) return;
 
     setBusyVideoId(video.id);
     setActionError("");

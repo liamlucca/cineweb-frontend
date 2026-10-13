@@ -7,11 +7,13 @@ import { errorMessage } from '../services/api.ts';
 import RequestStatus from './RequestStatus.tsx';
 import CaseSummary from './CaseSummary.tsx';
 import useToast from '../hooks/useToast.ts';
+import useConfirm from '../hooks/useConfirm.ts';
 
 // "Reports about my content" (sketch 7): the cases opened against the viewer's videos,
 // with a button to appeal an open case or to withdraw an appeal that is still pending
 function MyReportsList() {
   const { notify } = useToast();
+  const { confirm } = useConfirm();
   const [cases, setCases] = useState<ModerationCase[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -31,7 +33,11 @@ function MyReportsList() {
 
   async function withdraw(moderationCase: ModerationCase) {
     if (!moderationCase.appeal) return;
-    if (!window.confirm('Withdraw your appeal? You can appeal this case again later.')) return;
+    if (!(await confirm({
+      title: 'Withdraw your appeal?',
+      message: 'You can appeal this case again later.',
+      confirmLabel: 'Withdraw',
+    }))) return;
 
     setBusyId(moderationCase.id);
     setActionError('');
