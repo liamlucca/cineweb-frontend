@@ -19,13 +19,22 @@ export async function getWatchLater(): Promise<WatchLaterItem[]> {
   const response = await request('/api/watch-later', NOT_FOUND_ERROR, { headers: authHeader() });
   const data = (await readJson(response) as { data?: unknown } | null)?.data;
   if (!Array.isArray(data)) throw new ApiError(GENERIC_ERROR);
-  return data.filter(isWatchLaterItem).map((item) => ({
-    ...item,
-    title: String(item.title ?? ''),
-    category: String(item.category ?? ''),
-    description: String(item.description ?? ''),
-    addedAt: String(item.addedAt ?? ''),
-  }));
+  // the backend sends the image path in snake_case, like the rest of the content API
+  return data.filter(isWatchLaterItem).map((item) => {
+    const raw = item as unknown as Record<string, unknown>;
+    return {
+      id: item.id,
+      viewerId: Number(item.viewerId),
+      audiovisualId: item.audiovisualId,
+      audiovisualType: item.audiovisualType,
+      title: String(item.title ?? ''),
+      category: String(item.category ?? ''),
+      description: String(item.description ?? ''),
+      addedAt: String(item.addedAt ?? ''),
+      thumbnailPath: typeof raw.thumbnail_path === 'string' ? raw.thumbnail_path : null,
+      duration: typeof raw.duration === 'number' ? raw.duration : null,
+    };
+  });
 }
 
 // Returns the id of the new item, needed to remove it later

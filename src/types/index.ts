@@ -188,6 +188,10 @@ export interface WatchLaterItem {
   title: string
   category: string
   description: string
+  // movie thumbnail or series cover; null shows a gradient instead
+  thumbnailPath: string | null
+  // seconds, only for movies
+  duration: number | null
 }
 
 /** REPORTS */

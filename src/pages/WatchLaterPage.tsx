@@ -5,6 +5,8 @@ import { getWatchLater, removeFromWatchLater } from '../services/watchLaterServi
 import { errorMessage } from '../services/api.ts';
 import { contentPath } from '../utils/moderation.ts';
 import RequestStatus from '../components/RequestStatus.tsx';
+import Thumbnail from '../components/Thumbnail.tsx';
+import { formatDuration } from '../utils/catalog.ts';
 import useDocumentTitle from '../hooks/useDocumentTitle.ts';
 import useToast from '../hooks/useToast.ts';
 
@@ -60,6 +62,16 @@ function WatchLaterPage() {
             {items.map((item) => (
               <li key={item.id} className="card bg-base-200">
                 <div className="card-body p-4 gap-3 sm:flex-row sm:items-center">
+                  <Link
+                    to={contentPath(item.audiovisualType, item.audiovisualId)}
+                    className="relative block w-full sm:w-48 shrink-0 aspect-video rounded-box overflow-hidden bg-base-300"
+                    aria-label={`Watch ${item.title}`}
+                  >
+                    <Thumbnail path={item.thumbnailPath} title={item.title} />
+                    {formatDuration(item.duration) && (
+                      <span className="badge badge-sm badge-neutral absolute bottom-2 right-2">{formatDuration(item.duration)}</span>
+                    )}
+                  </Link>
                   <div className="flex-1 min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="badge badge-ghost badge-sm">{item.audiovisualType === 'movie' ? 'Movie' : 'Series'}</span>

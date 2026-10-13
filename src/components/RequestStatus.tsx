@@ -6,12 +6,14 @@ interface RequestStatusProps {
   error: string
   isEmpty: boolean
   emptyMessage: string
+  // optional button or link under the empty message, e.g. "Upload a movie"
+  emptyAction?: ReactNode
   children: ReactNode
 }
 
 // Shows a spinner, an error or an empty message, and the content only when there is data
 function RequestStatus({
-  loading, error, isEmpty, emptyMessage, children,
+  loading, error, isEmpty, emptyMessage, emptyAction, children,
 }: RequestStatusProps) {
   if (loading) {
     return (
@@ -26,7 +28,15 @@ function RequestStatus({
   }
 
   if (isEmpty) {
-    return <p className="p-4 text-lg opacity-70">{emptyMessage}</p>;
+    if (!emptyAction) return <p className="p-4 text-lg opacity-70">{emptyMessage}</p>;
+    return (
+      <div className="card bg-base-200">
+        <div className="card-body items-center text-center gap-3">
+          <p className="text-lg opacity-80">{emptyMessage}</p>
+          {emptyAction}
+        </div>
+      </div>
+    );
   }
 
   return <>{children}</>;

@@ -2,9 +2,9 @@ import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import type { MovieDTO, MovieUpdate, Series } from "../types/index.ts";
 import RequestStatus from "../components/RequestStatus.tsx";
-import {
-  deleteMovie, getMovies, updateMovie, videoUrl,
-} from "../services/movieService.ts";
+import { deleteMovie, getMovies, updateMovie } from "../services/movieService.ts";
+import { formatDuration } from "../utils/catalog.ts";
+import Thumbnail from "../components/Thumbnail.tsx";
 import { getAllSeries } from "../services/seriesService.ts";
 import { errorMessage } from "../services/api.ts";
 import useAuth from "../hooks/useAuth.ts";
@@ -167,7 +167,8 @@ function MyVideosPage() {
           loading={loading}
           error={loadError}
           isEmpty={videos.length === 0}
-          emptyMessage="You have no uploaded videos."
+          emptyMessage="You have not uploaded any movie yet."
+          emptyAction={<Link to="/upload" className="btn btn-primary btn-sm">Upload your first movie</Link>}
         >
           {videos.map((video) => (
             <div
@@ -175,12 +176,17 @@ function MyVideosPage() {
               className="flex flex-col md:flex-row items-center gap-6 border-b pb-6"
             >
 
-              {/* Video */}
-              <video
-                src={videoUrl(video.path)}
-                controls
-                className="w-full max-w-64 h-36 object-cover rounded"
-              />
+              {/* Thumbnail, linking to the movie's page */}
+              <Link
+                to={`/watch/${video.id}`}
+                className="relative block w-full md:w-64 shrink-0 aspect-video rounded-box overflow-hidden bg-base-300"
+                aria-label={`Watch ${video.title}`}
+              >
+                <Thumbnail path={video.thumbnail_path} title={video.title} />
+                {formatDuration(video.duration) && (
+                  <span className="badge badge-sm badge-neutral absolute bottom-2 right-2">{formatDuration(video.duration)}</span>
+                )}
+              </Link>
 
               {/* Details */}
               <div className="flex-1 w-full">
@@ -323,7 +329,8 @@ function MyVideosPage() {
           loading={loadingSeries}
           error={seriesError}
           isEmpty={mySeries.length === 0}
-          emptyMessage="You have no uploaded series."
+          emptyMessage="You have not uploaded any series yet."
+          emptyAction={<Link to="/upload-series" className="btn btn-primary btn-sm">Create your first series</Link>}
         >
           {mySeries.map((item) => (
             <MySeriesItem
