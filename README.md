@@ -1,6 +1,8 @@
 # CineWeb — Frontend
 
-Plataforma de películas donde los usuarios pueden subir y reproducir contenido
+Plataforma de películas y series: los espectadores suben, miran, valoran y denuncian contenido, y
+los administradores moderan las denuncias y las apelaciones. Trabajo práctico de Desarrollo de
+Software (DSW).
 
 ## Equipo
 
@@ -14,44 +16,45 @@ Plataforma de películas donde los usuarios pueden subir y reproducir contenido
 
 ## Tecnologías
 
-- **React** con **TypeScript**
-- **Vite 5** 
-- **Tailwind CSS**
-- **DaisyUI**
+- **React 18** con **TypeScript** y **Vite 5**
+- **Tailwind CSS** + **DaisyUI** (tema `night`), mobile-first
 - **React Router** — navegación entre páginas
+- **Vitest** + **Testing Library** — tests unitarios
 - **pnpm** — gestor de paquetes
 
-## Requisitos previos
+## Puesta en marcha rápida
 
-- Node.js
-- pnpm instalado globalmente
-
-```bash
-npm install -g pnpm
-```
-
-## Instalación
+Requisitos: Node.js 20+, pnpm y el [backend](https://github.com/EduardoMarino73/TP-BackEnd) corriendo en `http://localhost:3000`.
 
 ```bash
-# Clonar el repositorio
 git clone https://github.com/liamlucca/cineweb-frontend
 cd cineweb-frontend
-
-# Instalar dependencias
 pnpm install
-
-# Iniciar en modo desarrollo
-pnpm dev
+cp .env.example .env    # VITE_API_URL y VITE_USE_MOCK_AUTH
+pnpm dev                # http://localhost:5173
 ```
 
-El frontend se inicia en `http://localhost:5173`
+| Comando | Qué hace |
+|---|---|
+| `pnpm dev` | Servidor de desarrollo |
+| `pnpm build` | Chequeo de tipos y build de producción |
+| `pnpm lint` | ESLint |
+| `pnpm test` | Tests unitarios |
 
-El backend debe iniciarse en `http://localhost:3000` ya que el frontend realiza llamadas a la API en esa dirección (por ahora).
+## Páginas
 
-## Páginas actuales
-
-| Ruta | Página | Descripción |
-|------|--------|-------------|
-| `/` | LandingPage | Listado de películas |
-| `/subir` | UploadPage | Formulario para subir una película |
-
+| Ruta | Página | Quién |
+|------|--------|-------|
+| `/` | Inicio: destacado y carruseles por categoría | todos |
+| `/search` | Búsqueda por título, tipo y categoría | todos |
+| `/watch/:id` | Película: reproductor, valoraciones, "Ver más tarde", denunciar | todos |
+| `/series/:id/seasons` | Serie: temporadas y episodios | todos |
+| `/watch-series/:id/:seasonId/:episodeId` | Episodio | todos |
+| `/login` | Ingresar / registrarse | todos |
+| `/upload`, `/upload-series` | Subir película / serie (con miniatura automática) | espectador |
+| `/my-videos` | Mis videos: editar y borrar películas, series, temporadas y episodios | espectador |
+| `/watch-later` | Lista "Ver más tarde" | espectador |
+| `/report/:type/:id` | Denunciar un video | espectador |
+| `/appeal/:reportId` | Apelar una denuncia sobre mi contenido | espectador |
+| `/profile` | Perfil, actividad y denuncias sobre mi contenido | usuario logueado |
+| `/admin`, `/admin/reports/:id` | Apelaciones, denuncias, motivos de denuncia y cuentas | administrador |
