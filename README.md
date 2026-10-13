@@ -49,6 +49,7 @@ pnpm dev                # http://localhost:5173
 | `/search` | Búsqueda por título, tipo y categoría | todos |
 | `/watch/:id` | Película: reproductor, valoraciones, "Ver más tarde", denunciar | todos |
 | `/series/:id/seasons` | Serie: temporadas y episodios | todos |
+| `/series/:id/season/:seasonId/episodes` | Episodios de una temporada | todos |
 | `/watch-series/:id/:seasonId/:episodeId` | Episodio | todos |
 | `/login` | Ingresar / registrarse | todos |
 | `/upload`, `/upload-series` | Subir película / serie (con miniatura automática) | espectador |
@@ -58,3 +59,8 @@ pnpm dev                # http://localhost:5173
 | `/appeal/:reportId` | Apelar una denuncia sobre mi contenido | espectador |
 | `/profile` | Perfil, actividad y denuncias sobre mi contenido | usuario logueado |
 | `/admin`, `/admin/reports/:id` | Apelaciones, denuncias, motivos de denuncia y cuentas | administrador |
+
+## Documentación
+
+Toda la documentación está en [docs/](docs/README.md): propuesta, PR, minutas, tracking, el manual
+del código y el modelo de dominio.
